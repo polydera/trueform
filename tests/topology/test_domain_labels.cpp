@@ -34,8 +34,7 @@ TEST_CASE("domain labels: arrangement stacks resolve to two cells",
       tf::vector<real_t, 3>{1.0, 0.0, 0.0}));
   auto soup = tf::concatenated(a.polygons(), b.polygons() | tf::tag(frame));
   auto [arranged, labels] = tf::make_polygon_arrangements(
-      soup.polygons(),
-      {tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours});
+      soup.polygons(), {tf::intersect_mode::primitives});
   (void)labels;
 
   // the arrangement emits both conformed wall fans (a stack of

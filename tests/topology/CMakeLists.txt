@@ -21,6 +21,8 @@ add_executable(trueform_topology_tests
   test_domain_labels.cpp
   test_face_orientation.cpp
   test_euler_characteristic.cpp
+  test_boundary_rims.cpp
+  test_vertex_split.cpp
 )
 
 target_link_libraries(trueform_topology_tests PRIVATE trueform_test_common)

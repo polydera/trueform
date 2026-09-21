@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/trueform.hpp>
 #include <trueform/remesh/protect_vertices.hpp>
+#include "mesh_generators.hpp"
 
 #include <cmath>
 #include <vector>
@@ -21,6 +22,31 @@ TEST_CASE("decimated (box to 50%)", "[remesh][decimate]") {
   REQUIRE(dec.faces().size() <= orig_faces);
   REQUIRE(dec.points().size() > 0);
   REQUIRE(dec.points().size() <= box.points().size());
+}
+
+TEST_CASE("remesh entries on a broken apex fan", "[remesh][topology]") {
+  auto mesh = tf::test::create_broken_apex_fan_3d<int, float>();
+
+  tf::half_edges<int> he(mesh.polygons());
+  REQUIRE(he.is_non_manifold_vertex(0));
+
+  // Every vertex here is either on the boundary or carries the non-manifold
+  // bit, so the relaxation has no ring it may walk and moves nothing.
+  for (int v = 0; v < he.number_of_vertices(); ++v)
+    REQUIRE((he.is_boundary_vertex(v) || he.is_non_manifold_vertex(v)));
+
+  auto relaxed = tf::test::create_broken_apex_fan_3d<int, float>();
+  tf::half_edges<int> relaxed_he(relaxed.polygons());
+  tf::tangential_relaxation(relaxed_he, relaxed.points(), 3, 0.5f);
+  for (std::size_t i = 0; i < relaxed.points().size(); ++i)
+    for (int d = 0; d < 3; ++d)
+      REQUIRE(relaxed.points()[i][d] == mesh.points()[i][d]);
+
+  auto [remeshed, remeshed_he] = tf::isotropic_remeshed(mesh.polygons(), 0.5f);
+  REQUIRE(remeshed.faces().size() > 0);
+
+  auto [simple, simple_he] = tf::simplified(mesh.polygons());
+  REQUIRE(simple.faces().size() > 0);
 }
 
 TEST_CASE("decimated (sphere -preserves rough shape)", "[remesh][decimate]") {

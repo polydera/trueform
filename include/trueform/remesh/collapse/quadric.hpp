@@ -16,15 +16,14 @@
 #include <limits>
 #include <optional>
 
+#include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
-#include "../../core/algorithm/reduce.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/cross.hpp"
 #include "../../core/eigen_of_symmetric.hpp"
 #include "../../core/point.hpp"
 #include "../../core/points.hpp"
 #include "../../core/vector.hpp"
-#include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../topology/half_edges.hpp"
@@ -186,7 +185,8 @@ auto compute_vertex_quadrics(const tf::half_edges<Index> &he,
   face_quadrics.allocate(n_faces);
 
   tf::parallel_for_each(
-      tf::zip(he.face_half_edge_handles(), face_quadrics), [&](auto tup) {
+      tf::zip(he.face_half_edge_handles(), face_quadrics),
+      [&he, &points](auto tup) {
         auto &&[fhe, fq] = tup;
         if (!fhe.is_valid()) {
           fq = {};
@@ -228,7 +228,8 @@ auto compute_vertex_quadrics(const tf::half_edges<Index> &he,
   tf::buffer<quadric> vertex_quadrics;
   vertex_quadrics.allocate(n_verts);
   tf::parallel_for_each(
-      tf::zip(he.vertex_half_edge_handles(), vertex_quadrics), [&](auto tup) {
+      tf::zip(he.vertex_half_edge_handles(), vertex_quadrics),
+      [&he, &face_quadrics](auto tup) {
         auto &&[vhe, vq] = tup;
         vq = {};
         if (!vhe.is_valid())
@@ -328,13 +329,16 @@ auto compute_vertex_quadrics(const tf::half_edges<Index> &he,
         fq.c = d * d;
       });
 
-  // Compute mean face quadric trace for penalty scaling
-  auto trace_sum = tf::reduce(
-      tf::make_mapped_range(tf::make_range(face_quadrics),
-                            [](const quadric &fq) {
-                              return fq.A[0] + fq.A[3] + fq.A[5];
-                            }),
-      [](double acc, double tr) { return acc + tr; }, 0.0);
+  // Mean face quadric trace, for penalty scaling. The summation order is the
+  // sum's last bits, and those reach every collapse error through w.
+  double trace_sum = 0;
+  tf::blocked_reduce_sequenced_aggregate(
+      tf::make_range(face_quadrics), trace_sum, double(0),
+      [](const auto &block, double &local) {
+        for (const auto &fq : block)
+          local += fq.A[0] + fq.A[3] + fq.A[5];
+      },
+      [](const double &local, double &total) { total += local; });
   double w = (n_faces > 0) ? feature_weight * trace_sum / n_faces : 0;
 
   // Pass 2: accumulate face quadrics + feature penalty quadrics per vertex

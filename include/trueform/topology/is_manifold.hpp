@@ -12,52 +12,41 @@
  */
 #pragma once
 #include "../core/algorithm/parallel_contains.hpp"
-#include "../core/views/enumerate.hpp"
-#include "./face_edge_neighbors.hpp"
+#include "../core/checked.hpp"
+#include "../core/faces.hpp"
+#include "../core/polygons.hpp"
+#include "../core/views/sequence_range.hpp"
 #include "./face_membership_like.hpp"
 #include "./make_face_membership.hpp"
 #include "./policy/face_membership.hpp"
+#include "./traversal/vertex_fan_is_manifold.hpp"
+#include <type_traits>
 
 namespace tf {
 
 /// @ingroup topology_analysis
 /// @brief Check if a mesh is manifold.
 ///
-/// Returns `true` if every edge in the mesh is shared by at most two faces.
-/// Non-manifold edges (shared by 3+ faces) indicate self-intersections or
-/// invalid topology.
+/// Returns `true` when the faces around every vertex are one fan, which also
+/// says every edge carries at most two of them. Winding is a separate fact:
+/// a mesh whose faces disagree about it is manifold all the same.
 ///
 /// @tparam Policy The faces policy type.
 /// @tparam Policy1 The face membership policy type.
 /// @param faces The faces range.
 /// @param fm The face membership structure.
-/// @return `true` if the mesh is manifold (no edges shared by 3+ faces).
+/// @return `true` if the mesh is manifold.
 template <typename Policy, typename Policy1>
 auto is_manifold(const tf::faces<Policy> &faces,
                  const tf::face_membership_like<Policy1> &fm) -> bool {
   using Index = std::decay_t<decltype(faces[0][0])>;
 
-  auto has_non_manifold_edge = [&](auto pair) {
-    auto [face_id, face] = pair;
-    auto size = face.size();
-    decltype(size) prev = size - 1;
-    for (decltype(size) i = 0; i < size; prev = i++) {
-      auto v0 = face[prev];
-      auto v1 = face[i];
-      int count = 0;
-      tf::face_edge_neighbors_apply(fm, faces, Index(face_id), Index(v0),
-                                    Index(v1), [&](auto) {
-                                      ++count;
-                                      return count > 1;
-                                    });
-      if (count > 1)
-        return true;
-    }
-    return false;
-  };
-
-  return !tf::parallel_contains(tf::enumerate(faces), has_non_manifold_edge,
-                                tf::checked);
+  return !tf::parallel_contains(
+      tf::make_sequence_range(Index(fm.size())),
+      [&faces, &fm](Index v) {
+        return !tf::topology::vertex_fan_is_manifold(faces, fm, v);
+      },
+      tf::checked);
 }
 
 /// @ingroup topology_analysis
@@ -68,7 +57,7 @@ auto is_manifold(const tf::faces<Policy> &faces,
 ///
 /// @tparam Policy The polygons policy type.
 /// @param polygons The polygons range.
-/// @return `true` if the mesh is manifold (no edges shared by 3+ faces).
+/// @return `true` if the mesh is manifold.
 template <typename Policy>
 auto is_manifold(const tf::polygons<Policy> &polygons) -> bool {
   if constexpr (tf::has_face_membership_policy<Policy>) {

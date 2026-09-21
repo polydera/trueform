@@ -17,25 +17,25 @@
 #include "tbb/task_group.h"
 
 #include "../../core/algorithm/parallel_fill.hpp"
-#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/coordinate_type.hpp"
 #include "../../core/points.hpp"
+#include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../topology/half_edges.hpp"
 #include "./collapse_to_target.hpp"
+#include "./grow_cleanup_region.hpp"
 
 namespace tf::remesh {
 
 /// @ingroup remesh
 /// @brief Parallel collapse edges to reach a target face count.
 ///
-/// Partitions the mesh via BFS flood-fill, freezes vertices at partition
-/// boundaries, then collapses edges within each partition in parallel
-/// using `tbb::task_group`. Each partition's collapse task is dispatched
-/// immediately after its BFS completes, overlapping partitioning with
-/// collapse work. A sequential cleanup pass handles the boundary edges
-/// afterward.
+/// Partitions the mesh via BFS flood-fill and freezes the vertices at the
+/// partition boundaries. The whole partition is stated before any task runs,
+/// so every collapse reads a frozen structure and mutates only its own
+/// interior. A sequential cleanup pass then works the boundary region
+/// @ref tf::remesh::grow_cleanup_region marks.
 ///
 /// @tparam N_BUCKETS Bucket count for the internal bucket queue.
 /// @tparam Index The index type.
@@ -176,9 +176,13 @@ auto collapse_to_target_parallel(tf::half_edges<Index> &he,
     });
   };
 
-  // === BFS + frozen marking + immediate dispatch ===
+  // === BFS + frozen marking ===
 
-  tbb::task_group tg;
+  // Block p of these offsets is the face run of partition p, and p is its
+  // label.
+  tf::buffer<Index> partition_offsets;
+  partition_offsets.reserve(std::size_t(n_parts) + 2);
+  partition_offsets.push_back(0);
 
   for (; current_label < n_parts; ++current_label) {
     Index part_begin = bfs_write;
@@ -198,11 +202,9 @@ auto collapse_to_target_parallel(tf::half_edges<Index> &he,
       enqueue_neighbors(bfs_queue[bfs_read++]);
 
     bfs_read = bfs_write;
-    Index part_end = bfs_write;
 
-    // Mark frozen for this partition's boundary, then dispatch
-    mark_frozen(part_begin, part_end, current_label);
-    dispatch_partition(tg, current_label, part_begin, part_end);
+    mark_frozen(part_begin, bfs_write, current_label);
+    partition_offsets.push_back(bfs_write);
   }
 
   int actual_parts = current_label;
@@ -219,36 +221,25 @@ auto collapse_to_target_parallel(tf::half_edges<Index> &he,
   }
   if (bfs_write > extra_begin) {
     mark_frozen(extra_begin, bfs_write, actual_parts);
-    dispatch_partition(tg, actual_parts, extra_begin, bfs_write);
+    partition_offsets.push_back(bfs_write);
   }
 
+  // === Collapse the frozen partition's interiors ===
+
+  tbb::task_group tg;
+  for (int p = 0; p + 1 < int(partition_offsets.size()); ++p)
+    dispatch_partition(tg, p, partition_offsets[p], partition_offsets[p + 1]);
   tg.wait();
 
-  // === Recount faces (counters corrupted by parallel collapse) ===
-
+  // The counts are the barrier's to state, never a partition's.
   he.recount();
   Index post_parallel_faces = he.number_of_faces();
 
   // === Sequential cleanup on boundary region ===
 
-  constexpr int cleanup_rings = 3;
-  for (int ring = 0; ring < cleanup_rings; ++ring) {
-    tf::parallel_for_each(he.edge_handles(), [&](const auto &eh) {
-      if (!eh.is_valid())
-        return;
-      auto h0 = he.half_edge_handle(tf::unsafe, eh, false);
-      auto v0 = he.start_vertex_handle(tf::unsafe, h0).id();
-      auto v1 = he.end_vertex_handle(tf::unsafe, h0).id();
-      if (frozen[v0] == 1 || frozen[v1] == 1) {
-        if (frozen[v0] == 0)
-          frozen[v0] = 1;
-        if (frozen[v1] == 0)
-          frozen[v1] = 1;
-      }
-    });
-  }
+  tf::remesh::grow_cleanup_region(he, frozen);
 
-  // 0 → frozen (interior, already handled), 1 → collapsible (partition
+  // 0 → frozen (interior, already handled), stamped → collapsible (partition
   // boundary region)
   auto cleanup_frozen = tf::make_mapped_range(
       tf::make_range(frozen), [](char v) -> char { return !v; });

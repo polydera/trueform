@@ -91,14 +91,15 @@ auto tangential_relaxation_impl(
         ++count;
 
         // Accumulate face normal (area-weighted) from the face on the left
-        auto h0 = cur;
-        auto h1 = he.next(tf::unsafe, h0);
-        auto v0 = he.start_vertex_handle(tf::unsafe, h0).id();
-        auto v1 = he.end_vertex_handle(tf::unsafe, h0).id();
-        auto v2 = he.end_vertex_handle(tf::unsafe, h1).id();
-        auto e0 = old_pos[v1].as_vector_view() - old_pos[v0].as_vector_view();
-        auto e1 = old_pos[v2].as_vector_view() - old_pos[v0].as_vector_view();
-        normal += tf::cross(e0, e1);
+        if (he.is_simple(tf::unsafe, cur)) {
+          auto h1 = he.next(tf::unsafe, cur);
+          auto v0 = he.start_vertex_handle(tf::unsafe, cur).id();
+          auto v1 = he.end_vertex_handle(tf::unsafe, cur).id();
+          auto v2 = he.end_vertex_handle(tf::unsafe, h1).id();
+          auto e0 = old_pos[v1].as_vector_view() - old_pos[v0].as_vector_view();
+          auto e1 = old_pos[v2].as_vector_view() - old_pos[v0].as_vector_view();
+          normal += tf::cross(e0, e1);
+        }
 
         cur = he.rotated(cur);
         // invalid handle mid-ring = broken fan: never relax such a vertex

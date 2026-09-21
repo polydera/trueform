@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #include <trueform/trueform.hpp>
+#include "mesh_generators.hpp"
 #include "topology_generators.hpp"
 #include "type_traits.hpp"
 
@@ -108,6 +109,52 @@ auto check_face_loops(const tf::half_edges<Index> &he) -> bool {
       return false;
   }
   return true;
+}
+
+/// Walk rotated() from one seed and report whether the fan steps onto a
+/// half-edge of another vertex.
+template <typename Index>
+auto fan_walk_leaves_vertex(const tf::half_edges<Index> &he,
+                            tf::half_edge_handle<Index> seed, Index v) -> bool {
+  auto cur = seed;
+  do {
+    if (he.start_vertex_handle(tf::unsafe, cur).id() != v)
+      return true;
+    auto nxt = he.rotated(cur);
+    if (!nxt.is_valid())
+      return false;
+    cur = nxt;
+  } while (cur != seed);
+  return false;
+}
+
+/// Count the half-edges whose fan walk leaves its vertex, asked from every one it
+/// own rather than from the elected representative alone, and the ones the
+/// non-manifold mask does not name.
+template <typename Index>
+auto count_drifting_fans(const tf::half_edges<Index> &he)
+    -> std::pair<Index, Index> {
+  Index drifting = 0, unflagged = 0;
+  for (auto heh : he.half_edge_handles()) {
+    if (!heh.is_valid())
+      continue;
+    auto v = he.start_vertex_handle(tf::unsafe, heh).id();
+    if (!fan_walk_leaves_vertex(he, heh, v))
+      continue;
+    ++drifting;
+    if (!he.is_non_manifold_vertex(v))
+      ++unflagged;
+  }
+  return {drifting, unflagged};
+}
+
+/// Count the vertices the non-manifold mask names.
+template <typename Index>
+auto count_non_manifold_vertices(const tf::half_edges<Index> &he) -> Index {
+  Index n = 0;
+  for (Index v = 0; v < he.number_of_vertices(); ++v)
+    n += he.is_non_manifold_vertex(v);
+  return n;
 }
 
 /// Check that no valid half-edge references a given vertex.
@@ -215,6 +262,33 @@ TEMPLATE_TEST_CASE("half_edges_non_manifold_ring",
 
   tf::small_vector<Index, 16> ring;
   REQUIRE_FALSE(he.is_collapse_ok(target_eh, ring));
+}
+
+// =============================================================================
+// The non-manifold verdict owns the drift its own walk sees
+// =============================================================================
+
+TEMPLATE_TEST_CASE("half_edges_fan_walk_verdict", "[topology][half_edges]",
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
+  using Index = typename TestType::index_type;
+  using Real = typename TestType::real_type;
+
+  auto broken = tf::test::create_broken_apex_fan_3d<Index, Real>();
+  tf::half_edges<Index> broken_he(broken.polygons());
+
+  auto [drifting, unflagged] = count_drifting_fans(broken_he);
+  REQUIRE(drifting > 0);
+  REQUIRE(unflagged == 0);
+  REQUIRE(broken_he.is_non_manifold_vertex(Index(0)));
+
+  auto clean = tf::make_sphere_mesh<Index>(Real(1), 12, 12);
+  tf::half_edges<Index> clean_he(clean.polygons());
+
+  auto [clean_drifting, clean_unflagged] = count_drifting_fans(clean_he);
+  REQUIRE(clean_drifting == 0);
+  REQUIRE(clean_unflagged == 0);
+  REQUIRE(count_non_manifold_vertices(clean_he) == 0);
 }
 
 // =============================================================================

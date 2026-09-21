@@ -14,7 +14,7 @@
 
 #include "../../core/buffer.hpp"
 #include "../../core/points_buffer.hpp"
-#include "../../core/algorithm/block_reduce.hpp"
+#include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
 #include "../../core/algorithm/parallel_copy.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
@@ -28,6 +28,13 @@
 namespace tf {
 namespace remesh {
 
+/// @ingroup remesh
+/// @brief Splits every edge a handler asks for and retessellates the faces
+/// that reach one.
+///
+/// Points, half-edges and faces are minted by aggregating the parallel blocks
+/// in the input's order, so the structure a split produces is the mesh's and
+/// never the schedule's.
 template <typename Index, typename Real, std::size_t Dims>
 class half_edge_splitter {
   using half_edge_handle_t = tf::half_edge_handle<Index>;
@@ -109,7 +116,7 @@ private:
     aggregate_data agg{_point_data, _edge_to_point_map,
                        Index(point_data.size())};
 
-    tf::blocked_reduce(
+    tf::blocked_reduce_sequenced_aggregate(
         he.edge_handles(), agg, local_data{},
         [&he, &point_data, &handler, preserve_boundary](auto r,
                                                          local_data &local) {
@@ -178,7 +185,7 @@ private:
                        n_original_half_edges,
                        n_original_polys};
 
-    tf::blocked_reduce(
+    tf::blocked_reduce_sequenced_aggregate(
         face_half_edges, agg, local_data{},
         [this, &he, n_original_half_edges, n_original_polys,
          n_original_pts](auto r, local_data &local) {
@@ -218,9 +225,6 @@ private:
             if (hp->face >= agg.n_original_polys)
               hp->face += agg.polygon_offset;
           }
-          // Append local parent_faces (matches the order in which new
-          // face ids are issued globally, given the polygon_offset
-          // rebasing happens in this same reduce call).
           for (std::size_t j = 0; j < local.parent_faces.size(); ++j)
             agg.parent_face_for_new.push_back(local.parent_faces[j]);
           agg.polygon_offset += local.polygon_offset;

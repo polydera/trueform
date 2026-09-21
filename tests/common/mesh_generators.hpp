@@ -298,6 +298,40 @@ auto create_grid_points_3d(std::size_t nx, std::size_t ny, std::size_t nz)
 }
 
 // =============================================================================
+// Broken Apex Fan
+// =============================================================================
+
+/**
+ * @brief A fan around apex 0 broken every way at once: the fan is split, one
+ * directed edge is claimed by two faces, and windings disagree.
+ *
+ * Vertex 0 is the apex and 1..9 the rim. Rotation around several rim vertices
+ * steps off onto half-edges of another vertex, one of them reaching its full
+ * incident count while doing so, so the reach count alone calls it manifold.
+ */
+template <typename Index, typename Real>
+auto create_broken_apex_fan_3d() -> tf::polygons_buffer<Index, Real, 3, 3>
+{
+    tf::polygons_buffer<Index, Real, 3, 3> result;
+
+    result.points_buffer().emplace_back(Real(0), Real(0), Real(1));
+    for (Index i = 1; i <= 9; ++i) {
+        auto angle = tf::two_pi<Real> * Real(i) / Real(9);
+        result.points_buffer().emplace_back(std::cos(angle), std::sin(angle),
+                                            Real(0.1) * Real(i % 3));
+    }
+
+    result.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+    result.faces_buffer().emplace_back(Index(0), Index(4), Index(3));
+    result.faces_buffer().emplace_back(Index(0), Index(4), Index(5));
+    result.faces_buffer().emplace_back(Index(0), Index(6), Index(7));
+    result.faces_buffer().emplace_back(Index(0), Index(9), Index(8));
+    result.faces_buffer().emplace_back(Index(0), Index(9), Index(1));
+
+    return result;
+}
+
+// =============================================================================
 // Dynamic Mesh Conversion Utilities
 // =============================================================================
 

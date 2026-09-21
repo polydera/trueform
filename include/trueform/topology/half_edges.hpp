@@ -165,6 +165,35 @@ public:
   }
 
 private:
+  /// A face's representative is the half-edge leaving its smallest corner, so
+  /// exactly one half-edge of the loop claims the slot.
+  auto is_face_representative(Index id) const -> bool {
+    const auto &h = this->_half_edges[id];
+    auto outranked_by = [&](Index other_id) {
+      const auto &other = this->_half_edges[other_id];
+      return other.vertex < h.vertex ||
+             (other.vertex == h.vertex && other_id < id);
+    };
+    // Both neighbours are named by h, so a triangle settles on two independent
+    // loads and the walk carries only the corners past them.
+    if (outranked_by(h.next) || outranked_by(h.prev))
+      return false;
+    for (auto cur = this->_half_edges[h.next].next; cur != h.prev;
+         cur = this->_half_edges[cur].next)
+      if (outranked_by(cur))
+        return false;
+    return true;
+  }
+
+  /// A vertex's representative is the outgoing half-edge reaching the smallest
+  /// neighbour; half-edges reaching one neighbour are ordered by id. On a
+  /// boundary vertex it may be the boundary half-edge itself.
+  auto outranks(half_edge_handle_t lhs, half_edge_handle_t rhs) const -> bool {
+    auto l = this->_half_edges[lhs.id() ^ 1].vertex;
+    auto r = this->_half_edges[rhs.id() ^ 1].vertex;
+    return l < r || (l == r && lhs.id() < rhs.id());
+  }
+
   auto build_handle_buffers(Index n_faces, Index n_verts) -> void {
     this->_n_faces = n_faces;
     this->_n_vertices = n_verts;
@@ -183,19 +212,23 @@ private:
         [&](const auto &heh) {
           const auto &h = this->_half_edges[heh.id()];
           if (h.is_simple()) {
-            this->_face_half_edges[h.face] = heh;
+            if (is_face_representative(heh.id()))
+              this->_face_half_edges[h.face] = heh;
+            // Only a seed for the fan walk below, which elects from it.
             this->_vertex_half_edges[h.vertex] = heh;
           } else if (h.is_boundary()) {
             this->_boundary_vertices[h.vertex] = 1;
           }
         });
 
-    // Detect non-manifold vertices: compare sequential per-vertex incident
-    // count to the number of half-edges reachable by walking rotated() from
-    // the vertex's representative. A mismatch means the vertex has a split
-    // fan or is incident to a non-manifold edge sentinel that rotated() can
-    // not cross — either case produces stale .vertex pointers during
-    // collapse and we must forbid it in is_collapse_ok.
+    // Manifold is the walk closing at its own vertex with the full degree:
+    // a step onto a foreign half-edge states the bit as a short count does.
+    // A flagged vertex produces stale .vertex pointers during collapse, so
+    // is_collapse_ok must forbid it.
+    //
+    // That same walk elects the vertex's representative — the outgoing
+    // half-edge reaching the smallest neighbour — so a fan the walk closes
+    // answers the same representative from whichever half-edge seeded it.
     tf::buffer<Index> vertex_degree;
     vertex_degree.allocate(n_verts);
     tf::parallel_fill(vertex_degree, Index(0));
@@ -212,14 +245,20 @@ private:
             return;
           }
           Index reachable = 0;
+          auto rep = seed;
           auto cur = seed;
           do {
             ++reachable;
+            if (this->_half_edges[cur.id()].vertex != v)
+              this->_non_manifold_vertices[v] = 1;
+            else if (outranks(cur, rep))
+              rep = cur;
             auto nxt = this->rotated(cur);
             if (!nxt.is_valid())
               break;
             cur = nxt;
           } while (cur != seed);
+          this->_vertex_half_edges[v] = rep;
           if (reachable < vertex_degree[v])
             this->_non_manifold_vertices[v] = 1;
         });

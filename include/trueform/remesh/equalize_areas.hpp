@@ -74,9 +74,9 @@ auto equalize_areas(
     });
   }
 
-  // Smooth valence-3 vertices: center among their 3 neighbors.
-  // Two valence-3 vertices cannot be neighbors in a normal mesh,
-  // so this is safe to run in parallel without double-buffering.
+  // Smooth valence-3 vertices: center among their 3 neighbors. The snapshot is
+  // what makes two adjacent ones independent of each other's move.
+  tf::parallel_copy(points, old_pos);
   tf::parallel_for_each(tf::make_sequence_range(n_verts), [&](Index v) {
     auto vhe = he.vertex_half_edge_handles()[v];
     if (!vhe.is_valid())
@@ -88,7 +88,7 @@ auto equalize_areas(
     auto cur = vhe;
     do {
       auto nv = he.end_vertex_handle(tf::unsafe, cur).id();
-      sum += points[nv].as_vector_view();
+      sum += old_pos[nv].as_vector_view();
       ++count;
       cur = he.rotated(cur);
       if (!cur.is_valid())

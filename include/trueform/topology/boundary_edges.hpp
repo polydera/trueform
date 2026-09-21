@@ -11,11 +11,10 @@
 * Author: Žiga Sajovic
 */
 #pragma once
-#include "../core/algorithm/generic_generate.hpp"
 #include "../core/blocked_buffer.hpp"
+#include "../core/buffer.hpp"
 #include "../core/faces.hpp"
-#include "../core/views/enumerate.hpp"
-#include "./face_edge_neighbors.hpp"
+#include "./boundary/gather_boundary_edges.hpp"
 #include "./face_membership.hpp"
 #include "./policy/face_membership.hpp"
 
@@ -26,7 +25,7 @@ namespace tf {
 ///
 /// Returns all edges that belong to only one face (boundary edges).
 /// These are edges on the mesh boundary where the surface has a hole
-/// or open edge.
+/// or open edge, face by face and corner by corner.
 ///
 /// @tparam Policy The faces policy type.
 /// @tparam Policy1 The face membership policy type.
@@ -38,23 +37,9 @@ auto make_boundary_edges(const tf::faces<Policy> &faces,
                          const tf::face_membership_like<Policy1> &fm) {
   using Index = std::decay_t<decltype(fm[0][0])>;
   tf::blocked_buffer<Index, 2> edges;
-  tf::generic_generate(tf::enumerate(faces), edges.data_buffer(),
-                       [&](const auto &pair, auto &buffer) {
-                         const auto &[face_id, face] = pair;
-                         Index size = face.size();
-                         Index prev = size - 1;
-                         std::array<Index, 1> neighbors;
-                         for (Index i = 0; i < size; prev = i++) {
-                           auto it = tf::face_edge_neighbors(
-                               fm, faces, Index(face_id), Index(face[prev]),
-                               Index(face[i]), neighbors.begin(),
-                               neighbors.end());
-                           if (it == neighbors.begin()) {
-                             buffer.push_back(face[prev]);
-                             buffer.push_back(face[i]);
-                           }
-                         }
-                       });
+  tf::buffer<Index> edge_faces;
+  tf::topology::gather_boundary_edges(faces, fm, edges.data_buffer(),
+                                      edge_faces);
   return edges;
 }
 

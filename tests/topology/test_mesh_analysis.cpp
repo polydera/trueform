@@ -6,6 +6,7 @@
  * - is_closed / is_open
  * - is_manifold / is_non_manifold
  * - make_non_manifold_edges
+ * - make_non_manifold_vertices
  *
  * Copyright (c) 2025 Ziga Sajovic, XLAB
  */
@@ -17,6 +18,7 @@
 #include "topology_generators.hpp"
 #include <map>
 #include <set>
+#include <vector>
 
 namespace {
 
@@ -39,6 +41,101 @@ auto edges_to_set(const EdgeBuffer& edges) {
         result.insert(canonicalize_edge(edges[i][0], edges[i][1]));
     }
     return result;
+}
+
+/**
+ * @brief Two triangles meeting at vertex 0 alone.
+ */
+template <typename Index, typename Real>
+auto nmv_bowtie_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+    tf::polygons_buffer<Index, Real, 3, 3> result;
+
+    result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(0), Real(1), Real(0));
+    result.points_buffer().emplace_back(Real(-1), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(0), Real(-1), Real(0));
+
+    result.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+    result.faces_buffer().emplace_back(Index(0), Index(3), Index(4));
+
+    return result;
+}
+
+/**
+ * @brief A closed tetrahedron with face 0 wound against the other three.
+ */
+template <typename Index, typename Real>
+auto nmv_flipped_tetrahedron_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+    auto result = tf::test::create_tetrahedron_3d<Index, Real>();
+    auto face = result.faces()[0];
+    std::swap(face[1], face[2]);
+    return result;
+}
+
+/**
+ * @brief One triangle and a vertex no face names.
+ */
+template <typename Index, typename Real>
+auto nmv_loose_vertex_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+    tf::polygons_buffer<Index, Real, 3, 3> result;
+
+    result.points_buffer().emplace_back(Real(0), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(1), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(0), Real(1), Real(0));
+    result.points_buffer().emplace_back(Real(5), Real(5), Real(5));
+
+    result.faces_buffer().emplace_back(Index(0), Index(1), Index(2));
+
+    return result;
+}
+
+/**
+ * @brief A bowtie at vertex 0 beside three faces on edge (5, 6).
+ */
+template <typename Index, typename Real>
+auto nmv_bowtie_and_edge_3d() -> tf::polygons_buffer<Index, Real, 3, 3> {
+    auto result = nmv_bowtie_3d<Index, Real>();
+
+    result.points_buffer().emplace_back(Real(4), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(5), Real(0), Real(0));
+    result.points_buffer().emplace_back(Real(4.5), Real(1), Real(0));
+    result.points_buffer().emplace_back(Real(4.5), Real(-1), Real(0));
+    result.points_buffer().emplace_back(Real(4.5), Real(0), Real(1));
+
+    result.faces_buffer().emplace_back(Index(5), Index(6), Index(7));
+    result.faces_buffer().emplace_back(Index(6), Index(5), Index(8));
+    result.faces_buffer().emplace_back(Index(5), Index(6), Index(9));
+
+    return result;
+}
+
+/**
+ * @brief The vertex verdict and the mesh verdict, asked of a bare form, of a
+ * face-membership tagged one, and of one carrying half-edges too.
+ */
+template <typename Index, typename Real>
+auto nmv_check(const tf::polygons_buffer<Index, Real, 3, 3> &mesh,
+               const std::vector<Index> &expected) -> void {
+    auto polygons = mesh.polygons();
+    auto fm = tf::make_face_membership(polygons);
+    tf::half_edges<Index> he(polygons);
+    auto tagged = polygons | tf::tag(fm);
+    auto he_tagged = polygons | tf::tag(fm) | tf::tag(he);
+
+    auto bare_ids = tf::make_non_manifold_vertices(polygons);
+    auto tagged_ids = tf::make_non_manifold_vertices(tagged);
+    auto he_ids = tf::make_non_manifold_vertices(he_tagged);
+
+    REQUIRE(std::vector<Index>(bare_ids.begin(), bare_ids.end()) == expected);
+    REQUIRE(std::vector<Index>(tagged_ids.begin(), tagged_ids.end()) ==
+            expected);
+    REQUIRE(std::vector<Index>(he_ids.begin(), he_ids.end()) == expected);
+
+    REQUIRE(tf::is_manifold(polygons) == expected.empty());
+    REQUIRE(tf::is_manifold(tagged) == expected.empty());
+    REQUIRE(tf::is_manifold(he_tagged) == expected.empty());
+    REQUIRE(tf::is_non_manifold(polygons) == !expected.empty());
 }
 
 } // anonymous namespace
@@ -296,6 +393,102 @@ TEMPLATE_TEST_CASE("make_non_manifold_edges_grid_mesh", "[topology][analysis]",
 
     // Grid mesh is manifold
     REQUIRE(nm_edges.size() == 0);
+}
+
+// =============================================================================
+// make_non_manifold_vertices - Manifold Meshes
+// =============================================================================
+
+TEMPLATE_TEST_CASE("make_non_manifold_vertices_closed_manifold", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    nmv_check(tf::test::create_tetrahedron_3d<index_t, real_t>(),
+              std::vector<index_t>{});
+}
+
+TEMPLATE_TEST_CASE("make_non_manifold_vertices_open_disk", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    nmv_check(tf::test::create_grid_mesh_3d<index_t, real_t>(4, 4),
+              std::vector<index_t>{});
+}
+
+TEMPLATE_TEST_CASE("make_non_manifold_vertices_loose_vertex", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    nmv_check(nmv_loose_vertex_3d<index_t, real_t>(), std::vector<index_t>{});
+}
+
+// =============================================================================
+// make_non_manifold_vertices - Broken Fans
+// =============================================================================
+
+TEMPLATE_TEST_CASE("make_non_manifold_vertices_bowtie", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    // Every edge carries one face, so only the split fan at the apex says it.
+    nmv_check(nmv_bowtie_3d<index_t, real_t>(), std::vector<index_t>{0});
+}
+
+TEMPLATE_TEST_CASE("make_non_manifold_vertices_three_faces_on_edge", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    nmv_check(tf::test::create_non_manifold_mesh_3d<index_t, real_t>(),
+              std::vector<index_t>{0, 1});
+}
+
+TEMPLATE_TEST_CASE("make_non_manifold_vertices_bowtie_and_edge", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    nmv_check(nmv_bowtie_and_edge_3d<index_t, real_t>(),
+              std::vector<index_t>{0, 5, 6});
+}
+
+// =============================================================================
+// make_non_manifold_vertices - Winding Is Another Fact
+// =============================================================================
+
+TEMPLATE_TEST_CASE("make_non_manifold_vertices_flipped_face", "[topology][analysis]",
+    (tf::test::type_pair<std::int32_t, float>),
+    (tf::test::type_pair<std::int64_t, double>))
+{
+    using index_t = typename TestType::index_type;
+    using real_t = typename TestType::real_type;
+
+    auto mesh = nmv_flipped_tetrahedron_3d<index_t, real_t>();
+    nmv_check(mesh, std::vector<index_t>{});
+
+    // The half-edge walk cannot cross the fault the flip states, so its own
+    // verdict names vertices this one does not.
+    tf::half_edges<index_t> he(mesh.polygons());
+    index_t flagged = 0;
+    for (index_t v = 0; v < index_t(mesh.points().size()); ++v)
+        flagged += he.is_non_manifold_vertex(v);
+    REQUIRE(flagged > 0);
 }
 
 // =============================================================================

@@ -56,6 +56,7 @@
 #include "./topology/compare_faces.hpp"              // IWYU pragma: export
 #include "./topology/boundary_edges.hpp"             // IWYU pragma: export
 #include "./topology/boundary_paths.hpp"             // IWYU pragma: export
+#include "./topology/boundary_rims.hpp"              // IWYU pragma: export
 #include "./topology/connect_edges_to_paths.hpp"     // IWYU pragma: export
 #include "./topology/compute_unique_faces_mask.hpp"  // IWYU pragma: export
 #include "./topology/compute_unduplicated_faces_mask.hpp" // IWYU pragma: export
@@ -110,6 +111,7 @@
 #include "./topology/manifold_edge_link.hpp"        // IWYU pragma: export
 #include "./topology/manifold_edge_peer.hpp"        // IWYU pragma: export
 #include "./topology/non_manifold_edges.hpp"        // IWYU pragma: export
+#include "./topology/non_manifold_vertices.hpp"     // IWYU pragma: export
 #include "./topology/non_simple_edges.hpp"          // IWYU pragma: export
 #include "./topology/orient_faces_consistently.hpp" // IWYU pragma: export
 #include "./topology/path_connector.hpp"            // IWYU pragma: export
@@ -121,6 +123,7 @@
 #include "./topology/scoped_id.hpp"                 // IWYU pragma: export
 #include "./topology/set_component_labels.hpp"      // IWYU pragma: export
 #include "./topology/set_type.hpp"                  // IWYU pragma: export
+#include "./topology/split_non_manifold_vertices.hpp" // IWYU pragma: export
 #include "./topology/stitched_face_membership.hpp"  // IWYU pragma: export
 #include "./topology/stitched_manifold_edge_link.hpp" // IWYU pragma: export
 #include "./topology/vertex_id_in_face.hpp"         // IWYU pragma: export

@@ -12,8 +12,8 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
-#include "../../core/constants.hpp"
 #include "../../core/point.hpp"
+#include "../../core/triangle_quality.hpp"
 #include "../../exact/incircle.hpp"
 #include "../../exact/orient2d.hpp"
 #include "../cdt_constraint_split.hpp"
@@ -96,7 +96,7 @@ struct constrained_delaunay_refinement_owner {
     double f2 = fx * fx + fy * fy;
     double g2 = (fx - ex) * (fx - ex) + (fy - ey) * (fy - ey);
     double m = std::max({e2, f2, g2});
-    return m > 0 ? tf::two_over_sqrt_3<double> * area2 / m : 1.0;
+    return m > 0 ? tf::triangle_quality(area2, m) : 1.0;
   }
 
   auto constraint_connected(Index a, Index b) const -> bool {

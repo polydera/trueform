@@ -15,13 +15,13 @@
 #include <limits>
 #include <type_traits>
 
-#include "../../core/constants.hpp"
 #include "../../core/cross.hpp"
 #include "../../core/dot.hpp"
 #include "../../core/frame_of.hpp"
 #include "../../core/point.hpp"
 #include "../../core/points.hpp"
 #include "../../core/transformed.hpp"
+#include "../../core/triangle_quality.hpp"
 #include "../../topology/half_edges.hpp"
 
 namespace tf::remesh {
@@ -60,7 +60,6 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
 
   auto frame = tf::frame_of(points);
 
-  const Real kq = tf::two_over_sqrt_3<Real>;
   Real min_old_q = std::numeric_limits<Real>::max();
   Real min_new_q = std::numeric_limits<Real>::max();
   bool q_active = false;
@@ -84,63 +83,70 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
     if (!cur.is_valid())
       return true;
     while (cur != heh) {
-      auto a = he.end_vertex_handle(tf::unsafe, cur).id();
-      auto b = he.end_vertex_handle(tf::unsafe, he.next(tf::unsafe, cur)).id();
+      if (he.is_simple(tf::unsafe, cur)) {
+        auto a = he.end_vertex_handle(tf::unsafe, cur).id();
+        auto b =
+            he.end_vertex_handle(tf::unsafe, he.next(tf::unsafe, cur)).id();
 
-      if (b != v1) {
-        auto ea = points[a] - points[v0];
-        auto eb = points[b] - points[v0];
-        auto fa = points[a] - pt;
-        auto fb = points[b] - pt;
+        if (b != v1) {
+          auto ea = points[a] - points[v0];
+          auto eb = points[b] - points[v0];
+          auto fa = points[a] - pt;
+          auto fb = points[b] - pt;
 
-        if constexpr (NormalFlip || Quality) {
-          auto old_n = tf::cross(ea, eb);
-          auto new_n = tf::cross(fa, fb);
+          if constexpr (NormalFlip || Quality) {
+            auto old_n = tf::cross(ea, eb);
+            auto new_n = tf::cross(fa, fb);
 
-          if constexpr (NormalFlip) {
-            sum_nx += double(new_n[0]);
-            sum_ny += double(new_n[1]);
-            sum_nz += double(new_n[2]);
+            if constexpr (NormalFlip) {
+              sum_nx += double(new_n[0]);
+              sum_ny += double(new_n[1]);
+              sum_nz += double(new_n[2]);
 
-            if (tf::dot(old_n, new_n) <= Real(0)) {
-              if (n_flipped >= max_flips)
-                return false;
-              flip_buf[n_flipped * 3 + 0] = new_n[0];
-              flip_buf[n_flipped * 3 + 1] = new_n[1];
-              flip_buf[n_flipped * 3 + 2] = new_n[2];
-              ++n_flipped;
+              if (tf::dot(old_n, new_n) <= Real(0)) {
+                if (n_flipped >= max_flips)
+                  return false;
+                flip_buf[n_flipped * 3 + 0] = new_n[0];
+                flip_buf[n_flipped * 3 + 1] = new_n[1];
+                flip_buf[n_flipped * 3 + 2] = new_n[2];
+                ++n_flipped;
+              }
+            }
+
+            if constexpr (Quality) {
+              if (q_active) {
+                auto ec = points[b] - points[a];
+                Real ec2 = tf::dot(ec, ec);
+
+                Real old_a2 = old_n.length2();
+                Real old_me2 =
+                    std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
+                if (old_me2 > 0)
+                  min_old_q = std::min(
+                      min_old_q,
+                      tf::triangle_quality(
+                          std::sqrt(std::max(old_a2, Real(0))), old_me2));
+
+                Real new_a2 = new_n.length2();
+                Real new_me2 =
+                    std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
+                if (new_me2 > 0)
+                  min_new_q = std::min(
+                      min_new_q,
+                      tf::triangle_quality(
+                          std::sqrt(std::max(new_a2, Real(0))), new_me2));
+              }
             }
           }
 
-          if constexpr (Quality) {
-            if (q_active) {
-              auto ec = points[b] - points[a];
-              Real ec2 = tf::dot(ec, ec);
-
-              Real old_a2 = old_n.length2();
-              Real old_me2 = std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
-              if (old_me2 > 0) {
-                Real qo = kq * std::sqrt(std::max(old_a2, Real(0))) / old_me2;
-                min_old_q = std::min(min_old_q, qo);
-              }
-
-              Real new_a2 = new_n.length2();
-              Real new_me2 = std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
-              if (new_me2 > 0) {
-                Real qn = kq * std::sqrt(std::max(new_a2, Real(0))) / new_me2;
-                min_new_q = std::min(min_new_q, qn);
-              }
-            }
+          if constexpr (EdgeLength) {
+            max_old_e2 = std::max({max_old_e2,
+                                   tf::transformed(ea, frame).length2(),
+                                   tf::transformed(eb, frame).length2()});
+            max_new_e2 = std::max({max_new_e2,
+                                   tf::transformed(fa, frame).length2(),
+                                   tf::transformed(fb, frame).length2()});
           }
-        }
-
-        if constexpr (EdgeLength) {
-          max_old_e2 = std::max({max_old_e2,
-                                 tf::transformed(ea, frame).length2(),
-                                 tf::transformed(eb, frame).length2()});
-          max_new_e2 = std::max({max_new_e2,
-                                 tf::transformed(fa, frame).length2(),
-                                 tf::transformed(fb, frame).length2()});
         }
       }
 
@@ -157,63 +163,70 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
     if (!cur.is_valid())
       return true;
     while (cur != opp) {
-      auto a = he.end_vertex_handle(tf::unsafe, cur).id();
-      auto b = he.end_vertex_handle(tf::unsafe, he.next(tf::unsafe, cur)).id();
+      if (he.is_simple(tf::unsafe, cur)) {
+        auto a = he.end_vertex_handle(tf::unsafe, cur).id();
+        auto b =
+            he.end_vertex_handle(tf::unsafe, he.next(tf::unsafe, cur)).id();
 
-      if (b != v0) {
-        auto ea = points[a] - points[v1];
-        auto eb = points[b] - points[v1];
-        auto fa = points[a] - pt;
-        auto fb = points[b] - pt;
+        if (b != v0) {
+          auto ea = points[a] - points[v1];
+          auto eb = points[b] - points[v1];
+          auto fa = points[a] - pt;
+          auto fb = points[b] - pt;
 
-        if constexpr (NormalFlip || Quality) {
-          auto old_n = tf::cross(ea, eb);
-          auto new_n = tf::cross(fa, fb);
+          if constexpr (NormalFlip || Quality) {
+            auto old_n = tf::cross(ea, eb);
+            auto new_n = tf::cross(fa, fb);
 
-          if constexpr (NormalFlip) {
-            sum_nx += double(new_n[0]);
-            sum_ny += double(new_n[1]);
-            sum_nz += double(new_n[2]);
+            if constexpr (NormalFlip) {
+              sum_nx += double(new_n[0]);
+              sum_ny += double(new_n[1]);
+              sum_nz += double(new_n[2]);
 
-            if (tf::dot(old_n, new_n) <= Real(0)) {
-              if (n_flipped >= max_flips)
-                return false;
-              flip_buf[n_flipped * 3 + 0] = new_n[0];
-              flip_buf[n_flipped * 3 + 1] = new_n[1];
-              flip_buf[n_flipped * 3 + 2] = new_n[2];
-              ++n_flipped;
+              if (tf::dot(old_n, new_n) <= Real(0)) {
+                if (n_flipped >= max_flips)
+                  return false;
+                flip_buf[n_flipped * 3 + 0] = new_n[0];
+                flip_buf[n_flipped * 3 + 1] = new_n[1];
+                flip_buf[n_flipped * 3 + 2] = new_n[2];
+                ++n_flipped;
+              }
+            }
+
+            if constexpr (Quality) {
+              if (q_active) {
+                auto ec = points[b] - points[a];
+                Real ec2 = tf::dot(ec, ec);
+
+                Real old_a2 = old_n.length2();
+                Real old_me2 =
+                    std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
+                if (old_me2 > 0)
+                  min_old_q = std::min(
+                      min_old_q,
+                      tf::triangle_quality(
+                          std::sqrt(std::max(old_a2, Real(0))), old_me2));
+
+                Real new_a2 = new_n.length2();
+                Real new_me2 =
+                    std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
+                if (new_me2 > 0)
+                  min_new_q = std::min(
+                      min_new_q,
+                      tf::triangle_quality(
+                          std::sqrt(std::max(new_a2, Real(0))), new_me2));
+              }
             }
           }
 
-          if constexpr (Quality) {
-            if (q_active) {
-              auto ec = points[b] - points[a];
-              Real ec2 = tf::dot(ec, ec);
-
-              Real old_a2 = old_n.length2();
-              Real old_me2 = std::max({tf::dot(ea, ea), tf::dot(eb, eb), ec2});
-              if (old_me2 > 0) {
-                Real qo = kq * std::sqrt(std::max(old_a2, Real(0))) / old_me2;
-                min_old_q = std::min(min_old_q, qo);
-              }
-
-              Real new_a2 = new_n.length2();
-              Real new_me2 = std::max({tf::dot(fa, fa), tf::dot(fb, fb), ec2});
-              if (new_me2 > 0) {
-                Real qn = kq * std::sqrt(std::max(new_a2, Real(0))) / new_me2;
-                min_new_q = std::min(min_new_q, qn);
-              }
-            }
+          if constexpr (EdgeLength) {
+            max_old_e2 = std::max({max_old_e2,
+                                   tf::transformed(ea, frame).length2(),
+                                   tf::transformed(eb, frame).length2()});
+            max_new_e2 = std::max({max_new_e2,
+                                   tf::transformed(fa, frame).length2(),
+                                   tf::transformed(fb, frame).length2()});
           }
-        }
-
-        if constexpr (EdgeLength) {
-          max_old_e2 = std::max({max_old_e2,
-                                 tf::transformed(ea, frame).length2(),
-                                 tf::transformed(eb, frame).length2()});
-          max_new_e2 = std::max({max_new_e2,
-                                 tf::transformed(fa, frame).length2(),
-                                 tf::transformed(fb, frame).length2()});
         }
       }
 
@@ -390,10 +403,8 @@ auto is_collapse_allowed_dihedral(
   // (i.e. surface dihedral < 10° — the near-fold zone). cos²(10°) ≈ 0.9698.
   constexpr double cos2_fold_tol = 0.9698463;
 
-  // Triangle quality q = (2/sqrt3) * (2*area) / max_edge^2 in (0,1] (1 =
-  // equilateral). Allow iff worst NEW q >= min(floor_q, worst OLD q):
+  // Allow iff worst NEW quality >= min(floor_q, worst OLD quality):
   //   min_quality < 0 -> disabled; == 0 -> never worsen; > 0 -> quality floor.
-  const double kq = tf::two_over_sqrt_3<double>;
   double min_old_q = std::numeric_limits<double>::max();
   double min_new_q = std::numeric_limits<double>::max();
   bool q_active = false;
@@ -481,10 +492,10 @@ auto is_collapse_allowed_dihedral(
         auto fc = dvec(points[link[nxt]], points[link[i]]);
         double new_me2 =
             std::max({tf::dot(e02, e02), tf::dot(e03, e03), tf::dot(fc, fc)});
-        if (new_me2 > 0) {
-          double qn = kq * tf::sqrt(std::max(l2, 0.0)) / new_me2;
-          min_new_q = std::min(min_new_q, qn);
-        }
+        if (new_me2 > 0)
+          min_new_q = std::min(
+              min_new_q,
+              tf::triangle_quality(tf::sqrt(std::max(l2, 0.0)), new_me2));
       }
       // Old face quality — only when both vertices in same ring.
       bool i_in_v0 = i < v0_link_end;
@@ -498,10 +509,10 @@ auto is_collapse_allowed_dihedral(
         auto oc = dvec(points[link[nxt]], points[link[i]]);
         double old_me2 =
             std::max({tf::dot(oa, oa), tf::dot(ob, ob), tf::dot(oc, oc)});
-        if (old_me2 > 0) {
-          double qo = kq * tf::sqrt(std::max(old_a2, 0.0)) / old_me2;
-          min_old_q = std::min(min_old_q, qo);
-        }
+        if (old_me2 > 0)
+          min_old_q = std::min(
+              min_old_q,
+              tf::triangle_quality(tf::sqrt(std::max(old_a2, 0.0)), old_me2));
       }
     }
   }
@@ -550,15 +561,18 @@ auto is_collapse_normal_preserving(const tf::half_edges<Index> &he,
     if (!cur.is_valid())
       return true; // open fan -> boundary handled elsewhere
     while (cur != outgoing) {
-      auto a = he.end_vertex_handle(tf::unsafe, cur).id();
-      auto b = he.end_vertex_handle(tf::unsafe, he.next(tf::unsafe, cur)).id();
-      if (b != other) {
-        auto ea = points[a] - points[center];
-        auto eb = points[b] - points[center];
-        auto fa = points[a] - pt;
-        auto fb = points[b] - pt;
-        if (tf::dot(tf::cross(ea, eb), tf::cross(fa, fb)) <= Real(0))
-          return false; // this face inverts
+      if (he.is_simple(tf::unsafe, cur)) {
+        auto a = he.end_vertex_handle(tf::unsafe, cur).id();
+        auto b =
+            he.end_vertex_handle(tf::unsafe, he.next(tf::unsafe, cur)).id();
+        if (b != other) {
+          auto ea = points[a] - points[center];
+          auto eb = points[b] - points[center];
+          auto fa = points[a] - pt;
+          auto fb = points[b] - pt;
+          if (tf::dot(tf::cross(ea, eb), tf::cross(fa, fb)) <= Real(0))
+            return false; // this face inverts
+        }
       }
       cur = he.rotated(cur);
       if (!cur.is_valid())

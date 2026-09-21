@@ -12,7 +12,7 @@
  */
 #pragma once
 
-#include "../../core/algorithm/block_reduce.hpp"
+#include "../../core/algorithm/block_reduce_sequenced_aggregate.hpp"
 #include "../../core/algorithm/circular_decrement.hpp"
 #include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
@@ -117,6 +117,9 @@ auto compute_half_edges_finish(tf::buffer<Index> &id_map,
 ///    Eulerian paths.
 ///
 /// Opposite half-edges are stored at adjacent indices (index XOR 1).
+///
+/// Each pass aggregates its blocks in the input's order, so the ids are the
+/// faces' own order and a mesh has exactly one half-edge numbering.
 ///
 /// Supports both static-size faces (triangles, quads) and dynamic-size
 /// polygon faces.
@@ -263,7 +266,7 @@ auto compute_half_edges(const Faces &faces,
   };
 
   // First pass: process edges where v0 < v1 (by vertex ID)
-  tf::blocked_reduce(
+  tf::blocked_reduce_sequenced_aggregate(
       tf::enumerate(faces), half_edges, tf::buffer<half_edge_t>{},
       [&](const auto &r, tf::buffer<half_edge_t> &local) {
         local.reserve(r.size());
@@ -282,7 +285,7 @@ auto compute_half_edges(const Faces &faces,
 
   using face_type = std::decay_t<decltype(faces[0])>;
   // Second pass: process remaining edges not covered by first pass
-  tf::blocked_reduce(
+  tf::blocked_reduce_sequenced_aggregate(
       tf::enumerate(faces), half_edges, tf::buffer<half_edge_t>{},
       [&](const auto &r, tf::buffer<half_edge_t> &local) {
         constexpr auto StaticN = tf::static_size_v<face_type>;
