@@ -14,6 +14,7 @@
 #include "../core/buffer.hpp"
 #include "../core/range.hpp"
 #include "./external/fast_float.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -127,6 +128,16 @@ private:
   }
 
   // ---------- Reading: Binary ----------
+  // A record is 50 bytes, so its coordinates stand on a four-byte boundary in
+  // every second one only: they are copied out of the record, never read in it.
+  template <class Byte, class T>
+  static auto read_record_corners_(const Byte *record, T *out) -> void {
+    float corners[9];
+    std::memcpy(corners, record + 12, sizeof(corners));
+    for (std::size_t i = 0; i < 9; ++i)
+      out[i] = static_cast<T>(corners[i]);
+  }
+
   template <class T>
   auto read_binary_into_(std::ifstream &f, tf::buffer<T> &out) -> bool {
     std::uint32_t tri_count{};
@@ -151,16 +162,7 @@ private:
     const unsigned char *tri = payload.begin();
     T *dst = &out[base];
     for (std::uint32_t i = 0; i < tri_count; ++i) {
-      const float *fl = reinterpret_cast<const float *>(tri);
-      dst[0] = static_cast<T>(fl[3]);
-      dst[1] = static_cast<T>(fl[4]);
-      dst[2] = static_cast<T>(fl[5]);
-      dst[3] = static_cast<T>(fl[6]);
-      dst[4] = static_cast<T>(fl[7]);
-      dst[5] = static_cast<T>(fl[8]);
-      dst[6] = static_cast<T>(fl[9]);
-      dst[7] = static_cast<T>(fl[10]);
-      dst[8] = static_cast<T>(fl[11]);
+      read_record_corners_(tri, dst);
       tri += 50;
       dst += 9;
     }
@@ -214,16 +216,7 @@ private:
     const char *tri = data.begin() + 84;
     T *dst = &out[base];
     for (std::uint32_t i = 0; i < tri_count; ++i) {
-      const float *fl = reinterpret_cast<const float *>(tri);
-      dst[0] = static_cast<T>(fl[3]);
-      dst[1] = static_cast<T>(fl[4]);
-      dst[2] = static_cast<T>(fl[5]);
-      dst[3] = static_cast<T>(fl[6]);
-      dst[4] = static_cast<T>(fl[7]);
-      dst[5] = static_cast<T>(fl[8]);
-      dst[6] = static_cast<T>(fl[9]);
-      dst[7] = static_cast<T>(fl[10]);
-      dst[8] = static_cast<T>(fl[11]);
+      read_record_corners_(tri, dst);
       tri += 50;
       dst += 9;
     }
