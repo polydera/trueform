@@ -97,6 +97,55 @@ export function sharpEdges(m: Mesh, angleDeg: number): NDArrayInt32 {
   return new NDArray(native()[`sharp_edges_${dt}`](m._handle, angleDeg), "int32");
 }
 
+/** Every edge two faces share and the angle it turns through. */
+export interface DihedralAnglesResult {
+  /** [N, 2] int32 vertex index pairs, one per undirected edge two faces
+   *  share. A boundary or non-manifold edge joins no pair and is not
+   *  stated. */
+  edges: NDArrayInt32;
+  /** [N] radians between the face normals, aligned with `edges`; a flat
+   *  surface reads 0. Dtype follows the mesh. */
+  angles: NDArrayFloat32 | NDArrayFloat64;
+}
+
+/** Measure every edge two faces of the mesh share. */
+export function dihedralAngles(m: Mesh): DihedralAnglesResult {
+  const dt = m.dtype;
+  const raw = native()[`dihedral_angles_${dt}`](m._handle);
+  return {
+    edges: new NDArray(raw.edges, "int32"),
+    angles: new NDArray(raw.angles, dt) as NDArrayFloat32 | NDArrayFloat64,
+  };
+}
+
+// ============ Face Quality ============
+
+/** One array per measure, each of shape [F] in the mesh's dtype. */
+export interface FaceQualityResult {
+  /** The triangle quality measure: 1 for equilateral, approaching 0 for a
+   *  sliver; a face that is not a triangle reads -1. */
+  quality: NDArrayFloat32 | NDArrayFloat64;
+  /** Smallest corner angle in radians. An angle is unsigned and lies in
+   *  [0, pi], so a reflex corner reads its explement. */
+  minAngle: NDArrayFloat32 | NDArrayFloat64;
+  /** Largest corner angle in radians. */
+  maxAngle: NDArrayFloat32 | NDArrayFloat64;
+  /** Longest side over the shortest, infinite where a side has no length. */
+  aspectRatio: NDArrayFloat32 | NDArrayFloat64;
+}
+
+/** Measure every face of the mesh. */
+export function faceQuality(m: Mesh): FaceQualityResult {
+  const dt = m.dtype;
+  const raw = native()[`face_quality_${dt}`](m._handle);
+  return {
+    quality: new NDArray(raw.quality, dt) as NDArrayFloat32 | NDArrayFloat64,
+    minAngle: new NDArray(raw.minAngle, dt) as NDArrayFloat32 | NDArrayFloat64,
+    maxAngle: new NDArray(raw.maxAngle, dt) as NDArrayFloat32 | NDArrayFloat64,
+    aspectRatio: new NDArray(raw.aspectRatio, dt) as NDArrayFloat32 | NDArrayFloat64,
+  };
+}
+
 // ============ Measurements ============
 
 /** Total surface area of a mesh. Respects transformation. */

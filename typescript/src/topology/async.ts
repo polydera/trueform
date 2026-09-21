@@ -25,6 +25,8 @@ import { IndexMap } from "../core/IndexMap";
 import type {
   ConnectedComponentsResult,
   ComponentType,
+  BoundaryRimsResult,
+  SplitNonManifoldVerticesResult,
   CdtResult,
   CdtResultWithMap,
   CdtOptions,
@@ -77,12 +79,32 @@ export async function nonManifoldEdges(m: Mesh): Promise<NDArrayInt32> {
   );
 }
 
+// ============ Vertex results ============
+
+export async function nonManifoldVertices(m: Mesh): Promise<NDArrayInt32> {
+  return dispatcher().run(
+    () => native()[`dispatch_non_manifold_vertices_${m.dtype}`](m._handle),
+    (raw) => new NDArray(raw, "int32"),
+  );
+}
+
 // ============ Path / neighborhood results ============
 
 export async function boundaryPaths(m: Mesh): Promise<OffsetBlockedBuffer> {
   return dispatcher().run(
     () => native()[`dispatch_boundary_paths_${m.dtype}`](m._handle),
     (raw) => new OffsetBlockedBuffer(raw),
+  );
+}
+
+export async function boundaryRims(m: Mesh): Promise<BoundaryRimsResult> {
+  return dispatcher().run(
+    () => native()[`dispatch_boundary_rims_${m.dtype}`](m._handle),
+    (raw) => ({
+      vertices: new OffsetBlockedBuffer(raw.vertices),
+      faces: new OffsetBlockedBuffer(raw.faces),
+      closed: new NDArray(raw.closed, "bool"),
+    }),
   );
 }
 
@@ -141,6 +163,17 @@ export async function consistentlyOriented(m: Mesh): Promise<Mesh> {
   return dispatcher().run(
     () => native()[`dispatch_consistently_oriented_${dt}`](m._handle),
     (raw) => new Mesh(raw, dt),
+  );
+}
+
+export async function splitNonManifoldVertices(m: Mesh): Promise<SplitNonManifoldVerticesResult> {
+  const dt = m.dtype;
+  return dispatcher().run(
+    () => native()[`dispatch_split_non_manifold_vertices_${dt}`](m._handle),
+    (raw) => ({
+      mesh: new Mesh(raw.mesh, dt),
+      pointMap: new NDArray(raw.pointMap, "int32"),
+    }),
   );
 }
 

@@ -77,6 +77,8 @@ add_executable(trueform_wasm
     cpp/src/geometry/registration_float64.cpp
     cpp/src/geometry/edges_float32.cpp
     cpp/src/geometry/edges_float64.cpp
+    cpp/src/geometry/quality_float32.cpp
+    cpp/src/geometry/quality_float64.cpp
     cpp/src/clean/clean_float32.cpp
     cpp/src/clean/clean_float64.cpp
     cpp/src/reindex/reindex_float32.cpp

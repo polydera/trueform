@@ -20,7 +20,10 @@ import { PointCloud } from "../form/PointCloud";
 import { Primitive, Polygon } from "../primitive";
 import { assertSameDtype } from "../internal/dtype";
 
-import type { PrincipalCurvatures, PrincipalDirections, IcpOptions, ObbOptions, ChamferOptions, DtypeOptions } from "./sync";
+import type {
+  PrincipalCurvatures, PrincipalDirections, IcpOptions, ObbOptions, ChamferOptions, DtypeOptions,
+  DihedralAnglesResult, FaceQualityResult,
+} from "./sync";
 
 import type { MeshLike } from "../form/MeshLike";
 
@@ -125,6 +128,34 @@ export async function sharpEdges(m: Mesh, angleDeg: number): Promise<NDArrayInt3
   return dispatcher().run(
     () => native()[`dispatch_sharp_edges_${dt}`](m._handle, angleDeg),
     (raw) => new NDArray(raw, "int32"),
+  );
+}
+
+/** Measure every edge two faces of the mesh share, off the main thread. */
+export async function dihedralAngles(m: Mesh): Promise<DihedralAnglesResult> {
+  const dt = m.dtype;
+  return dispatcher().run(
+    () => native()[`dispatch_dihedral_angles_${dt}`](m._handle),
+    (raw) => ({
+      edges: new NDArray(raw.edges, "int32"),
+      angles: new NDArray(raw.angles, dt) as NDArrayFloat32 | NDArrayFloat64,
+    }),
+  );
+}
+
+// ============ Face Quality ============
+
+/** Measure every face of the mesh, off the main thread. */
+export async function faceQuality(m: Mesh): Promise<FaceQualityResult> {
+  const dt = m.dtype;
+  return dispatcher().run(
+    () => native()[`dispatch_face_quality_${dt}`](m._handle),
+    (raw) => ({
+      quality: new NDArray(raw.quality, dt) as NDArrayFloat32 | NDArrayFloat64,
+      minAngle: new NDArray(raw.minAngle, dt) as NDArrayFloat32 | NDArrayFloat64,
+      maxAngle: new NDArray(raw.maxAngle, dt) as NDArrayFloat32 | NDArrayFloat64,
+      aspectRatio: new NDArray(raw.aspectRatio, dt) as NDArrayFloat32 | NDArrayFloat64,
+    }),
   );
 }
 

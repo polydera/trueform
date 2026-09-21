@@ -11,5 +11,5 @@
  * Author: Žiga Sajovic
  */
 
-export { intersectionCurves, selfIntersectionCurves } from "./sync";
+export { intersectionCurves, selfIntersectionCurves, hasSelfIntersections } from "./sync";
 export * as async from "./async";

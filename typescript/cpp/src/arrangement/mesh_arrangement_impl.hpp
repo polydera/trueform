@@ -170,7 +170,8 @@ auto run_arrangement_with_curves(MeshRange &meshes, int mode, double tolerance,
 
 template <typename Real>
 auto sync_mesh_arrangement(emscripten::val js_meshes, int mode, double tolerance,
-                          int triangulation) -> arrangement_result_t<Real> {
+                           int triangulation)
+    -> arrangement_result_t<Real> {
   auto meshes = extract_meshes<Real>(js_meshes);
   return run_arrangement<Real>(meshes, mode, tolerance, triangulation);
 }
@@ -190,13 +191,15 @@ auto sync_mesh_arrangement_with_curves(emscripten::val js_meshes, int mode,
 // ============================================================================
 
 template <typename Real>
-auto async_mesh_arrangement(emscripten::val js_meshes, int mode, double tolerance,
-                           int triangulation) -> promise_t {
+auto async_mesh_arrangement(emscripten::val js_meshes, int mode,
+                            double tolerance, int triangulation)
+    -> promise_t {
   auto meshes = extract_meshes<Real>(js_meshes);
   return promise([ms = std::move(meshes), mode, tolerance,
                   triangulation]() -> arrangement_result_t<Real> {
     auto &meshes = const_cast<std::vector<wasm_mesh<Real>> &>(ms);
-    return run_arrangement<Real>(meshes, mode, tolerance, triangulation);
+    return run_arrangement<Real>(meshes, mode, tolerance,
+                                 triangulation);
   });
 }
 

@@ -35,12 +35,12 @@ export function isOpen(m: Mesh): boolean {
   return native()[`is_open_${m.dtype}`](m._handle);
 }
 
-/** True if every edge is shared by at most 2 faces. */
+/** True if every edge is shared by at most 2 faces and every vertex's faces are one fan. */
 export function isManifold(m: Mesh): boolean {
   return native()[`is_manifold_${m.dtype}`](m._handle);
 }
 
-/** True if any edge is shared by more than 2 faces. */
+/** True if any edge is shared by 3+ faces or any vertex's faces split into several fans. */
 export function isNonManifold(m: Mesh): boolean {
   return native()[`is_non_manifold_${m.dtype}`](m._handle);
 }
@@ -64,11 +64,45 @@ export function nonManifoldEdges(m: Mesh): NDArrayInt32 {
   return new NDArray(native()[`non_manifold_edges_${m.dtype}`](m._handle), "int32");
 }
 
+// ============ Vertex results ============
+
+/** The vertices whose faces are not one fan, ascending, as an Int32 NDArray
+ *  of shape [N]. A vertex is non-manifold when an edge at it is shared by
+ *  3+ faces, or its faces fall into several pieces meeting at the vertex
+ *  alone. */
+export function nonManifoldVertices(m: Mesh): NDArrayInt32 {
+  return new NDArray(native()[`non_manifold_vertices_${m.dtype}`](m._handle), "int32");
+}
+
 // ============ Path / neighborhood results ============
 
 /** Boundary loops as paths of vertex indices. */
 export function boundaryPaths(m: Mesh): OffsetBlockedBuffer {
   return new OffsetBlockedBuffer(native()[`boundary_paths_${m.dtype}`](m._handle));
+}
+
+/** The boundary as rims: per rim its vertex path, the face carrying each of
+ *  its edges, and whether it closes. */
+export interface BoundaryRimsResult {
+  /** Block i is rim i's vertex ids, in the order it is walked. */
+  vertices: OffsetBlockedBuffer;
+  /** Block i names the face carrying each of rim i's edges, so rim edge k
+   *  runs from vertex k to vertex k + 1 and is carried by face k alone. */
+  faces: OffsetBlockedBuffer;
+  /** [R] bool: whether rim i's last edge runs back to its first vertex. A
+   *  closed rim of n vertices has n edges, an open one n - 1. */
+  closed: NDArrayBool;
+}
+
+/** Assemble the mesh's boundary edges into rims. A rim ends where the
+ *  boundary stops passing straight through, so a pinch splits it. */
+export function boundaryRims(m: Mesh): BoundaryRimsResult {
+  const raw = native()[`boundary_rims_${m.dtype}`](m._handle);
+  return {
+    vertices: new OffsetBlockedBuffer(raw.vertices),
+    faces: new OffsetBlockedBuffer(raw.faces),
+    closed: new NDArray(raw.closed, "bool"),
+  };
 }
 
 /** K-ring neighborhoods for all vertices. */
@@ -127,6 +161,28 @@ export function connectedComponents(m: Mesh, type: ComponentType): ConnectedComp
 export function consistentlyOriented(m: Mesh): Mesh {
   const dt = m.dtype;
   return new Mesh(native()[`consistently_oriented_${dt}`](m._handle), dt);
+}
+
+/** The separated mesh and the input point each of its points copies. */
+export interface SplitNonManifoldVerticesResult {
+  mesh: Mesh;
+  /** [P] int32: for each output point the input point it copies, an
+   *  original itself. */
+  pointMap: NDArrayInt32;
+}
+
+/** Return a new mesh with every fan at a vertex given a vertex of its own.
+ *  Faces keep their ids, arity and winding; the points are the input's
+ *  followed by the minted copies. A vertex on a 3+-face edge is left
+ *  untouched — separating its fans would tear that edge into boundary
+ *  copies — and nonManifoldVertices still names it. */
+export function splitNonManifoldVertices(m: Mesh): SplitNonManifoldVerticesResult {
+  const dt = m.dtype;
+  const raw = native()[`split_non_manifold_vertices_${dt}`](m._handle);
+  return {
+    mesh: new Mesh(raw.mesh, dt),
+    pointMap: new NDArray(raw.pointMap, "int32"),
+  };
 }
 
 // ============ Constrained Delaunay triangulation ============

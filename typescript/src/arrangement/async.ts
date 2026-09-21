@@ -84,8 +84,7 @@ export async function meshArrangements(
     meshes.map((_, i) => `meshes[${i}]`),
   );
   const dt = meshes[0].dtype;
-  const rc = opts?.resolveCrossings ?? (meshes.length > 2);
-  const mode = buildMode(opts, "primitives", rc, false);
+  const mode = buildMode(opts);
   const tolerance = getTolerance(opts);
   const triangulation = getTriangulation(opts);
   const handles = meshes.map(m => m._handle);
@@ -115,7 +114,7 @@ export async function polygonArrangements(
   mesh: Mesh, opts?: ArrangementOpts & { returnCurves?: true },
 ): Promise<PolygonArrangementResult | PolygonArrangementResultWithCurves> {
   const dt = mesh.dtype;
-  const mode = buildMode(opts, "primitives", true, true);
+  const mode = buildMode(opts);
   const tolerance = getTolerance(opts);
   const triangulation = getTriangulation(opts);
   if (opts?.returnCurves) {

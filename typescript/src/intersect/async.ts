@@ -41,8 +41,7 @@ export async function intersectionCurves(
     );
     const dt = m0OrMeshes[0].dtype as FloatDtype;
     const o = m1OrOpts as IntersectOpts | undefined;
-    const rc = o?.resolveCrossings ?? true;
-    const mode = buildMode(o, "primitives", rc, false);
+    const mode = buildMode(o);
     const tolerance = getTolerance(o);
     const handles = m0OrMeshes.map(m => m._handle);
     return dispatcher().run(
@@ -53,7 +52,7 @@ export async function intersectionCurves(
   const m1 = m1OrOpts as Mesh;
   assertSameDtype([m0OrMeshes, m1], ["mesh0", "mesh1"]);
   const dt = m0OrMeshes.dtype as FloatDtype;
-  const mode = buildMode(opts, "primitives", true, false);
+  const mode = buildMode(opts);
   const tolerance = getTolerance(opts);
   return dispatcher().run(
     () => native()[`dispatch_intersection_curves_${dt}`](
@@ -68,12 +67,20 @@ export async function selfIntersectionCurves(
   mesh: Mesh, opts?: IntersectOpts,
 ): Promise<Curves> {
   const dt = mesh.dtype as FloatDtype;
-  const mode = buildMode(opts, "primitives", true, true);
+  const mode = buildMode(opts);
   const tolerance = getTolerance(opts);
   return dispatcher().run(
     () => native()[`dispatch_self_intersection_curves_${dt}`](
       mesh._handle, mode, tolerance,
     ),
     (raw) => new Curves(raw, dt),
+  );
+}
+
+/** True if the mesh meets itself, off the main thread. */
+export async function hasSelfIntersections(mesh: Mesh): Promise<boolean> {
+  return dispatcher().run(
+    () => native()[`dispatch_has_self_intersections_${mesh.dtype}`](mesh._handle),
+    (v) => v,
   );
 }

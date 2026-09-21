@@ -63,7 +63,7 @@ export async function csgGraph(
     (raw) => new CsgGraph(raw, dt, [...meshes], [...cfg.sheets], {
       mode: opts?.mode ?? "primitives",
       tolerance: cfg.tolerance,
-      resolveCrossings: opts?.resolveCrossings ?? true,
+      within: cfg.within,
       triangulation: opts?.triangulation ?? "cdt",
     }),
   );

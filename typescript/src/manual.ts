@@ -111,7 +111,7 @@ export { isocontours, isobands } from "./iso/sync";
 export type { IsobandsResult, IsobandsResultWithCurves } from "./iso/sync";
 
 // Intersect operations
-export { intersectionCurves, selfIntersectionCurves } from "./intersect/sync";
+export { intersectionCurves, selfIntersectionCurves, hasSelfIntersections } from "./intersect/sync";
 export type { IntersectOpts } from "./intersect/sync";
 
 // Spatial queries
@@ -133,28 +133,33 @@ export type {
 // Geometry operations
 export {
   triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh, tubeMesh, sharpEdges,
+  dihedralAngles, faceQuality,
   area, signedVolume, volume, meanEdgeLength, minEdgeLength, maxEdgeLength,
   reverseWinding, positivelyOriented,
   principalCurvatures, principalDirections, shapeIndex,
   laplacianSmoothed, taubinSmoothed,
   fitRigidAlignment, fitIcpAlignment, fitObbAlignment, chamferError,
 } from "./geometry/sync";
-export type { PrincipalCurvatures, PrincipalDirections, IcpOptions, ObbOptions, ChamferOptions } from "./geometry/sync";
+export type {
+  PrincipalCurvatures, PrincipalDirections, IcpOptions, ObbOptions, ChamferOptions,
+  DihedralAnglesResult, FaceQualityResult,
+} from "./geometry/sync";
 export type { MeshLike } from "./form/MeshLike";
 
 // Topology
 export {
   isClosed, isOpen, isManifold, isNonManifold,
   eulerCharacteristic,
-  boundaryEdges, nonManifoldEdges,
-  boundaryPaths, kRings, neighborhoods, connectEdgesToPaths,
+  boundaryEdges, nonManifoldEdges, nonManifoldVertices,
+  boundaryPaths, boundaryRims, kRings, neighborhoods, connectEdgesToPaths,
   labelConnectedComponents, connectedComponents,
-  consistentlyOriented,
+  consistentlyOriented, splitNonManifoldVertices,
   cdt,
   domainLabels,
 } from "./topology/sync";
 export type {
   ConnectedComponentsResult, ComponentType,
+  BoundaryRimsResult, SplitNonManifoldVerticesResult,
   CdtResult, CdtResultWithMap, CdtOptions,
   DomainLabelsResult, DomainLabelsOptions,
 } from "./topology/sync";

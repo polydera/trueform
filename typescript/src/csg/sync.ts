@@ -27,12 +27,15 @@ import { Expr, programOf } from "./expr";
 export interface CsgGraphOptions {
   /** Operand indices declared as oriented open sheets. */
   sheets?: number[];
-  /** Intersection mode: "sos" or "primitives" (default). */
+  /**
+   * The classifier the run states its contacts with: "primitives"
+   * (default) classifies shared edges/vertices and coplanar contacts;
+   * under "sos" no contact is ever coplanar, so coplanar walls do not
+   * pool and the domains they would have separated stay joined.
+   */
   mode?: "sos" | "primitives";
   /** World-coordinate distance an input vertex may move to reach the lattice (0 = exact). */
   tolerance?: number;
-  /** Resolve crossings between contours on one face (default true). */
-  resolveCrossings?: boolean;
   /**
    * Also intersect each operand with itself — required when an operand
    * can self-overlap, e.g. meshes concatenated into one operand. Domain
@@ -176,8 +179,6 @@ export interface LabeledBooleanResultWithCurves {
 // ============================================================================
 
 const MODE_MAP = { sos: 1, primitives: 2 } as const;
-const RESOLVE_CROSSINGS = 4;
-const WITHIN = 24; // self_intersections | resolve_self_crossing_contours
 const TRIANGULATION_MAP = { cdt: 0, refinedCdt: 1 } as const;
 const EXCLUDE_OUTER_SHELL = 1;
 const IGNORE_OPEN_FRAGMENTS = 2;
@@ -192,13 +193,11 @@ export function buildCsgConfig(meshes: Mesh[], opts?: CsgGraphOptions) {
       throw new RangeError(`sheet index ${s} out of range`);
     }
   }
-  let mode: number = MODE_MAP[opts?.mode ?? "primitives"];
-  if (opts?.resolveCrossings ?? true) mode |= RESOLVE_CROSSINGS;
-  if (opts?.within) mode |= WITHIN;
   return {
     sheets,
-    mode,
+    mode: MODE_MAP[opts?.mode ?? "primitives"] | (opts?.within ? 4 : 0),
     tolerance: opts?.tolerance ?? 0,
+    within: opts?.within ?? false,
     triangulation: TRIANGULATION_MAP[opts?.triangulation ?? "cdt"],
   };
 }
@@ -400,7 +399,7 @@ export class CsgGraph {
   readonly config: {
     mode: "sos" | "primitives";
     tolerance: number;
-    resolveCrossings: boolean;
+    within: boolean;
     triangulation: "cdt" | "refinedCdt";
   };
 
@@ -583,7 +582,7 @@ export function csgGraph(meshes: Mesh[], opts?: CsgGraphOptions): CsgGraph {
   return new CsgGraph(handle, dt, [...meshes], [...cfg.sheets], {
     mode: opts?.mode ?? "primitives",
     tolerance: cfg.tolerance,
-    resolveCrossings: opts?.resolveCrossings ?? true,
+    within: cfg.within,
     triangulation: opts?.triangulation ?? "cdt",
   });
 }

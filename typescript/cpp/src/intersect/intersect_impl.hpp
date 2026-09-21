@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include "trueform/intersect/has_self_intersections.hpp"
 #include "trueform/intersect/intersect_config.hpp"
 #include "trueform/intersect/intersect_mode.hpp"
 #include "trueform/intersect/make_intersection_curves.hpp"
@@ -164,6 +165,26 @@ auto async_self_intersection_curves(wasm_mesh<Real> &m, int mode, double toleran
   return promise([a = m, mode, tolerance]() -> wasm_curves<Real> {
     return sync_self_intersection_curves<Real>(
         const_cast<wasm_mesh<Real> &>(a), mode, tolerance);
+  });
+}
+
+// ============================================================================
+// Self-intersection verdict (mesh -> bool)
+// ============================================================================
+
+template <typename Real>
+auto sync_has_self_intersections(wasm_mesh<Real> &m) -> bool {
+  build_intersect_structures(m);
+  auto fm = m.face_membership_range();
+  auto mel = m.manifold_edge_link_range();
+  return tf::has_self_intersections(m.polygons_range() | tf::tag(m.tree()) |
+                                    tf::tag(fm) | tf::tag(mel));
+}
+
+template <typename Real>
+auto async_has_self_intersections(wasm_mesh<Real> &m) -> promise_t {
+  return promise([a = m]() -> bool {
+    return sync_has_self_intersections<Real>(const_cast<wasm_mesh<Real> &>(a));
   });
 }
 

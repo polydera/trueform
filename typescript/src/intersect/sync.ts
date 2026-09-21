@@ -20,43 +20,31 @@ import type { FloatDtype } from "../ndarray/dtype";
 /** Options for controlling intersection computation. */
 export interface IntersectOpts {
   /**
-   * Intersection mode. "primitives" (default) classifies shared
-   * edges/vertices and coplanar contacts; "sos" perturbs every contact
-   * into a crossing and cannot state shared or coplanar geometry.
+   * The classifier the run states its contacts with. "primitives"
+   * (default) classifies shared edges/vertices and coplanar contacts;
+   * "sos" perturbs every contact into a crossing, so no contact is ever
+   * coplanar — coplanar walls then do not pool and the regions they
+   * would have separated stay joined. Crossings between contours are
+   * resolved whenever the operands can make such a pair.
    */
   mode?: "sos" | "primitives";
   /** World-coordinate distance an input vertex may move to reach the lattice (0 = exact). */
   tolerance?: number;
-  /** Resolve crossings between different contours on the same face. */
-  resolveCrossings?: boolean;
-  /** Resolve self-crossings within a single contour. */
-  resolveSelfCrossings?: boolean;
   /**
    * Also intersect each mesh with itself — required when a mesh can
-   * self-overlap, e.g. meshes concatenated into one operand. Honored
-   * by arrangement and boolean builds only; intersectionCurves ignores
-   * it — use selfIntersectionCurves for a mesh against itself.
+   * self-overlap, e.g. meshes concatenated into one operand. Composed
+   * with the classifier into the one mode that crosses; a mesh against
+   * itself alone states it by its own arity (selfIntersectionCurves).
    */
   within?: boolean;
 }
 
 const MODE_MAP: Record<string, number> = { sos: 1, primitives: 2 };
-const RESOLVE_CROSSINGS = 4;
-const RESOLVE_SELF_CROSSINGS = 8;
-const SELF_INTERSECTIONS = 16;
 
-export function buildMode(
-  opts: IntersectOpts | undefined,
-  defaultMode: string,
-  defaultResolveCrossings: boolean,
-  defaultResolveSelfCrossings: boolean,
-): number {
-  let m = MODE_MAP[opts?.mode ?? defaultMode];
-  if (opts?.resolveCrossings ?? defaultResolveCrossings) m |= RESOLVE_CROSSINGS;
-  if (opts?.resolveSelfCrossings ?? defaultResolveSelfCrossings) m |= RESOLVE_SELF_CROSSINGS;
-  if (opts?.within) m |= SELF_INTERSECTIONS | RESOLVE_SELF_CROSSINGS;
-  return m;
+export function buildMode(opts: IntersectOpts | undefined): number {
+  return MODE_MAP[opts?.mode ?? "primitives"] | (opts?.within ? 4 : 0);
 }
+
 
 export function getTolerance(opts: IntersectOpts | undefined): number {
   return opts?.tolerance ?? 0.0;
@@ -87,8 +75,7 @@ export function intersectionCurves(
     );
     const dt = m0OrMeshes[0].dtype as FloatDtype;
     const o = m1OrOpts as IntersectOpts | undefined;
-    const rc = o?.resolveCrossings ?? (m0OrMeshes.length > 2);
-    const mode = buildMode(o && { ...o, within: false }, "primitives", rc, false);
+    const mode = buildMode(o);
     const tolerance = getTolerance(o);
     const handles = m0OrMeshes.map(m => m._handle);
     return new Curves(
@@ -98,7 +85,7 @@ export function intersectionCurves(
   const m1 = m1OrOpts as Mesh;
   assertSameDtype([m0OrMeshes, m1], ["mesh0", "mesh1"]);
   const dt = m0OrMeshes.dtype as FloatDtype;
-  const mode = buildMode(opts && { ...opts, within: false }, "primitives", false, false);
+  const mode = buildMode(opts);
   const tolerance = getTolerance(opts);
   return new Curves(
     native()[`intersection_curves_${dt}`](m0OrMeshes._handle, m1._handle, mode, tolerance),
@@ -111,9 +98,18 @@ export function selfIntersectionCurves(
   mesh: Mesh, opts?: IntersectOpts,
 ): Curves {
   const dt = mesh.dtype as FloatDtype;
-  const mode = buildMode(opts, "primitives", true, true);
+  const mode = buildMode(opts);
   const tolerance = getTolerance(opts);
   return new Curves(
     native()[`self_intersection_curves_${dt}`](mesh._handle, mode, tolerance), dt,
   );
+}
+
+/** True if the mesh meets itself. Faces sharing a vertex or an edge are
+ *  neighbors rather than contacts; everything else that touches counts,
+ *  decided exactly, stopped at the first contact found. Completes the
+ *  mesh's tree, face membership and edge link into its cache, so a
+ *  later query pays for none of them. */
+export function hasSelfIntersections(mesh: Mesh): boolean {
+  return native()[`has_self_intersections_${mesh.dtype}`](mesh._handle);
 }

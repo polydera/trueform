@@ -30,6 +30,12 @@ EMSCRIPTEN_BINDINGS(trueform_intersect_float64) {
   emscripten::function("dispatch_self_intersection_curves_float64",
                        &async_self_intersection_curves<Real>);
 
+  // Self-intersection verdict — sync/async
+  emscripten::function("has_self_intersections_float64",
+                       &sync_has_self_intersections<Real>);
+  emscripten::function("dispatch_has_self_intersections_float64",
+                       &async_has_self_intersections<Real>);
+
   // Intersection curves list — sync/async
   emscripten::function("intersection_curves_list_float64",
                        &sync_intersection_curves_list<Real>);

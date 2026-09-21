@@ -24,7 +24,7 @@ export {
 } from "../csg/async";
 export { meshArrangements, polygonArrangements } from "../arrangement/async";
 export { isocontours, isobands } from "../iso/async";
-export { intersectionCurves, selfIntersectionCurves } from "../intersect/async";
+export { intersectionCurves, selfIntersectionCurves, hasSelfIntersections } from "../intersect/async";
 export {
   distance, distance2, closestPoint, closestPointPair,
   neighborSearch, intersects, rayCast,
@@ -32,6 +32,7 @@ export {
 } from "../spatial/async";
 export {
   triangulate, sphereMesh, cylinderMesh, boxMesh, planeMesh, tubeMesh, sharpEdges,
+  dihedralAngles, faceQuality,
   area, signedVolume, volume, meanEdgeLength, minEdgeLength, maxEdgeLength,
   reverseWinding, positivelyOriented,
   principalCurvatures, principalDirections, shapeIndex,
@@ -42,10 +43,10 @@ export {
 export {
   isClosed, isOpen, isManifold, isNonManifold,
   eulerCharacteristic,
-  boundaryEdges, nonManifoldEdges,
-  boundaryPaths, kRings, neighborhoods, connectEdgesToPaths,
+  boundaryEdges, nonManifoldEdges, nonManifoldVertices,
+  boundaryPaths, boundaryRims, kRings, neighborhoods, connectEdgesToPaths,
   labelConnectedComponents, connectedComponents,
-  consistentlyOriented,
+  consistentlyOriented, splitNonManifoldVertices,
   computeFaceMembership, computeManifoldEdgeLink, computeFaceLink, computeVertexLink,
   cdt,
   domainLabels,

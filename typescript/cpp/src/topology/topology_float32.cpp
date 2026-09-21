@@ -23,6 +23,18 @@ EMSCRIPTEN_BINDINGS(trueform_topology_float32) {
       .field("labels", &connected_components_result::labels)
       .field("nComponents", &connected_components_result::n_components);
 
+  emscripten::value_object<boundary_rims_result_t<Real>>(
+      "BoundaryRimsResultFloat32")
+      .field("vertices", &boundary_rims_result_t<Real>::vertices)
+      .field("faces", &boundary_rims_result_t<Real>::faces)
+      .field("closed", &boundary_rims_result_t<Real>::closed);
+
+  emscripten::value_object<split_non_manifold_vertices_result_t<Real>>(
+      "SplitNonManifoldVerticesResultFloat32")
+      .field("mesh", &split_non_manifold_vertices_result_t<Real>::mesh)
+      .field("pointMap",
+             &split_non_manifold_vertices_result_t<Real>::point_map);
+
   // Boolean queries
   emscripten::function("is_closed_float32", &sync_is_closed<Real>);
   emscripten::function("dispatch_is_closed_float32", &async_is_closed<Real>);
@@ -50,10 +62,19 @@ EMSCRIPTEN_BINDINGS(trueform_topology_float32) {
   emscripten::function("dispatch_non_manifold_edges_float32",
                        &async_non_manifold_edges<Real>);
 
+  // Vertex arrays
+  emscripten::function("non_manifold_vertices_float32",
+                       &sync_non_manifold_vertices<Real>);
+  emscripten::function("dispatch_non_manifold_vertices_float32",
+                       &async_non_manifold_vertices<Real>);
+
   // OffsetBlockedBuffer results
   emscripten::function("boundary_paths_float32", &sync_boundary_paths<Real>);
   emscripten::function("dispatch_boundary_paths_float32",
                        &async_boundary_paths<Real>);
+  emscripten::function("boundary_rims_float32", &sync_boundary_rims<Real>);
+  emscripten::function("dispatch_boundary_rims_float32",
+                       &async_boundary_rims<Real>);
   emscripten::function("k_rings_float32", &sync_k_rings<Real>);
   emscripten::function("dispatch_k_rings_float32", &async_k_rings<Real>);
   emscripten::function("neighborhoods_float32", &sync_neighborhoods<Real>);
@@ -78,4 +99,8 @@ EMSCRIPTEN_BINDINGS(trueform_topology_float32) {
                        &sync_consistently_oriented<Real>);
   emscripten::function("dispatch_consistently_oriented_float32",
                        &async_consistently_oriented<Real>);
+  emscripten::function("split_non_manifold_vertices_float32",
+                       &sync_split_non_manifold_vertices<Real>);
+  emscripten::function("dispatch_split_non_manifold_vertices_float32",
+                       &async_split_non_manifold_vertices<Real>);
 }

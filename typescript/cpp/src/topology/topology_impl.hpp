@@ -14,11 +14,15 @@
 
 #include "trueform/topology.hpp"
 #include "trueform/core/algorithm/parallel_copy.hpp"
+#include "trueform/core/algorithm/parallel_transform.hpp"
+#include "trueform/core/checked.hpp"
 #include "trueform/ts/core/promise.hpp"
 #include "trueform/ts/core/wasm_mesh.hpp"
 #include "trueform/ts/core/wasm_ndarray.hpp"
 #include "trueform/ts/core/wasm_offset_blocked_buffer.hpp"
 #include "trueform/ts/topology/result_types.hpp"
+#include <cstdint>
+#include <utility>
 
 namespace tf {
 namespace ts {
@@ -81,6 +85,18 @@ auto sync_non_manifold_edges(wasm_mesh<Real> &m) -> wasm_ndarray<int> {
 }
 
 // ============================================================================
+// Vertex results [N]
+// ============================================================================
+
+template <typename Real>
+auto sync_non_manifold_vertices(wasm_mesh<Real> &m) -> wasm_ndarray<int> {
+  auto poly = m.polygons_range() | tf::tag(m.face_membership_range());
+  auto vertices = tf::make_non_manifold_vertices(poly);
+  auto n = static_cast<int>(vertices.size());
+  return wasm_ndarray<int>::from_buffer(std::move(vertices), {n});
+}
+
+// ============================================================================
 // OffsetBlockedBuffer results
 // ============================================================================
 
@@ -114,6 +130,38 @@ inline auto sync_connect_edges_to_paths(wasm_ndarray<int> &edges_arr)
   auto edges = tf::make_edges(edges_arr.make_range());
   auto result = tf::connect_edges_to_paths(edges);
   return wasm_offset_blocked_buffer<int, int>::from_buffer(std::move(result));
+}
+
+// ============================================================================
+// Boundary rims
+// ============================================================================
+
+// Templated on Real so each per-real binding registers a distinct
+// value_object type under a distinct JS name. Fields are not Real-dependent.
+template <typename Real> struct boundary_rims_result_t {
+  wasm_offset_blocked_buffer<int, int> vertices;
+  wasm_offset_blocked_buffer<int, int> faces;
+  wasm_ndarray<std::int8_t> closed; // [R]
+};
+
+template <typename Real>
+auto sync_boundary_rims(wasm_mesh<Real> &m) -> boundary_rims_result_t<Real> {
+  auto poly = m.polygons_range() | tf::tag(m.face_membership_range());
+  auto rims = tf::make_boundary_rims(poly);
+  auto n = static_cast<int>(rims.closed.size());
+
+  tf::buffer<std::int8_t> closed;
+  closed.allocate(rims.closed.size());
+  tf::parallel_transform(
+      rims.closed, closed,
+      [](bool closes) { return static_cast<std::int8_t>(closes); },
+      tf::checked);
+
+  return {wasm_offset_blocked_buffer<int, int>::from_buffer(
+              std::move(rims.vertices)),
+          wasm_offset_blocked_buffer<int, int>::from_buffer(
+              std::move(rims.faces)),
+          wasm_ndarray<std::int8_t>::from_buffer(std::move(closed), {n})};
 }
 
 // ============================================================================
@@ -183,6 +231,27 @@ auto sync_consistently_oriented(wasm_mesh<Real> &m) -> wasm_mesh<Real> {
 }
 
 // ============================================================================
+// Mesh mutation: split non-manifold vertices
+// ============================================================================
+
+// Templated on Real so each per-real binding registers a distinct
+// value_object type under a distinct JS name.
+template <typename Real> struct split_non_manifold_vertices_result_t {
+  wasm_mesh<Real> mesh;
+  wasm_ndarray<int> point_map; // [P]: per output point its source point
+};
+
+template <typename Real>
+auto sync_split_non_manifold_vertices(wasm_mesh<Real> &m)
+    -> split_non_manifold_vertices_result_t<Real> {
+  auto poly = m.polygons_range() | tf::tag(m.face_membership_range());
+  auto split = tf::split_non_manifold_vertices(poly, tf::return_index_map);
+  auto n = static_cast<int>(split.second.size());
+  return {wasm_mesh<Real>::from_polygons_buffer(std::move(split.first)),
+          wasm_ndarray<int>::from_buffer(std::move(split.second), {n})};
+}
+
+// ============================================================================
 // Async wrappers
 // ============================================================================
 
@@ -232,6 +301,28 @@ template <typename Real>
 auto async_non_manifold_edges(wasm_mesh<Real> &m) -> promise_t {
   return promise([a = m]() -> wasm_ndarray<int> {
     return sync_non_manifold_edges<Real>(const_cast<wasm_mesh<Real> &>(a));
+  });
+}
+
+template <typename Real>
+auto async_non_manifold_vertices(wasm_mesh<Real> &m) -> promise_t {
+  return promise([a = m]() -> wasm_ndarray<int> {
+    return sync_non_manifold_vertices<Real>(const_cast<wasm_mesh<Real> &>(a));
+  });
+}
+
+template <typename Real>
+auto async_boundary_rims(wasm_mesh<Real> &m) -> promise_t {
+  return promise([a = m]() -> boundary_rims_result_t<Real> {
+    return sync_boundary_rims<Real>(const_cast<wasm_mesh<Real> &>(a));
+  });
+}
+
+template <typename Real>
+auto async_split_non_manifold_vertices(wasm_mesh<Real> &m) -> promise_t {
+  return promise([a = m]() -> split_non_manifold_vertices_result_t<Real> {
+    return sync_split_non_manifold_vertices<Real>(
+        const_cast<wasm_mesh<Real> &>(a));
   });
 }
 

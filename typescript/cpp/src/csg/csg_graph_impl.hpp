@@ -431,8 +431,8 @@ auto sync_csg_graph(emscripten::val js_meshes, emscripten::val js_sheets,
                     int mode, double tolerance, int triangulation)
     -> wasm_csg_graph<Real> {
   return wasm_csg_graph<Real>::from_meshes(
-      extract_csg_meshes<Real>(js_meshes), extract_int_vector(js_sheets),
-      mode, tolerance, triangulation);
+      extract_csg_meshes<Real>(js_meshes), extract_int_vector(js_sheets), mode,
+      tolerance, triangulation);
 }
 
 template <typename Real>
@@ -509,8 +509,8 @@ auto async_csg_graph(emscripten::val js_meshes, emscripten::val js_sheets,
     -> promise_t {
   auto meshes = extract_csg_meshes<Real>(js_meshes);
   auto sheets = extract_int_vector(js_sheets);
-  return promise([meshes = std::move(meshes), sheets = std::move(sheets),
-                  mode, tolerance, triangulation]() {
+  return promise([meshes = std::move(meshes), sheets = std::move(sheets), mode,
+                  tolerance, triangulation]() {
     return wasm_csg_graph<Real>::from_meshes(meshes, sheets, mode, tolerance,
                                              triangulation);
   });
