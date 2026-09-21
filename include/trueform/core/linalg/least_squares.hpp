@@ -29,10 +29,7 @@ namespace tf::linalg {
 template <typename T>
 constexpr auto least_squares_workspace_size(std::size_t rows,
                                             std::size_t cols) -> std::size_t {
-  // b copy + norms_upd + norms_dir + perm (ceil to T-sized slots)
-  std::size_t perm_slots =
-      (cols * sizeof(std::size_t) + sizeof(T) - 1) / sizeof(T);
-  return rows + 2 * cols + perm_slots;
+  return rows + 2 * cols;
 }
 
 /// @ingroup linalg
@@ -53,23 +50,19 @@ constexpr auto least_squares_workspace_size(std::size_t rows,
 /// @param rows N (number of equations).
 /// @param cols M (number of unknowns).
 /// @param work Workspace of size least_squares_workspace_size<T>(rows, cols).
+/// @param perm Column permutation storage of size cols.
 /// @param thresh Rank threshold (negative = auto).
 template <typename T>
 auto solve_least_squares(T *A, const T *b, T *x, std::size_t rows,
-                         std::size_t cols, T *work, T thresh = T(-1)) -> void {
+                         std::size_t cols, T *work, std::size_t *perm,
+                         T thresh = T(-1)) -> void {
   using std::abs;
 
   const std::size_t size = (rows < cols) ? rows : cols;
 
-  // Workspace layout:
-  // [0, rows)           : bw (b copy, becomes Q^T b)
-  // [rows, rows+cols)   : norms_upd[cols]
-  // [rows+cols, rows+2*cols) : norms_dir[cols]
-  // [rows+2*cols, ...]  : perm[cols] (as std::size_t)
   T *bw = work;
   T *norms_upd = bw + rows;
   T *norms_dir = norms_upd + cols;
-  std::size_t *perm = reinterpret_cast<std::size_t *>(norms_dir + cols);
 
   for (std::size_t i = 0; i < rows; ++i)
     bw[i] = b[i];

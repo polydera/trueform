@@ -146,9 +146,10 @@ auto extract_R(const T *A, T *R, std::size_t rows, std::size_t cols,
 ///
 /// Reusable across calls to avoid repeated allocations.
 template <typename T> struct parallel_least_squares_state {
-  tf::buffer<T> R_stacked;   ///< Stacked R factors from all blocks
-  tf::buffer<T> Qtb_stacked; ///< Stacked Q^T b vectors from all blocks
-  tf::buffer<T> final_work;  ///< Workspace for final solve
+  tf::buffer<T> R_stacked;            ///< Stacked R factors from all blocks
+  tf::buffer<T> Qtb_stacked;          ///< Stacked Q^T b vectors from all blocks
+  tf::buffer<T> final_work;           ///< Workspace for final solve
+  tf::buffer<std::size_t> final_perm; ///< Column permutation for final solve
 };
 
 /// @ingroup linalg
@@ -191,7 +192,10 @@ auto solve_least_squares_parallel(const T *A, const T *b, T *x, std::size_t rows
 
     tf::buffer<T> work;
     work.allocate(least_squares_workspace_size<T>(rows, cols));
-    solve_least_squares(A_copy.data(), b, x, rows, cols, work.data());
+    tf::buffer<std::size_t> perm;
+    perm.allocate(cols);
+    solve_least_squares(A_copy.data(), b, x, rows, cols, work.data(),
+                        perm.data());
     return;
   }
 
@@ -308,6 +312,7 @@ auto solve_least_squares_parallel(const T *A, const T *b, T *x, std::size_t rows
   // The stacked R factors form a (stacked_rows × cols) matrix
   // Use the robust sequential solver for this small system
   state.final_work.allocate(least_squares_workspace_size<T>(stacked_rows, cols));
+  state.final_perm.allocate(cols);
 
   // R_stacked is stored as concatenated cols×cols blocks (column-major each)
   // Need to convert to single column-major stacked_rows×cols matrix
@@ -325,7 +330,8 @@ auto solve_least_squares_parallel(const T *A, const T *b, T *x, std::size_t rows
   }
 
   solve_least_squares(stacked_A.data(), state.Qtb_stacked.data(), x,
-                      stacked_rows, cols, state.final_work.data());
+                      stacked_rows, cols, state.final_work.data(),
+                      state.final_perm.data());
 }
 
 /// @ingroup linalg

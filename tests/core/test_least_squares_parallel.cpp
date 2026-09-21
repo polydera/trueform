@@ -102,9 +102,11 @@ TEMPLATE_TEST_CASE("parallel_vs_sequential_random", "[core][linalg][parallel]",
     std::copy(A.begin(), A.end(), A_copy.begin());
     tf::buffer<T> work;
     work.allocate(tf::linalg::least_squares_workspace_size<T>(rows, cols));
+    tf::buffer<std::size_t> perm;
+    perm.allocate(cols);
     std::array<T, cols> x_seq{};
     tf::linalg::solve_least_squares(A_copy.data(), b.data(), x_seq.data(), rows,
-                                    cols, work.data());
+                                    cols, work.data(), perm.data());
 
     // Parallel solve
     std::array<T, cols> x_par{};
@@ -130,9 +132,11 @@ TEMPLATE_TEST_CASE("parallel_vs_sequential_random", "[core][linalg][parallel]",
     std::copy(A.begin(), A.end(), A_copy.begin());
     tf::buffer<T> work;
     work.allocate(tf::linalg::least_squares_workspace_size<T>(rows, cols));
+    tf::buffer<std::size_t> perm;
+    perm.allocate(cols);
     std::array<T, cols> x_seq{};
     tf::linalg::solve_least_squares(A_copy.data(), b.data(), x_seq.data(), rows,
-                                    cols, work.data());
+                                    cols, work.data(), perm.data());
 
     // Parallel solve
     std::array<T, cols> x_par{};
@@ -158,9 +162,11 @@ TEMPLATE_TEST_CASE("parallel_vs_sequential_random", "[core][linalg][parallel]",
     std::copy(A.begin(), A.end(), A_copy.begin());
     tf::buffer<T> work;
     work.allocate(tf::linalg::least_squares_workspace_size<T>(rows, cols));
+    tf::buffer<std::size_t> perm;
+    perm.allocate(cols);
     std::array<T, cols> x_seq{};
     tf::linalg::solve_least_squares(A_copy.data(), b.data(), x_seq.data(), rows,
-                                    cols, work.data());
+                                    cols, work.data(), perm.data());
 
     // Parallel solve
     std::array<T, cols> x_par{};
@@ -253,10 +259,12 @@ TEMPLATE_TEST_CASE("parallel_various_cols", "[core][linalg][parallel]",
     std::copy(A.begin(), A.end(), A_copy.begin());
     tf::buffer<T> work;
     work.allocate(tf::linalg::least_squares_workspace_size<T>(rows, cols));
+    tf::buffer<std::size_t> perm;
+    perm.allocate(cols);
     tf::buffer<T> x_seq;
     x_seq.allocate(cols);
     tf::linalg::solve_least_squares(A_copy.data(), b.data(), x_seq.data(), rows,
-                                    cols, work.data());
+                                    cols, work.data(), perm.data());
 
     // Parallel solve
     tf::buffer<T> x_par;
@@ -301,9 +309,11 @@ TEMPLATE_TEST_CASE("parallel_reusable_state", "[core][linalg][parallel]",
     std::copy(A.begin(), A.end(), A_copy.begin());
     tf::buffer<T> work;
     work.allocate(tf::linalg::least_squares_workspace_size<T>(rows, cols));
+    tf::buffer<std::size_t> perm;
+    perm.allocate(cols);
     std::array<T, cols> x_seq{};
     tf::linalg::solve_least_squares(A_copy.data(), b.data(), x_seq.data(), rows,
-                                    cols, work.data());
+                                    cols, work.data(), perm.data());
 
     // Parallel solve with reused state
     std::array<T, cols> x_par{};

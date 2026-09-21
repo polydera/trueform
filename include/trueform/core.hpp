@@ -182,6 +182,7 @@
 #include "./core/transformed_forms.hpp"           // IWYU pragma: export
 #include "./core/translate.hpp"                   // IWYU pragma: export
 #include "./core/translated_forms.hpp"            // IWYU pragma: export
+#include "./core/triangle_quality.hpp"            // IWYU pragma: export
 #include "./core/tuple.hpp"                       // IWYU pragma: export
 #include "./core/tuple_hash.hpp"                  // IWYU pragma: export
 #include "./core/unit_vector.hpp"                 // IWYU pragma: export
