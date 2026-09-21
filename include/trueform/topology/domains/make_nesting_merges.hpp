@@ -240,7 +240,7 @@ auto make_nesting_merges(const Polygons &polygons,
             std::array<Vert, 5> tri_seg{v0, va, vb, seed_vert, p_far_v};
             if (auto hit_opt = tf::exact::triangle_segment_intersect_point_sos(
                     tri_seg)) {
-              auto hit = *hit_opt;
+              auto hit = hit_opt->point;
               T1 dx = T1(hit[0]) - T1(seed_pt[0]);
               T1 dy = T1(hit[1]) - T1(seed_pt[1]);
               T1 dz = T1(hit[2]) - T1(seed_pt[2]);

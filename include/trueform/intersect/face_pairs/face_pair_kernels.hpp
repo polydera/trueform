@@ -41,10 +41,10 @@ auto edge_vs_convex_face_sos(tf::exact::vertex_range<Index, Int> face,
     -> std::optional<tf::exact::pt3<Int>> {
   auto n = face.size();
   for (std::size_t t = 0; t + 2 < n; ++t) {
-    if (auto pt = tf::exact::triangle_segment_intersect_point_sos(
+    if (auto crossing = tf::exact::triangle_segment_intersect_point_sos(
             std::array<tf::exact::vertex<Index, Int>, 5>{
                 face[0], face[t + 1], face[t + 2], v0, v1}))
-      return pt;
+      return crossing->point;
   }
   return std::nullopt;
 }

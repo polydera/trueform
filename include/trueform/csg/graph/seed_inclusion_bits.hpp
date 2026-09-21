@@ -33,6 +33,7 @@
 #include "../../spatial/search.hpp"
 #include "./arrangement_descriptor.hpp"
 #include "./compute_bundle_aabbs.hpp"
+#include "./domain_depths.hpp"
 #include "./domain_inclusions.hpp"
 #include "./structural_membership.hpp"
 #include "./triangle_component_labels.hpp"
@@ -48,21 +49,25 @@
 namespace tf::csg::graph {
 
 /// @ingroup csg_graph_internals
-/// @brief One exact segment cast per bundle, reduced two ways: per-form
-///        parity into `inc.bits[outer_env(bi)]`, and nesting merges that
-///        repair the false split between contact-free nested shells (the
+/// @brief One exact segment cast per bundle, reduced two ways: every
+///        form's depth at `outer_env(bi)` — leaves minus enters along
+///        seed -> far, the far corner lying beyond all geometry and
+///        therefore at zero — and nesting merges that repair the false
+///        split between contact-free nested shells (the
 ///        implicit-arrangement analogue of
 ///        @ref tf::topology::domains::make_nesting_merges).
 ///
 /// A bundle's outer env is its most-negative-volume incident domain; the
-/// globally most negative is `null_seed`, anchored at zero bits. Sheet
-/// forms are side-classified by @ref tf::csg::graph::winding_side instead
-/// of the cast and never enclose, so they contribute no nesting merge.
+/// globally most negative is `null_seed`, anchored at zero. Sheet forms
+/// are side-classified by @ref tf::csg::graph::winding_side instead of the
+/// cast and never enclose, so they seed a bit in `inc` rather than a depth
+/// and contribute no nesting merge.
 template <typename Index, typename Int, typename Arrangement,
           typename ApplyToForm, typename Real, std::size_t Dims, typename VolT,
           typename GetMeshPoint>
 auto seed_inclusion_bits(
     tf::csg::graph::domain_inclusions &inc,
+    tf::csg::graph::domain_depths<Index> &depths,
     const tf::csg::graph::arrangement_descriptor<Index> &desc,
     const Arrangement &arrangement,
     const tf::csg::graph::triangle_component_labels<Index> &labels,
@@ -259,7 +264,7 @@ auto seed_inclusion_bits(
   }
 
   // The cast's boxes are the input's, its hits the placed mesh's: a
-  // pruned hit flips a parity bit, so every box grows by the door's
+  // pruned hit moves a depth, so every box grows by the door's
   // motion bound.
   const Int reach = get_mesh_point.motion_bound;
   tf::buffer<bbox_t> form_bv;
@@ -304,7 +309,7 @@ auto seed_inclusion_bits(
     }
   }
 
-  // A casting bundle must not parity-count its own surface; a cut face
+  // A casting bundle must not count its own surface; a cut face
   // carries `none_label`, so its bundle comes from its triangles — every
   // piece of a face lies on one original surface, hence one bundle.
   // Exposure is tag-major and object-dense, so the prefix of per-tag
@@ -331,12 +336,18 @@ auto seed_inclusion_bits(
           desc.bundle_of_component[c];
     }
   }
-  tf::buffer<char> parity;
-  parity.allocate(static_cast<std::size_t>(n_bundles) *
-                  static_cast<std::size_t>(n_tags));
-  tf::parallel_fill(parity, char(0));
+  // The two answers a cast reduces to, each on its own column set: a
+  // sheet states a side, a volume a depth, and no tag is both.
+  tf::buffer<char> sheet_side;
+  sheet_side.allocate(static_cast<std::size_t>(n_bundles) *
+                      static_cast<std::size_t>(n_tags));
+  tf::parallel_fill(sheet_side, char(0));
+  tf::buffer<Index> seed_depth;
+  seed_depth.allocate(static_cast<std::size_t>(n_bundles) *
+                      static_cast<std::size_t>(n_tags));
+  tf::parallel_fill(seed_depth, Index(0));
 
-  // group `t` only touches parity column `t`
+  // group `t` only touches column `t`
   if (sheet_pairs.size() > 0) {
     tbb::parallel_sort(sheet_pairs.begin(), sheet_pairs.end(),
                        [](const auto &a, const auto &b) {
@@ -362,9 +373,9 @@ auto seed_inclusion_bits(
             form, queries,
             [&, t](Index id) { return scaled(get_mesh_point(int(t), id)); });
         for (std::size_t j = 0; j < bits.size(); ++j)
-          parity[static_cast<std::size_t>(group[j][0]) *
-                     static_cast<std::size_t>(n_tags) +
-                 static_cast<std::size_t>(t)] = bits[j];
+          sheet_side[static_cast<std::size_t>(group[j][0]) *
+                         static_cast<std::size_t>(n_tags) +
+                     static_cast<std::size_t>(t)] = bits[j];
       });
     });
   }
@@ -402,7 +413,7 @@ auto seed_inclusion_bits(
         const Index bi = pair[0];
         const Index t = pair[1];
         const WidePt seed_pt_b = seed_sum[bi];
-        char p = 0;
+        Index depth = 0;
 
         WideVert seed_v{seed_id_base + bi, seed_pt_b};
         WideVert far_v{far_id, far_scaled};
@@ -451,11 +462,14 @@ auto seed_inclusion_bits(
                   auto va = vertex_of(Index(face[i]));
                   auto vb = vertex_of(Index(face[i + 1]));
                   std::array<WideVert, 5> ts{v0, va, vb, seed_v, far_v};
-                  if (auto hit_opt =
+                  if (auto crossing =
                           tf::exact::
                               triangle_segment_intersect_point_scaled_sos<Int>(
                                   ts)) {
-                    p ^= char(1);
+                    // side 1 is the side orient3d_sos calls positive, so a
+                    // seed standing there leaves the form on the way out
+                    const bool seed_on_side1 = crossing->d_on_positive_side;
+                    depth += seed_on_side1 ? Index(1) : Index(-1);
                     const Index c2 =
                         is_cut ? crossed_piece_component(t, face_id, seed_v,
                                                          far_v)
@@ -466,16 +480,11 @@ auto seed_inclusion_bits(
                         desc.domain_of_side[2 * c2 + 0] !=
                             desc.domain_of_side[2 * c2 + 1];
                     if (states) {
-                      // side 1 is the side the faces are wound away from
-                      // — the side orient3d_sos calls positive
-                      const std::array<WideVert, 4> plane{v0, va, vb, seed_v};
-                      const bool seed_on_side1 =
-                          tf::exact::orient3d_sos_scaled<Int>(plane.data());
                       const Index near_d =
                           desc.domain_of_side[2 * c2 + (seed_on_side1 ? 1 : 0)];
                       const Index far_d =
                           desc.domain_of_side[2 * c2 + (seed_on_side1 ? 0 : 1)];
-                      auto hit = *hit_opt;
+                      const auto &hit = crossing->point;
                       const T1 dx = T1(hit[0]) - T1(seed_pt_b[0]);
                       const T1 dy = T1(hit[1]) - T1(seed_pt_b[1]);
                       const T1 dz = T1(hit[2]) - T1(seed_pt_b[2]);
@@ -491,12 +500,14 @@ auto seed_inclusion_bits(
               });
         });
 
-        parity[static_cast<std::size_t>(bi) * static_cast<std::size_t>(n_tags) +
-               static_cast<std::size_t>(t)] = p;
+        seed_depth[static_cast<std::size_t>(bi) *
+                       static_cast<std::size_t>(n_tags) +
+                   static_cast<std::size_t>(t)] = depth;
       });
 
-  // Bundles sharing an outer-env hit the same row; the first zeros it,
-  // the rest OR in.
+  // Bundles sharing an outer-env hit the same row; the first zeros its
+  // bits, the rest OR in. Their depths agree by construction — one
+  // domain is one region, and a region has one winding.
   for (Index bi = Index(0); bi < n_bundles; ++bi) {
     if (outer_env[bi] == null_seed)
       continue;
@@ -513,15 +524,18 @@ auto seed_inclusion_bits(
     if (first_writer)
       for (std::size_t w = 0; w < words_per_domain; ++w)
         inc.bits[row + w] = 0u;
+    const std::size_t column =
+        static_cast<std::size_t>(bi) * static_cast<std::size_t>(n_tags);
     for (Index t = Index(0); t < n_tags; ++t) {
-      const char p =
-          parity[static_cast<std::size_t>(bi) *
-                     static_cast<std::size_t>(n_tags) +
-                 static_cast<std::size_t>(t)];
-      if (!p)
+      if (sheet_tag(t)) {
+        if (sheet_side[column + static_cast<std::size_t>(t)])
+          inc.set(static_cast<std::size_t>(outer_env[bi]),
+                  static_cast<std::size_t>(t));
         continue;
-      inc.set(static_cast<std::size_t>(outer_env[bi]),
-              static_cast<std::size_t>(t));
+      }
+      depths.at(static_cast<std::size_t>(outer_env[bi]),
+                static_cast<std::size_t>(t)) =
+          seed_depth[column + static_cast<std::size_t>(t)];
     }
     record_seed(outer_env[bi]);
   }
@@ -661,9 +675,9 @@ auto seed_inclusion_bits(
         bordered = true;
         // winding_side's bit is 1 behind the sheet's normal
         const bool behind =
-            parity[static_cast<std::size_t>(bi) *
-                       static_cast<std::size_t>(n_tags) +
-                   static_cast<std::size_t>(wall[1])] != char(0);
+            sheet_side[static_cast<std::size_t>(bi) *
+                           static_cast<std::size_t>(n_tags) +
+                       static_cast<std::size_t>(wall[1])] != char(0);
         if (d != (behind ? d1 : d0))
           dropped = true;
       }

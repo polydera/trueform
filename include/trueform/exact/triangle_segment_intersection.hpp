@@ -18,6 +18,16 @@
 
 namespace tf::exact {
 
+/// Where segment DE crosses triangle ABC, and which side of ABC the D end
+/// stands on — `true` the side @ref tf::exact::orient3d_sos_scaled calls
+/// positive. The side is the same-side test's own verdict, so a caller
+/// reading it recomputes nothing; a raw determinant sign is not a
+/// substitute, an accepted crossing having a zero one.
+template <typename Coord> struct triangle_segment_crossing {
+  pt3<Coord> point;
+  bool d_on_positive_side;
+};
+
 /// Triangle ABC (indices 0,1,2) and segment DE (indices 3,4), every point
 /// carried in one common positive multiple of the `Int` lattice.
 ///
@@ -31,7 +41,7 @@ namespace tf::exact {
 template <typename Int, typename Index, typename Coord>
 auto triangle_segment_intersect_point_scaled_sos(
     const std::array<vertex<Index, Coord>, 5> &vs)
-    -> std::optional<pt3<Coord>> {
+    -> std::optional<triangle_segment_crossing<Coord>> {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
 
@@ -77,7 +87,7 @@ auto triangle_segment_intersect_point_scaled_sos(
       point[i] = static_cast<Coord>((T1(vs[3].pt[i]) + T1(vs[4].pt[i])) / 2);
   }
 
-  return point;
+  return triangle_segment_crossing<Coord>{point, abcd};
 }
 
 /// Triangle ABC (indices 0,1,2) and segment DE (indices 3,4).
@@ -86,7 +96,8 @@ auto triangle_segment_intersect_point_scaled_sos(
 /// weights (absolute values only, so sign convention is irrelevant).
 template <typename Index, typename Int>
 auto triangle_segment_intersect_point_sos(
-    const std::array<vertex<Index, Int>, 5> &vs) -> std::optional<pt3<Int>> {
+    const std::array<vertex<Index, Int>, 5> &vs)
+    -> std::optional<triangle_segment_crossing<Int>> {
   return triangle_segment_intersect_point_scaled_sos<Int>(vs);
 }
 

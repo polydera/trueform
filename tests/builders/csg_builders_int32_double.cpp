@@ -44,6 +44,13 @@ template csg_domains_t<tri_self_graph>
 csg_domains_of<tri_self_graph>(const tri_self_graph &,
                                const tf::csg::selection_t &, tf::domain_config);
 
+template csg_domains_with_map_t<tri_self_graph>
+csg_domains_with_index_map_of<tri_self_graph>(const tri_self_graph &);
+
+template csg_domains_with_map_t<tri_self_graph>
+csg_domains_with_index_map_of<tri_self_graph>(const tri_self_graph &,
+                                              tf::domain_config);
+
 template csg_mesh_t<tri_self_graph>
 outer_shell_of<tri_self_graph>(const tri_self_graph &);
 
@@ -62,6 +69,13 @@ csg_domains_of<tri_range_graph>(const tri_range_graph &,
 
 template csg_domains_t<tri_range_graph> csg_domains_of<tri_range_graph>(
     const tri_range_graph &, const tf::csg::selection_t &, tf::domain_config);
+
+template csg_domains_with_map_t<tri_range_graph>
+csg_domains_with_index_map_of<tri_range_graph>(const tri_range_graph &);
+
+template csg_domains_with_map_t<tri_range_graph>
+csg_domains_with_index_map_of<tri_range_graph>(const tri_range_graph &,
+                                               tf::domain_config);
 
 template csg_mesh_t<tri_range_graph>
 outer_shell_of<tri_range_graph>(const tri_range_graph &);

@@ -12,12 +12,17 @@
  */
 #pragma once
 #include "../core/algorithm/parallel_for_each.hpp"
+#include "../core/blocked_buffer.hpp"
+#include "../core/buffer.hpp"
+#include "../core/memory.hpp"
 #include "../core/none.hpp"
+#include "../core/offset_block_buffer.hpp"
 #include "../core/resolved_output_real.hpp"
 #include "../core/views/enumerate.hpp"
 #include "../reindex/return_index_map.hpp"
 #include "../reindex/return_source_ids.hpp"
 #include "../topology/domain_config.hpp"
+#include "./csg_domains_index_map.hpp"
 #include "./csg_graph.hpp"
 #include "./expression/expr.hpp"
 #include "./graph/compute_domain_membership.hpp"
@@ -25,7 +30,10 @@
 #include "./graph/make_csg_domains.hpp"
 #include "./graph/structural_membership.hpp"
 #include "./expression.hpp"
+#include <cstddef>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace tf {
 
@@ -54,13 +62,35 @@ auto make_csg_domains_impl(const tf::csg_graph<Policy, Int, Arrangement> &graph,
   using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
 
   using Index = typename tf::csg_graph<Policy, Int, Arrangement>::index_type;
-  // Within-builds read structurally: parity bits misread the
-  // double-covered pockets of a self arrangement, whether the graph is
-  // one self-arranged form or N forms of which some self-overlap. The
-  // volume argmin seeds the universe; the nesting merges applied inside
-  // the membership's union-find lift it to the full universe CLASS (all
-  // contact-free exteriors — disjoint or nested components), and every
-  // coarse domain outside that class is an interior cell.
+
+  // Nothing arranged is no universe to find and no row to read.
+  if (graph.descriptor().n_domains == Index(0)) {
+    using cells_t = tf::core::std_vector<tf::csg::graph::csg_domain_cell<
+        Index, RealOut,
+        tf::csg_graph<Policy, Int, Arrangement>::face_static_size>>;
+    if constexpr (WantPointMap) {
+      tf::csg_domains_index_map<Index> imap;
+      imap.n_tags = graph.arrangement().n_tags();
+      imap.inclusion =
+          tf::blocked_buffer<bool, tf::dynamic_size>(std::size_t(imap.n_tags));
+      return std::make_tuple(cells_t{}, tf::buffer<Index>{}, std::move(imap));
+    } else if constexpr (WantLabels) {
+      return std::make_tuple(cells_t{}, tf::buffer<Index>{},
+                             tf::offset_block_buffer<Index, Index>{},
+                             tf::offset_block_buffer<Index, Index>{});
+    } else {
+      return std::make_pair(cells_t{}, tf::buffer<Index>{});
+    }
+  }
+
+  // Within-builds take the universe structurally: a self arrangement can
+  // state an interior cell no form winds around — an opposing coincident
+  // stack encloses nothing — and an all-zero row would call that cell the
+  // outside. The volume argmin names the universe; the nesting merges
+  // applied inside the membership's union-find lift it to the full
+  // universe CLASS (all contact-free exteriors — disjoint or nested
+  // components), and every coarse domain outside that class is an
+  // interior cell.
   Index universe_fine =
       graph.with_self()
           ? Index(tf::csg::graph::find_universe_domain(graph.domain_volumes()))
@@ -86,7 +116,8 @@ auto make_csg_domains_impl(const tf::csg_graph<Policy, Int, Arrangement> &graph,
     imap.inclusion.allocate(ids.size());
     auto *cell_bits = imap.inclusion.data_buffer().data();
     tf::parallel_for_each(
-        tf::enumerate(tf::make_range(ids)), [&](auto pair) {
+        tf::enumerate(tf::make_range(ids)),
+        [cell_bits, n_ops, &membership](auto pair) {
           const auto &[k, id] = pair;
           auto *row = cell_bits + std::size_t(k) * n_ops;
           for (std::size_t i = 0; i < n_ops; ++i)

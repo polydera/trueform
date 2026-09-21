@@ -19,7 +19,9 @@
 #include "../core/transformed.hpp"
 #include "./graph/anchor_sheet_sides.hpp"
 #include "./graph/arrangement_descriptor.hpp"
+#include "./graph/component_crossings.hpp"
 #include "./graph/compute_arrangement_domain_volumes.hpp"
+#include "./graph/domain_depths.hpp"
 #include "./graph/domain_inclusions.hpp"
 #include "./graph/make_arrangement_descriptor.hpp"
 #include "./graph/propagate_inclusion_bits.hpp"
@@ -94,11 +96,22 @@ public:
         tf::csg::graph::compute_arrangement_domain_volumes<index_type,
                                                            resolved_int_type>(
             _arr, _labels, _desc, apply_form, get_mesh_point);
-    auto seeds = tf::csg::graph::seed_inclusion_bits<index_type,
-                                                     resolved_int_type>(
-        _inc, _desc, _arr, _labels, apply_form, conv, get_mesh_point,
-        _domain_volumes, _domain_nesting_merges, _is_sheet);
-    tf::csg::graph::propagate_inclusion_bits(_inc, _desc, _arr, _labels, seeds);
+    _crossings =
+        tf::csg::graph::make_component_crossings<index_type>(_arr, _labels);
+    // The depths are the flood's working state and the inclusion bits its
+    // published answer, so the rows live exactly from the seeding cast to
+    // the publication that ends the flood.
+    {
+      auto depths = tf::csg::graph::make_domain_depths(_arr.n_tags(),
+                                                       _desc.n_domains);
+      auto seeds = tf::csg::graph::seed_inclusion_bits<index_type,
+                                                       resolved_int_type>(
+          _inc, depths, _desc, _arr, _labels, apply_form, conv, get_mesh_point,
+          _domain_volumes, _domain_nesting_merges, _is_sheet);
+      tf::csg::graph::propagate_inclusion_bits(_inc, depths, _desc,
+                                               _labels.n_components(),
+                                               _crossings, _is_sheet, seeds);
+    }
     // Sheets coplanar-folded into another wall have no fragments of
     // their own to anchor from, and their winding seeds are degenerate
     // (evaluated exactly on the shared wall): anchor them through the
@@ -163,6 +176,15 @@ public:
     return _inc;
   }
 
+  /// @brief The layers every wall carries, and the components whose
+  /// coincident stack is not one fact — `n_defects` of them, the first
+  /// named by `defect_component`. A defect is reported, never refused:
+  /// those components are classified on their representative's stack.
+  auto crossings() const
+      -> const tf::csg::graph::component_crossings<index_type> & {
+    return _crossings;
+  }
+
   /// @brief Exact signed volume (2x, lattice units) per arrangement
   /// domain — the seeder's oracle. The most negative entry is the
   /// unbounded universe.
@@ -185,6 +207,7 @@ private:
   tf::csg::graph::triangle_component_labels<index_type> _labels;
   tf::buffer<std::array<index_type, 3>> _sheet_folds;
   tf::csg::graph::arrangement_descriptor<index_type> _desc;
+  tf::csg::graph::component_crossings<index_type> _crossings;
   tf::csg::graph::domain_inclusions _inc;
   tf::buffer<typename tf::exact::meta<resolved_int_type>::T2> _domain_volumes;
   tf::buffer<std::array<index_type, 2>> _domain_nesting_merges;

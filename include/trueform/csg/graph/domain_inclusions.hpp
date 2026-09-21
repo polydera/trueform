@@ -43,6 +43,11 @@ struct domain_inclusions {
                                               << (tag % 32u);
   }
 
+  /// @brief Flip form `tag`'s bit in domain `d`'s block.
+  auto flip(std::size_t d, std::size_t tag) -> void {
+    bits[d * words_per_domain + tag / 32u] ^= std::uint32_t(1) << (tag % 32u);
+  }
+
   /// @brief Clear form `tag`'s bit in domain `d`'s block.
   auto clear(std::size_t d, std::size_t tag) -> void {
     bits[d * words_per_domain + tag / 32u] &=

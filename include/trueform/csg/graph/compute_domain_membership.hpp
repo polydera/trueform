@@ -133,31 +133,29 @@ auto compute_domain_membership(
   for (Index k = 0; k < n_coarse; ++k)
     is_outer[k] = false;
 
+  // Representative = OR of constituent bits, minus the bits of sheets
+  // whose open fuse formed the class. Classes are bits-homogeneous
+  // outside fused sheet columns (nesting merges unite copies of one
+  // physical region; open fuses only flip the fused sheet's own bit),
+  // so this reproduces the constituent bits on volume-only input and
+  // the universe reads all-zero again once its fused sheet halves
+  // stop meaning "behind".
+  for (Index d = 0; d < n_domains; ++d) {
+    const std::size_t base =
+        static_cast<std::size_t>(out.coarse_of_fine[d]) * words;
+    const std::size_t src = static_cast<std::size_t>(d) * words;
+    for (std::size_t w = 0; w < words; ++w)
+      rep.bits[base + w] |= inc.bits[src + w];
+  }
+  for (const auto &f : sheet_fuses)
+    rep.clear(static_cast<std::size_t>(out.coarse_of_fine[f[0]]),
+              static_cast<std::size_t>(f[1]));
+
   if (universe_fine >= 0) {
     const Index uk = out.coarse_of_fine[universe_fine];
-    for (Index k = 0; k < n_coarse; ++k) {
+    for (Index k = 0; k < n_coarse; ++k)
       is_outer[k] = k == uk;
-      if (k != uk)
-        rep.set(static_cast<std::size_t>(k), 0);
-    }
   } else {
-    // Representative = OR of constituent bits, minus the bits of sheets
-    // whose open fuse formed the class. Classes are bits-homogeneous
-    // outside fused sheet columns (nesting merges unite copies of one
-    // physical region; open fuses only flip the fused sheet's own bit),
-    // so this reproduces the constituent bits on volume-only input and
-    // the universe reads all-zero again once its fused sheet halves
-    // stop meaning "behind".
-    for (Index d = 0; d < n_domains; ++d) {
-      const std::size_t base =
-          static_cast<std::size_t>(out.coarse_of_fine[d]) * words;
-      const std::size_t src = static_cast<std::size_t>(d) * words;
-      for (std::size_t w = 0; w < words; ++w)
-        rep.bits[base + w] |= inc.bits[src + w];
-    }
-    for (const auto &f : sheet_fuses)
-      rep.clear(static_cast<std::size_t>(out.coarse_of_fine[f[0]]),
-                static_cast<std::size_t>(f[1]));
     for (Index k = 0; k < n_coarse; ++k) {
       std::uint32_t any = 0;
       const std::size_t base = static_cast<std::size_t>(k) * words;

@@ -20,6 +20,7 @@
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/coordinate_type.hpp>
 #include <trueform/csg/boolean_op.hpp>
+#include <trueform/csg/csg_domains_index_map.hpp>
 #include <trueform/csg/expression.hpp>
 #include <trueform/csg/graph/chosen_sides_for.hpp>
 #include <trueform/topology/domain_config.hpp>
@@ -105,6 +106,25 @@ template <typename Graph>
 auto csg_domains_of(const Graph &graph, const tf::csg::selection_t &selection,
                     tf::domain_config config) -> csg_domains_t<Graph>;
 
+template <typename Graph>
+using csg_domains_index_map_t =
+    tf::csg_domains_index_map<typename Graph::index_type>;
+
+template <typename Graph>
+using csg_domains_with_map_t =
+    std::tuple<tf::core::std_vector<csg_domain_mesh_t<Graph>>,
+               csg_labels_t<Graph>, csg_domains_index_map_t<Graph>>;
+
+/// One watertight mesh per kept domain, plus the per-cell maps back to the
+/// operands — the inclusion matrix among them.
+template <typename Graph>
+auto csg_domains_with_index_map_of(const Graph &graph)
+    -> csg_domains_with_map_t<Graph>;
+
+template <typename Graph>
+auto csg_domains_with_index_map_of(const Graph &graph, tf::domain_config config)
+    -> csg_domains_with_map_t<Graph>;
+
 /// The index a form names its vertices with.
 template <typename Form>
 using form_index_t =
@@ -113,8 +133,8 @@ using form_index_t =
 /// The public pairwise wrapper, compiled once per operand combination. The
 /// mesh is the pair graph's own, so the arity is the pair's, not either
 /// operand's. The arrangement config is the call's: an operand that carries
-/// its own self-intersections states `tf::intersect_mode::within` here, since
-/// a pair graph implies it for neither side.
+/// its own self-intersections states `within` here, since a pair graph
+/// implies it for neither side.
 template <typename Form0, typename Form1>
 using boolean_result_t =
     std::tuple<csg_mesh_t<pair_csg_graph_t<Form0, Form1>>,

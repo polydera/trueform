@@ -79,6 +79,18 @@ auto csg_domains_of(const Graph &graph, const tf::csg::selection_t &selection,
   return tf::make_csg_domains<tf::none_t>(graph, selection, config);
 }
 
+template <typename Graph>
+auto csg_domains_with_index_map_of(const Graph &graph)
+    -> csg_domains_with_map_t<Graph> {
+  return tf::make_csg_domains<tf::none_t>(graph, tf::return_index_map);
+}
+
+template <typename Graph>
+auto csg_domains_with_index_map_of(const Graph &graph, tf::domain_config config)
+    -> csg_domains_with_map_t<Graph> {
+  return tf::make_csg_domains<tf::none_t>(graph, config, tf::return_index_map);
+}
+
 template <typename Form0, typename Form1>
 auto boolean_of(const Form0 &form0, const Form1 &form1, tf::boolean_op op,
                 tf::arrangement_config config)

@@ -47,6 +47,15 @@
 namespace tf::csg::graph {
 
 /// @ingroup csg_graph_internals
+/// @brief The cell a domain read emits: the operands' own static arity
+///        where every face is a triangle, dynamic where any is not — a
+///        cut loop is a triangle, an uncut face keeps the arity it came
+///        with.
+template <typename Index, typename RealOut, std::size_t N_in>
+using csg_domain_cell = tf::polygons_buffer<
+    Index, RealOut, 3, (N_in == 3 ? std::size_t(3) : tf::dynamic_size)>;
+
+/// @ingroup csg_graph_internals
 /// @brief Extract every kept 3D domain of the implicit N-form
 ///        arrangement as its OWN watertight mesh.
 ///
@@ -56,9 +65,7 @@ namespace tf::csg::graph {
 /// Two domains that share an inclusion bitvector (e.g. a sphere cut by a
 /// plane) come out as two distinct meshes. Cut loops are the graph's
 /// exposed triangle-grain loops — one triangle each; uncut faces keep
-/// their input arity, so the cell type follows the input: all-triangle
-/// input gives a fast static `blocked<3>`, any other input a dynamic-size
-/// buffer.
+/// their input arity (@ref tf::csg::graph::csg_domain_cell).
 ///
 /// Strategy: reuse the make_csg_mesh implicit-graph machinery (vertex
 /// discovery, point materialisation) once over a `2 * n_kept`-label
@@ -81,11 +88,7 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
   const Index n_tags = arrangement.n_tags();
   auto apply_to_polygons = arrangement.apply_to_form();
   const auto &created_pts = arrangement.created_points();
-  // Output cell arity follows the input: all-triangle input keeps a fast
-  // static blocked<3>; any other (quad / n-gon / mixed) input gives each cell
-  // a dynamic-size face buffer, with only the cut loops triangulated.
-  constexpr std::size_t N_out = (N_in == 3) ? std::size_t(3) : tf::dynamic_size;
-  using out_t = tf::polygons_buffer<Index, RealOut, 3, N_out>;
+  using out_t = csg_domain_cell<Index, RealOut, N_in>;
 
   const Index n_kept = part.n_kept;
 
