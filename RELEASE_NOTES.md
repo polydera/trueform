@@ -1,3 +1,82 @@
+## trueform v0.10.5
+
+The intersection request is two facts. `tf::intersect_mode` carries the
+classifier — `primitives`, the default, each contact stated as what it is,
+or `sos`, every contact perturbed into a generic crossing that is never
+coplanar — and the `within` flag, spelled `primitives | within`, asking for
+each form's own self-intersections. The resolve flags are gone:
+`resolve_crossing_contours`, `resolve_self_crossing_contours`,
+`resolve_contours` and `self_intersections` no longer exist. Crossings
+between contour classes resolve unconditionally wherever a third tag can
+make such a pair, and within one class wherever the run is `within` — which
+was already every default's behavior, and the only behavior the arrangement
+consuming the records can stand on. A call that had left the resolution at
+its defaults drops the spelling and keeps its result, byte for byte; what
+the flags could still express — resolution switched off where the pipeline
+needs it, or requested apart from its own self records — no longer exists,
+which is the point. TypeScript's curve entries now honor `within` like
+every other entry taking the options; it was previously stripped there. `within`'s two halves — a form's self records and the
+resolution within its own contour class — are one request and never
+separable, and a one-form build implies it. The contract crosses every
+tier: the C++ facade validates the four legal modes, Python keeps its
+`within=` keyword and TypeScript its `within` option, each composing the
+one mode integer that crosses the boundary.
+
+The mesh states its own health. `tf::compute_face_quality` answers per-face
+quality, corner-angle extremes and aspect ratio at any arity in flat
+buffers; `tf::compute_dihedral_angles` states every edge two faces share,
+once, with the angle between the face normals. `tf::make_non_manifold_vertices`
+names the vertices whose faces are not one fan — walked on the face
+membership, so no half-edge structure is built — and `tf::is_manifold` is
+that scan's verdict. `tf::split_non_manifold_vertices` repairs what a split
+can: one vertex per fan, the fan holding the smallest face keeping the id,
+minted copies for the rest, faces keeping ids, arity and winding
+(`tf::return_index_map` adds the point map). `tf::make_boundary_rims` reads
+the boundary as rims — per-rim vertices, the faces that carry them, and the
+closed fact, a pinch ending a rim — and `tf::has_self_intersections` asks
+whether a mesh meets itself: the intersection build's own discovery tier,
+stopped at the first record. The family crosses all four tiers: core, the
+compiled facade sync and async, Python, and TypeScript. Python also
+gains the direct winding-number query — `tf.winding_number`, single or
+batched, off the moments cached beside the tree — and
+`intersection_curves(within=)`.
+
+Domain membership counts winding, and a `within` build keeps every
+operand. An N-operand graph built with `within` lost every operand's
+membership in domain extraction — every bounded domain read "inside
+operand 0", an expression selecting any other operand returned nothing,
+and the inclusion matrix repeated the same wrong column (shipped in
+0.10.3 and 0.10.4). The structural universe read now answers only what
+it owns — which class is the unbounded outside — and the membership
+bits are the inclusion's own, which now counts winding instead of
+crossing parity: a region an operand covers twice reads inside it, a
+zero-thickness fold — a wall coincident with its reversed self —
+encloses nothing, and a clean input is unchanged byte for byte (one
+thousand corpus pairs, zero deterministic delta). Sheets, non-manifold
+flaps, fences and every structural read keep their behavior exactly.
+
+And a self record names its vertices in the flat space: in a
+multi-operand `within` build, any operand past the first had its self
+split points placed on another operand's edges — geometrically
+impossible constraint sets that exhausted the recovery wave into
+silently missing wall pieces and, downstream, collapsed domains. A
+self-intersecting operand beside others now cuts exactly where it
+crosses itself.
+
+A remesh under load answers the mesh, not the schedule. Every structure a
+remesh walks now mints identity in the input's order, the parallel collapse
+states its whole partition before any task runs on it, and the fan walk
+guarding a vertex pronounces manifold only when it closes at its own vertex
+with the full degree — on a 34.5k-face soup, 1124 vertices whose walk had
+drifted off them no longer pass the remesh guards.
+
+Reading a binary STL was undefined behavior every second record: a record
+is 50 bytes, so half of them stand two bytes off a four-byte boundary and
+the float loads reading through them were undefined. Both walks, the file's
+and the memory buffer's, copy a record's nine coordinates through one
+memcpy into an aligned local. The facade's csg index map now hands through
+each tag's uncut face span exactly as the core map states it.
+
 ## trueform v0.10.4
 
 Two new tiers — the volume module and the compiled C++ facade — plus fast
