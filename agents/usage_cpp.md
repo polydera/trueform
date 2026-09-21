@@ -470,6 +470,18 @@ Do not pass boolean/arrangement `face_labels` to `split_into_components` and
 describe the result as connectivity components; those labels group by source
 face.
 
+Ask the boundary for its rims when the rim is the carrier — `make_boundary_rims`
+gives, per rim, its walk, the face carrying each of its edges, and whether it
+closes; `make_boundary_paths` gives the vertex read alone.
+
+Manifoldness is one question with four reads. `is_manifold` is the verdict,
+`make_non_manifold_edges` and `make_non_manifold_vertices` name the offenders,
+and `split_non_manifold_vertices` gives every fan at a vertex a vertex of its
+own (`tf::return_index_map` adds the point map). Winding never enters any of
+them. An edge three or more faces carry is crossed by no fan, so the split
+leaves such a vertex exactly as it was and `make_non_manifold_vertices` still
+names it.
+
 Use `tf::triangulated(polygons)` for an owning triangle mesh; it returns the
 corners with the point table they index, because a resolved face mints
 identities the input's own table has no row for. It takes an indexed mesh, a
@@ -497,6 +509,16 @@ auto sharp = tf::make_sharp_edges(
     polygons | tf::tag(mel) | tf::tag_normals(normals.unit_vectors()),
     tf::deg(30.f));
 ```
+
+Per-element measures come back as flat buffers indexed by their carrier.
+`compute_face_quality` states `quality`, `min_angle`, `max_angle` and
+`aspect_ratio` per face — the angles as `tf::rad<T>`, and `quality` the triangle
+measure, which a face that is not a triangle has none of and reads `-1`.
+`compute_dihedral_angles` states every edge two faces share once, through the
+manifold edge link's representative: `edges` blocked in vertex pairs beside an
+aligned `angles`. A boundary or non-manifold edge joins no pair and is not
+stated, so the result is shorter than an edge list. Both take a tagged link or
+tagged normals when the form carries them and build whichever is missing.
 
 Registration and Chamfer search require a target point tree:
 
@@ -544,6 +566,7 @@ Choose the cheapest materialization that answers the question:
 
 | Need | Operation |
 |---|---|
+| Whether a mesh meets itself at all | `has_self_intersections` |
 | Intersection polylines only | `make_intersection_curves` |
 | Complete cut surface and provenance | mesh/polygon arrangements |
 | One boolean result | `make_boolean` |
@@ -561,8 +584,11 @@ auto form = with_fm | tf::tag(mel) | tf::tag(tree);
 ```
 
 Boolean/CSG inclusion expects locally consistently oriented PWN inputs. Select
-`intersect_mode`, tolerance, and arrangement triangulation for the input
-semantics; do not treat configuration as a performance-only knob.
+the classifier and optional `within` bit in `intersect_mode` (canonically
+`primitives | within`), the tolerance, and the arrangement triangulation for
+the input semantics; do not treat configuration as a
+performance-only knob. Contour-crossing resolution is not a choice: the
+arrangement derives it from arity and from `within`.
 
 Build one CSG graph for repeated extraction:
 

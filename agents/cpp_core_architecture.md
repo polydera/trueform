@@ -567,7 +567,11 @@ order with their corners in the stream's vertex language.
   every arrangement surface's parameter: `{intersect_config intersect,
   triangulation_type triangulation}`, implicitly constructible from
   either alone (and from `intersect_mode`). Default intersect =
-  `primitives | resolve_crossing_contours`.
+  `intersect_config{}` (`{mode, tolerance}`; `primitives | within` is the
+  canonical mode spelling): contour crossings resolve unconditionally —
+  between classes wherever a third tag can make such a pair, within one class wherever the run is `within` — and under `sos` no
+  contact is ever coplanar, so coplanar walls do not pool and the domains
+  they would have separated stay joined.
 - **Storage policies** (`arrangement/policy/arrangement_range_policy.hpp`,
   `arrangement_pair_policy.hpp`) — the graph's ctor takes ONLY a
   policy. `tf::arrangement::arrangement_range_policy` stores a homogeneous

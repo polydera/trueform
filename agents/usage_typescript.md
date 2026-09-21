@@ -329,6 +329,22 @@ const components = tf.splitIntoComponents(mesh, labels);
 const bp = tf.boundaryPaths(mesh);
 const { k0, k1, d0, d1 } = tf.principalDirections(mesh);
 const si = tf.shapeIndex(mesh);
+
+// Boundary as a carrier: rim i's walk, the face carrying each of its edges,
+// and whether its last edge runs back to its first vertex
+const { vertices, faces, closed } = tf.boundaryRims(mesh);
+
+// Manifoldness — winding never enters the verdict
+tf.isManifold(mesh);
+const badPoints = tf.nonManifoldVertices(mesh);          // ascending
+const { mesh: split, pointMap } = tf.splitNonManifoldVertices(mesh);
+
+// Does it meet itself? Stops at the first contact
+tf.hasSelfIntersections(mesh);
+
+// Measures
+const { quality, minAngle, maxAngle, aspectRatio } = tf.faceQuality(mesh);
+const { edges, angles } = tf.dihedralAngles(mesh);       // per shared edge, radians
 ```
 
 ---

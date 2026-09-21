@@ -181,6 +181,14 @@ pts = tf.Point(np.random.rand(1000, 3).astype(np.float32))
 distances = tf.distance(pts, mesh)  # shape (1000,)
 ```
 
+### Signed Distance and Winding Number (3D mesh only)
+
+```python
+d = tf.signed_distance(mesh, [0.0, 0.0, 0.0])   # negative inside, mesh dtype
+w = tf.winding_number(mesh, [0.0, 0.0, 0.0])    # ~1 inside, ~0 outside, float64
+w = tf.winding_number(mesh, pts, beta=8.0)      # batch → (N,), beta = accuracy
+```
+
 ### Closest Point
 
 ```python
@@ -266,6 +274,13 @@ pairs = tf.gather_intersecting_ids(mesh_a, mesh_b)    # (M, 2) ID pairs
 (faces, points), tag_labels, face_labels, (paths, curve_pts) = tf.mesh_arrangements(
     [mesh0, mesh1], return_curves=True)
 
+# Operands that meet themselves: ask for their own self-intersections too
+tf.has_self_intersections(mesh)                        # stops at the first contact
+(faces, points), tag_labels, face_labels = tf.mesh_arrangements(
+    [mesh0, mesh1], within=True)
+paths, curve_pts = tf.intersection_curves(mesh0, mesh1, within=True)  # seams stay
+                                                                      # cross-mesh
+
 # Isobands
 (faces, points), labels, face_labels = tf.isobands(mesh, scalars, [-1.0, 0.0, 1.0])
 (faces, points), labels, face_labels, (paths, curve_pts) = tf.isobands(
@@ -276,6 +291,7 @@ pairs = tf.gather_intersecting_ids(mesh_a, mesh_b)    # (M, 2) ID pairs
 
 ```python
 graph = tf.CsgGraph([a, b, c], sheets=[2], triangulation="refined_cdt")
+graph = tf.CsgGraph([a, b, c], within=True)   # an operand may meet itself
 
 faces, points = graph.mesh(tf.op(0) - tf.op(1))       # any expression: | & - ~
 full = graph.mesh()                                    # full arrangement mesh
@@ -299,7 +315,15 @@ components, comp_ids = tf.split_into_components(mesh, labels)
 
 # Boundary
 paths, boundary_points = tf.boundary_curves(mesh)
+rim_vs, rim_faces, closed = tf.boundary_rims(mesh)  # per rim: its walk, the face
+                                                    # carrying each edge, closed?
+
+# Manifoldness
+tf.is_manifold(mesh)                                # every vertex's faces one fan
 bad_edges = tf.non_manifold_edges(mesh)
+bad_points = tf.non_manifold_vertices(mesh)         # ascending; winding never enters
+split, point_map = tf.split_non_manifold_vertices(mesh)  # one vertex per fan; an
+                                                         # edge 3+ faces carry stays
 
 # Vertex neighborhoods
 k2_ring = tf.k_rings(mesh.vertex_link, k=2)
@@ -317,6 +341,12 @@ point_normals = tf.point_normals(mesh)
 
 # Curvatures
 k0, k1, d0, d1 = tf.principal_curvatures(mesh, directions=True)
+
+# Measures
+quality, min_ang, max_ang, aspect = tf.face_quality(mesh)  # per face; quality is the
+                                                           # triangle measure, else -1
+edges, angles = tf.dihedral_angles(mesh)    # one per edge two faces share, radians;
+                                            # a boundary edge turns through none
 
 # Registration
 transform = tf.fit_icp_alignment(source, target)

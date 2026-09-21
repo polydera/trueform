@@ -29,13 +29,16 @@ All have `build()` method + `make_*()` free function equivalents.
 
 | Function | Input | Return | Description |
 |----------|-------|--------|-------------|
-| `make_boundary_edges(polygons)` | polygons | `blocked_buffer<Index, 2>` | Edges shared by exactly 1 face |
+| `make_boundary_edges(polygons)` | polygons | `blocked_buffer<Index, 2>` | Edges shared by exactly 1 face, face by face and corner by corner |
 | `make_non_manifold_edges(polygons)` | polygons | `blocked_buffer<Index, 2>` | Edges shared by 3+ faces |
-| `is_manifold(polygons)` | polygons | `bool` | True if every edge shared by ≤2 faces |
+| `make_non_manifold_vertices(polygons)` | polygons | `buffer<Index>` | The vertices whose faces are not one fan, ascending: an edge at the vertex carries 3+ faces, or its faces fall into pieces meeting at the vertex alone. Walked on the face membership, so no half-edge structure is built; winding never enters and a vertex no face names is not reported |
+| `split_non_manifold_vertices(polygons)` | polygons | `polygons_buffer` | One vertex per fan: the fan holding the vertex's smallest face keeps its id, every other takes a minted copy of the coordinates and its corners are rewired onto it. Faces keep their ids, arity and winding; the points are the input's then the mints in id order. An edge 3+ faces carry is crossed by no fan and separating the fans it holds apart would tear it into boundary copies, so a vertex any of whose edges carries 3+ faces is left untouched and `make_non_manifold_vertices` still names it. `tf::return_index_map` adds the point map: per output point the input point it copies, an original itself |
+| `is_manifold(polygons)` | polygons | `bool` | True when every vertex's faces are one fan, which also says every edge carries at most two of them. Winding is `orient_faces_consistently`'s fact and never enters this one |
 | `is_closed(polygons)` | polygons | `bool` | True if no boundary edges (watertight) |
 | `euler_characteristic(polygons)` | polygons | `int` | V - E + F, each undirected edge counted once through the manifold edge link's representative, so boundary and non-manifold edges count like interior ones |
 | `connect_edges_to_paths(edges)` | edges | `offset_block_buffer<Index, Index>` | Assemble edges into continuous paths |
-| `make_boundary_paths(polygons)` | polygons | `offset_block_buffer<Index, Index>` | Boundary edges assembled into paths |
+| `make_boundary_paths(polygons)` | polygons | `offset_block_buffer<Index, Index>` | Boundary edges assembled into paths by `find_eulerian_paths`, so a vertex the boundary reaches twice is traversed rather than split and a pinched boundary comes back as one figure eight. The vertex-path read; for the rim as a carrier ask `make_boundary_rims` |
+| `make_boundary_rims(polygons)` | polygons | `boundary_rims<Index>` | The boundary as rims: `vertices` and `faces` one offset block each per rim, plus the per-rim `closed` fact. Rim edge `k` runs from vertex `k` to vertex `k + 1` and is carried by face `k` alone, a closed rim of `n` vertices having `n` edges and an open one `n - 1`. A rim ends where the boundary stops passing straight through, so a pinch splits it. The mesh decides the product: the boundary edges are its own order, a rim with two ends precedes the closed ones, and a consistently wound mesh gives rims that run the way its faces wind their boundary |
 | `find_eulerian_paths(edges, link, ...)` | edges + link | offsets + edge IDs (output params) | Hierholzer's edge-disjoint path decomposition |
 | `label_connected_components(labels, applier)` | label buffer + neighbor callback | `int` (n_components) | Parallel union-find component labeling |
 | `make_manifold_edge_connected_component_labels(polygons)` | polygons | `connected_component_labels<Index>` | Component labeling via manifold edge adjacency |
@@ -159,6 +162,8 @@ Dual-tree searches use TBB `task_group` with `parallelism_depth` (default 6). Ca
 | `taubin_smoothed(points, iters, lambda, kpb)` | `points_buffer` | Volume-preserving smoothing |
 | `ensure_positive_orientation(polygons)` | `bool` (in-place) | Outward-facing normals; `false` and no volume flip when any component is not orientable |
 | `make_sharp_edges(polygons, angle)` | `blocked_buffer<Index, 2>` | Edges exceeding dihedral threshold |
+| `compute_face_quality(polygons)` | `face_quality<T>` | Per-face quality as flat buffers: `quality`, `min_angle`, `max_angle`, `aspect_ratio`. The corner angles (unsigned, in `[0, pi]`, so a reflex corner reads its explement) and the aspect ratio (longest side over shortest) hold at any arity; `quality` is the triangle measure `tf::triangle_quality` states, and a face that is not a triangle reads `-1` |
+| `compute_dihedral_angles(polygons)` | `dihedral_angles<Index, T>` | Every edge two faces share, once through the manifold edge link's representative: `edges` blocked in vertex pairs beside an aligned `angles` buffer, face-major. The angle is between the face normals, so a flat surface reads `0`; a boundary or non-manifold edge joins no pair and is not stated. Missing link or normals are built for the call |
 | `make_curve_frames(curve, T, N, B)` | void (output params) | Parallel transport frames |
 | `chamfer_error(A, B, outlier_pct)` | `RealT` | Mean nearest-neighbor distance |
 
@@ -196,7 +201,7 @@ All remesh operations work on mutable `half_edges<Index>` + `points_buffer` dire
 
 | Structure | Build Input | Output |
 |-----------|-------------|--------|
-| `polygon_intersections<Index, RealT, Int>` | 1, 2, or N tagged polygons + config | Intersection records whose ids are canonical point names — no coordinate table; self records when the mode carries `self_intersections` (implied for the one-form build) |
+| `polygon_intersections<Index, RealT, Int>` | 1, 2, or N tagged polygons + config | Intersection records whose ids are canonical point names — no coordinate table; self records when the config asks for `within` (implied for the one-form build) |
 | `intersections_within_segments<Index, RealT, Dims, Int>` | tagged segments (tree + edge membership) | Segment-segment intersection records + an int-coordinate point table |
 
 Both default `Int` from `RealT` via `tf::exact::resolve_int_type` — int32 for
@@ -214,22 +219,33 @@ and edge-carried classes (`home_edge` + `exact_parameter`), with
 
 | Function | Return | Description |
 |----------|--------|-------------|
-| `make_intersection_curves(poly0, poly1, mode)` | `curves_buffer<Index, RealT, 3>` | Connected intersection curves between two meshes |
-| `make_intersection_curves(range_of_forms, mode)` | `curves_buffer` | All pairwise intersection curves for N meshes |
-| `make_self_intersection_curves(polygons, mode)` | `curves_buffer` | Self-intersection curves |
+| `make_intersection_curves(poly0, poly1, config)` | `curves_buffer<Index, RealT, 3>` | Connected intersection curves between two meshes |
+| `make_intersection_curves(range_of_forms, config)` | `curves_buffer` | All pairwise intersection curves for N meshes |
+| `make_self_intersection_curves(polygons, config)` | `curves_buffer` | Self-intersection curves |
+| `has_self_intersections(polygons)` | `bool` | Whether the mesh meets itself — the verdict of `tf::polygon_intersections`' one-form build: true exactly where that build would state a self record. It is that build's discovery tier, elections and all, stopped at the first record. Missing structures (tree, face membership, manifold edge link) are completed for the call, never required, so a bare mesh is a valid operand and a tagged form pays for none of them |
 | `make_intersection_edges(si, faces)` | `blocked_buffer<Index, 2>` | The chords of every `(face, cut)` group as edge pairs; `tf::intersect::for_each_cut_group` finds the groups and `for_each_cut_chord` states one group's chords (`intersect/records/`), both shared with the iso module |
 
-### Intersection Modes (`intersect_mode`, bitwise)
-- `sos` — SoS fan triangulation (all edge-face records)
-- `primitives` — Full 5-type classification (EF/EE/VE/VF/VV)
-- `resolve_crossing_contours` — Inter-contour crossings. Declarative: such a
-  pair needs a third tag to exist, so the graph derives it from arity and never
-  reads the flag
-- `resolve_self_crossing_contours` — Resolve intra-contour crossings
-- `resolve_contours` — both resolve bits
-- `self_intersections` — atomic bit: also generate each form's self records
-- `within` — `self_intersections | resolve_self_crossing_contours`; what callers
-  write, since a self contour class only has self-crossings
+### The intersection run (`intersect_config`)
+
+`{intersect_mode mode = primitives, double tolerance = 0.0}`, implicitly constructible from an `intersect_mode`.
+
+`intersect_mode` carries the classifier and optional `within` request; `primitives | within` is canonical:
+
+- `primitives` — each contact stated as what it is (EF/EE/VE/VF/VV); the
+  default on every entry
+- `sos` — every contact perturbed into a generic crossing, so all records are
+  (edge, face) and none is ever coplanar. On an arrangement that means coplanar
+  walls do not pool and the domains they would have separated stay joined —
+  the caller's choice, stated in `arrangement_config`'s own doc
+
+`within` asks for each form's own self-intersections. Its two halves — the
+form's self records, and the resolution of crossings within one contour class —
+are one request and never separable. A one-form build implies it.
+
+Crossings between contours are resolved unconditionally, not on request:
+between contour classes whenever a third tag exists to make such a pair, and
+within one class whenever the run is `within`. That was always the behaviour of
+every default; there is no flag left to turn it off with.
 
 ---
 
@@ -241,7 +257,7 @@ and edge-carried classes (`home_edge` + `exact_parameter`), with
 |----------|--------|-------------|
 | `make_arrangement_graph<Int>(operands, config)` | `arrangement_graph<Policy, Int>` | The build. Operands: a range of forms, one form (its self arrangement, `within` implied), or two forms of possibly different types. Completes any missing tree / face membership / manifold edge link in parallel |
 | `arrangement_graph<Policy, Int>` | — | The arrangement of a set of forms, everything below classification: exposed triangle stream, cells, piece incidence, piece fences, coplanar stacks, `created_points()` |
-| `arrangement_config` | — | `{intersect_config intersect, triangulation_type triangulation}`; implicitly constructible from either alone. Default intersect = `primitives \| resolve_crossing_contours` |
+| `arrangement_config` | — | `{intersect_config intersect, triangulation_type triangulation}`; implicitly constructible from either alone. Contour crossings are resolved unconditionally; under `sos` no contact is ever coplanar, so coplanar walls do not pool |
 
 ### Arrangement Products
 
