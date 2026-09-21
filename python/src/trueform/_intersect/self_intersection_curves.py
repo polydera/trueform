@@ -15,17 +15,13 @@ from .._core import OffsetBlockedArray
 from .._dispatch import InputMeta, build_suffix
 
 _MODE_MAP = {"sos": 1, "primitives": 2}
-_RESOLVE_CROSSINGS = 4
-_RESOLVE_SELF_CROSSINGS = 8
 
 
 def self_intersection_curves(
     mesh: Mesh,
     *,
     mode: str = "primitives",
-    tolerance: float = 0.0,
-    resolve_crossings: bool = True,
-    resolve_self_crossings: bool = True
+    tolerance: float = 0.0
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
     """
     Find self-intersection curves within a 3D mesh.
@@ -35,16 +31,14 @@ def self_intersection_curves(
     mesh : Mesh
         3D mesh to check for self-intersections.
     mode : str, default "primitives"
-        Intersection mode. "primitives" classifies shared edges/vertices
-        and coplanar contacts; "sos" perturbs every contact into a
-        crossing and cannot state shared or coplanar geometry.
+        The classifier the run states its contacts with. "primitives"
+        classifies shared edges/vertices and coplanar contacts; "sos"
+        perturbs every contact into a crossing and cannot state shared or
+        coplanar geometry. A one-mesh build asks for the mesh's own
+        self-intersections, so its crossing contours are resolved too.
     tolerance : float, default 0.0
         World-coordinate distance an input vertex may move to reach the lattice
         (0 = exact).
-    resolve_crossings : bool, default True
-        Resolve crossings between different contours on the same face.
-    resolve_self_crossings : bool, default True
-        Resolve self-crossings within a single contour.
 
     Returns
     -------
@@ -69,10 +63,6 @@ def self_intersection_curves(
         raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
 
     m = _MODE_MAP[mode]
-    if resolve_crossings:
-        m |= _RESOLVE_CROSSINGS
-    if resolve_self_crossings:
-        m |= _RESOLVE_SELF_CROSSINGS
 
     ngon = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
     meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, 3)

@@ -32,6 +32,8 @@ void register_triangulated(nanobind::module_ &m);
 
 void register_principal_curvatures(nanobind::module_ &m);
 
+void register_quality(nanobind::module_ &m);
+
 void register_ensure_positive_orientation(nanobind::module_ &m);
 
 void register_make_mesh_primitives(nanobind::module_ &m);

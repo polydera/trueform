@@ -16,9 +16,10 @@ def is_manifold(mesh: Mesh) -> bool:
     """
     Check if a mesh is manifold.
 
-    A manifold mesh has no non-manifold edges - every edge is shared by
-    at most two faces. Non-manifold edges (shared by 3+ faces) indicate
-    self-intersections or invalid topology.
+    A manifold mesh has every edge shared by at most two faces and every
+    vertex's incident faces forming a single fan. An edge shared by 3+
+    faces or a vertex where two fans meet at a point (a bowtie) makes
+    the mesh non-manifold; face winding does not enter the verdict.
 
     Parameters
     ----------
@@ -65,9 +66,10 @@ def is_manifold(mesh: Mesh) -> bool:
 
 def is_non_manifold(mesh: Mesh) -> bool:
     """
-    Check if a mesh has non-manifold edges.
+    Check if a mesh has non-manifold features.
 
-    Returns True if any edge in the mesh is shared by more than two faces.
+    Returns True if any edge is shared by more than two faces or any
+    vertex's incident faces fall into more than one fan.
 
     Parameters
     ----------

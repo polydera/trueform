@@ -17,9 +17,6 @@ from .expr import Expr, _as_expr
 from .index_maps import DomainsIndexMap, MeshIndexMap
 
 _MODE_MAP = {"sos": 1, "primitives": 2}
-_RESOLVE_CROSSINGS = 4
-_RESOLVE_SELF_CROSSINGS = 8
-_WITHIN = 24  # self_intersections | resolve_self_crossing_contours
 
 _TRIANGULATION_MAP = {"cdt": 0, "refined_cdt": 1}
 
@@ -51,12 +48,14 @@ class CsgGraph:
         Indices of operands declared as oriented open sheets: they cut
         volumes through the same algebra without enclosing one.
     mode : str, default "primitives"
-        Intersection mode. "sos" or "primitives".
+        The classifier the run states its contacts with. "primitives"
+        classifies shared edges/vertices and coplanar contacts; under "sos"
+        no contact is ever coplanar, so coplanar walls do not pool and the
+        domains they would have separated stay joined. Crossings between
+        contours are resolved whenever the operands can make such a pair.
     tolerance : float, default 0.0
         World-coordinate distance an input vertex may move to reach the lattice
         (0 = exact).
-    resolve_crossings : bool, default True
-        Resolve crossings between different contours on the same face.
     within : bool, default False
         Also intersect each operand with itself. Required when an operand
         can self-overlap, e.g. meshes concatenated into one operand;
@@ -83,7 +82,6 @@ class CsgGraph:
         sheets=None,
         mode: str = "primitives",
         tolerance: float = 0.0,
-        resolve_crossings: bool = True,
         within: bool = False,
         triangulation: str = "cdt",
     ):
@@ -126,18 +124,13 @@ class CsgGraph:
             if s < 0 or s >= len(meshes):
                 raise ValueError(f"sheet index {s} out of range")
 
-        mode_int = _MODE_MAP[mode]
-        if resolve_crossings:
-            mode_int |= _RESOLVE_CROSSINGS
-        if within:
-            mode_int |= _WITHIN
+        mode_int = _MODE_MAP[mode] | (4 if within else 0)
 
         self._forms = list(meshes)
         self._is_dynamic = meshes[0].is_dynamic
         self._sheets = tuple(sheet_list)
         self._mode = mode
         self._tolerance = tolerance
-        self._resolve_crossings = resolve_crossings
         self._within = within
         self._triangulation = triangulation
         self._created_points = None

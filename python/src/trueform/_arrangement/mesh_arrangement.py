@@ -16,9 +16,6 @@ from .._dispatch import extract_meta, build_suffix
 
 
 _MODE_MAP = {"sos": 1, "primitives": 2}
-_RESOLVE_CROSSINGS = 4
-_RESOLVE_SELF_CROSSINGS = 8
-_SELF_INTERSECTIONS = 16
 
 _TRIANGULATION_MAP = {"cdt": 0, "refined_cdt": 1}
 
@@ -29,8 +26,6 @@ def mesh_arrangements(
     return_curves: bool = False,
     mode: str = "primitives",
     tolerance: float = 0.0,
-    resolve_crossings: bool = None,
-    resolve_self_crossings: bool = False,
     within: bool = False,
     triangulation: str = "cdt"
 ):
@@ -48,15 +43,14 @@ def mesh_arrangements(
     return_curves : bool, default False
         If True, also return intersection curves.
     mode : str, default "primitives"
-        Intersection mode. "sos" or "primitives".
+        The classifier the run states its contacts with. "primitives"
+        classifies shared edges/vertices and coplanar contacts; under "sos"
+        no contact is ever coplanar, so coplanar walls do not pool and the
+        regions they would have separated stay joined. Crossings between
+        contours are resolved whenever the operands can make such a pair.
     tolerance : float, default 0.0
         World-coordinate distance an input vertex may move to reach the lattice
         (0 = exact).
-    resolve_crossings : bool, optional
-        Resolve crossings between different contours on the same face.
-        Default: False for 2 meshes, True for 3+ meshes.
-    resolve_self_crossings : bool, default False
-        Resolve self-crossings within a single contour.
     within : bool, default False
         Also intersect each mesh with itself. Required when a mesh can
         self-overlap, e.g. meshes concatenated into one input.
@@ -136,7 +130,6 @@ def mesh_arrangements(
     # All meshes must be same type (enforced above), so check first
     result_is_dynamic = meshes[0].is_dynamic
 
-    # Build mode int
     if mode not in _MODE_MAP:
         raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
     if triangulation not in _TRIANGULATION_MAP:
@@ -145,14 +138,7 @@ def mesh_arrangements(
             f"got '{triangulation}'"
         )
     triangulation_int = _TRIANGULATION_MAP[triangulation]
-    mode_int = _MODE_MAP[mode]
-    rc = resolve_crossings if resolve_crossings is not None else len(meshes) > 2
-    if rc:
-        mode_int |= _RESOLVE_CROSSINGS
-    if resolve_self_crossings:
-        mode_int |= _RESOLVE_SELF_CROSSINGS
-    if within:
-        mode_int |= _SELF_INTERSECTIONS | _RESOLVE_SELF_CROSSINGS
+    mode_int = _MODE_MAP[mode] | (4 if within else 0)
 
     # Extract wrappers
     wrappers = [m._wrapper for m in meshes]

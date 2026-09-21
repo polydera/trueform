@@ -17,6 +17,8 @@ from .triangulated import triangulated
 from .normals import normals
 from .point_normals import point_normals
 from .principal_curvatures import principal_curvatures
+from .face_quality import face_quality
+from .dihedral_angles import dihedral_angles
 from .shape_index import shape_index
 from .ensure_positive_orientation import ensure_positive_orientation
 from .make_mesh_primitives import (
@@ -41,6 +43,8 @@ __all__ = [
     "normals",
     "point_normals",
     "principal_curvatures",
+    "face_quality",
+    "dihedral_angles",
     "shape_index",
     "ensure_positive_orientation",
     "make_sphere_mesh",

@@ -15,8 +15,6 @@ from .._core import OffsetBlockedArray
 from .._dispatch import InputMeta, build_suffix
 
 _MODE_MAP = {"sos": 1, "primitives": 2}
-_RESOLVE_CROSSINGS = 4
-_RESOLVE_SELF_CROSSINGS = 8
 
 _TRIANGULATION_MAP = {"cdt": 0, "refined_cdt": 1}
 
@@ -27,8 +25,6 @@ def polygon_arrangements(
     return_curves: bool = False,
     mode: str = "primitives",
     tolerance: float = 0.0,
-    resolve_crossings: bool = True,
-    resolve_self_crossings: bool = True,
     triangulation: str = "cdt"
 ):
     """
@@ -44,14 +40,15 @@ def polygon_arrangements(
     return_curves : bool, default False
         If True, also return self-intersection curves.
     mode : str, default "primitives"
-        Intersection mode. "sos" or "primitives".
+        The classifier the run states its contacts with. "primitives"
+        classifies shared edges/vertices and coplanar contacts; under "sos"
+        no contact is ever coplanar, so coplanar walls do not pool and the
+        regions they would have separated stay joined. A one-mesh build
+        asks for the mesh's own self-intersections, so its crossing
+        contours are resolved too.
     tolerance : float, default 0.0
         World-coordinate distance an input vertex may move to reach the lattice
         (0 = exact).
-    resolve_crossings : bool, default True
-        Resolve crossings between different contours on the same face.
-    resolve_self_crossings : bool, default True
-        Resolve self-crossings within a single contour.
     triangulation : str, default "cdt"
         Cut-surface triangulation: "cdt" (plain constrained Delaunay per
         cut loop) or "refined_cdt" (quality-refined triangulation of the
@@ -101,10 +98,6 @@ def polygon_arrangements(
     triangulation_int = _TRIANGULATION_MAP[triangulation]
 
     mode_int = _MODE_MAP[mode]
-    if resolve_crossings:
-        mode_int |= _RESOLVE_CROSSINGS
-    if resolve_self_crossings:
-        mode_int |= _RESOLVE_SELF_CROSSINGS
 
     ngon = 'dyn' if mesh.is_dynamic else str(mesh.ngon)
     meta = InputMeta(mesh.faces.dtype, mesh.dtype, ngon, 3)

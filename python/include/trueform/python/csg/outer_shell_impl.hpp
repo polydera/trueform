@@ -23,8 +23,6 @@
 #include <trueform/core/transformation.hpp>
 #include <trueform/csg/make_outer_shell.hpp>
 #include <trueform/arrangement/arrangement_config.hpp>
-#include <trueform/intersect/intersect_config.hpp>
-#include <trueform/intersect/intersect_mode.hpp>
 #include <array>
 #include <cstddef>
 #include <utility>
@@ -41,12 +39,9 @@ auto outer_shell(mesh_wrapper<Index, RealT, Ngon, Dims> &form_wrapper) {
       tagged_form(form_wrapper,
                   tf::make_identity_transformation<RealT, Dims>())};
   const int *no_sheets = nullptr;
-  auto graph = build_range_csg_graph(
-      tf::make_range(forms.data(), forms.size()),
-      tf::make_range(no_sheets, no_sheets),
-      tf::arrangement_config{
-          tf::intersect_config{tf::intersect_mode::primitives |
-                               tf::intersect_mode::resolve_contours}});
+  auto graph = build_range_csg_graph(tf::make_range(forms.data(), forms.size()),
+                                     tf::make_range(no_sheets, no_sheets),
+                                     tf::arrangement_config{});
   auto shell = tf::make_outer_shell(graph);
   return make_numpy_array(std::move(shell));
 }

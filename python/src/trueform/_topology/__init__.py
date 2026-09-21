@@ -18,7 +18,10 @@ from .neighborhoods import neighborhoods
 from .boundary_edges import boundary_edges
 from .boundary_paths import boundary_paths
 from .boundary_curves import boundary_curves
+from .boundary_rims import boundary_rims
 from .non_manifold_edges import non_manifold_edges
+from .non_manifold_vertices import non_manifold_vertices
+from .split_non_manifold_vertices import split_non_manifold_vertices
 from .orient_faces_consistently import orient_faces_consistently
 from .connect_edges_to_paths import connect_edges_to_paths
 from .is_closed import is_closed, is_open
@@ -40,7 +43,10 @@ __all__ = [
     'boundary_edges',
     'boundary_paths',
     'boundary_curves',
+    'boundary_rims',
     'non_manifold_edges',
+    'non_manifold_vertices',
+    'split_non_manifold_vertices',
     'orient_faces_consistently',
     'connect_edges_to_paths',
     'is_closed',

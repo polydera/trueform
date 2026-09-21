@@ -351,5 +351,72 @@ def test_intersection_curves_valid_indices(real_dtype):
             f"Path {i} contains out-of-bounds indices (>= {num_points})"
 
 
+# ==============================================================================
+# The within request
+# ==============================================================================
+
+def create_self_crossing_operand(index_dtype, real_dtype, x_offset=0.0):
+    """One mesh holding two crossing planes: an operand that meets itself."""
+    horizontal = create_horizontal_plane_triangles(
+        index_dtype, real_dtype, z=0.5)
+    vertical = create_vertical_plane_triangles(index_dtype, real_dtype, x=0.5)
+
+    faces = np.concatenate(
+        [horizontal.faces, vertical.faces + len(horizontal.points)]
+    ).astype(index_dtype)
+    points = np.concatenate([horizontal.points, vertical.points]).astype(
+        real_dtype)
+    points[:, 0] += real_dtype(x_offset)
+    return tf.Mesh(faces, points)
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_intersection_curves_within_pair(real_dtype):
+    """A same-tag seam is not a pair curve: the seam law emits cross-tag
+    seams only, and an operand's own belongs to self_intersection_curves."""
+    mesh0 = create_self_crossing_operand(np.int32, real_dtype)
+    mesh1 = create_self_crossing_operand(np.int32, real_dtype, x_offset=10.0)
+
+    paths, points = tf.intersection_curves(mesh0, mesh1)
+    assert len(paths) == 0, "the operands do not meet each other"
+    assert len(points) == 0
+
+    within_paths, _ = tf.intersection_curves(mesh0, mesh1, within=True)
+    assert len(within_paths) == 0, "a same-tag seam is not a pair curve"
+
+    self_paths, self_points = tf.self_intersection_curves(mesh0)
+    assert len(self_paths) > 0, "the operand's own seam has its own entry"
+    assert self_points.dtype == real_dtype
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_intersection_curves_within_list(real_dtype):
+    """The N-mesh path carries the request and keeps the seam law."""
+    meshes = [
+        create_self_crossing_operand(np.int32, real_dtype),
+        create_self_crossing_operand(np.int32, real_dtype, x_offset=10.0),
+    ]
+
+    paths, _ = tf.intersection_curves(meshes)
+    assert len(paths) == 0
+
+    within_paths, _ = tf.intersection_curves(meshes, within=True)
+    assert len(within_paths) == 0, "a same-tag seam is not a pair curve"
+
+
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+def test_intersection_curves_within_leaves_crossing_pairs_alone(real_dtype):
+    """Operands that already cross state the same curve either way."""
+    mesh0 = create_horizontal_plane_triangles(np.int32, real_dtype, z=0.5)
+    mesh1 = create_vertical_plane_triangles(np.int32, real_dtype, x=0.5)
+
+    paths, points = tf.intersection_curves(mesh0, mesh1)
+    within_paths, within_points = tf.intersection_curves(
+        mesh0, mesh1, within=True)
+
+    assert len(paths) == len(within_paths)
+    assert len(points) == len(within_points)
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))

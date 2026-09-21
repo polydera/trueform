@@ -15,19 +15,6 @@ from .._core import OffsetBlockedArray
 from .._dispatch import extract_meta, build_suffix, build_suffix_pair, canonicalize_index_order
 
 _MODE_MAP = {"sos": 1, "primitives": 2}
-_RESOLVE_CROSSINGS = 4
-_RESOLVE_SELF_CROSSINGS = 8
-
-
-def _build_mode(mode: str, resolve_crossings: bool, resolve_self_crossings: bool) -> int:
-    if mode not in _MODE_MAP:
-        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
-    m = _MODE_MAP[mode]
-    if resolve_crossings:
-        m |= _RESOLVE_CROSSINGS
-    if resolve_self_crossings:
-        m |= _RESOLVE_SELF_CROSSINGS
-    return m
 
 
 def intersection_curves(
@@ -36,8 +23,7 @@ def intersection_curves(
     *,
     mode: str = "primitives",
     tolerance: float = 0.0,
-    resolve_crossings: bool = None,
-    resolve_self_crossings: bool = False
+    within: bool = False
 ) -> Tuple[OffsetBlockedArray, np.ndarray]:
     """
     Compute intersection curves between meshes.
@@ -54,17 +40,19 @@ def intersection_curves(
     mesh1 : Mesh, optional
         Second mesh. Required when meshes_or_mesh0 is a single Mesh.
     mode : str, default "primitives"
-        Intersection mode. "primitives" classifies shared edges/vertices
-        and coplanar contacts; "sos" perturbs every contact into a
-        crossing and cannot state shared or coplanar geometry.
+        The classifier the run states its contacts with. "primitives"
+        classifies shared edges/vertices and coplanar contacts; "sos"
+        perturbs every contact into a crossing and cannot state shared or
+        coplanar geometry. Crossings between contours are resolved
+        whenever the operands can make such a pair.
     tolerance : float, default 0.0
         World-coordinate distance an input vertex may move to reach the lattice
         (0 = exact).
-    resolve_crossings : bool, optional
-        Resolve crossings between different contours on the same face.
-        Default: False for 2-mesh, True for N-mesh.
-    resolve_self_crossings : bool, default False
-        Resolve self-crossings within a single contour.
+    within : bool, default False
+        Also intersect each mesh with itself, so self-crossings resolve in
+        the arrangement the curves are read from. The emitted curves stay
+        the cross-mesh seams — an operand's own seam is
+        `self_intersection_curves`' product.
 
     Returns
     -------
@@ -74,17 +62,17 @@ def intersection_curves(
         Curve point coordinates with shape (N, 3).
     """
 
+    if mode not in _MODE_MAP:
+        raise ValueError(f"mode must be 'sos' or 'primitives', got '{mode}'")
+    m = _MODE_MAP[mode] | (4 if within else 0)
+
     if isinstance(meshes_or_mesh0, (list, tuple)):
-        rc = resolve_crossings if resolve_crossings is not None else True
-        m = _build_mode(mode, rc, resolve_self_crossings)
         return _intersection_curves_list(meshes_or_mesh0, mode=m, tolerance=tolerance)
     else:
         if mesh1 is None:
             raise ValueError(
                 "intersection_curves requires either two meshes or a list of meshes"
             )
-        rc = resolve_crossings if resolve_crossings is not None else False
-        m = _build_mode(mode, rc, resolve_self_crossings)
         return _intersection_curves_pair(meshes_or_mesh0, mesh1, mode=m, tolerance=tolerance)
 
 

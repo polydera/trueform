@@ -3,6 +3,7 @@
 set(MODULE_TOPOLOGY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/boundary_edges.cpp
   ${CMAKE_CURRENT_LIST_DIR}/boundary_paths.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/boundary_rims.cpp
   ${CMAKE_CURRENT_LIST_DIR}/compute_cell_membership.cpp
   ${CMAKE_CURRENT_LIST_DIR}/compute_face_link.cpp
   ${CMAKE_CURRENT_LIST_DIR}/compute_manifold_edge_link.cpp
@@ -34,9 +35,11 @@ set(MODULE_TOPOLOGY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int64dynfloat3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/make_sidedness_relations_int64dyndouble3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/non_manifold_edges.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/non_manifold_vertices.cpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently.cpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently_double2d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently_double3d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently_float2d.cpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently_float3d.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/split_non_manifold_vertices.cpp
 )

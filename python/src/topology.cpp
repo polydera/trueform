@@ -28,7 +28,10 @@ auto register_topology(nanobind::module_ &m) -> void {
   register_topology_compute_vertex_link(topology_module);
   register_topology_boundary_edges(topology_module);
   register_topology_non_manifold_edges(topology_module);
+  register_topology_non_manifold_vertices(topology_module);
+  register_topology_split_non_manifold_vertices(topology_module);
   register_topology_boundary_paths(topology_module);
+  register_topology_boundary_rims(topology_module);
   register_topology_orient_faces_consistently(topology_module);
   register_topology_connect_edges_to_paths(topology_module);
   register_topology_make_k_rings(topology_module);

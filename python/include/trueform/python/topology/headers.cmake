@@ -2,6 +2,7 @@
 set(HEADERS_TOPOLOGY
   ${CMAKE_CURRENT_LIST_DIR}/boundary_edges.hpp
   ${CMAKE_CURRENT_LIST_DIR}/boundary_paths.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/boundary_rims.hpp
   ${CMAKE_CURRENT_LIST_DIR}/compute_cell_membership.hpp
   ${CMAKE_CURRENT_LIST_DIR}/compute_face_link.hpp
   ${CMAKE_CURRENT_LIST_DIR}/compute_manifold_edge_link.hpp
@@ -16,5 +17,7 @@ set(HEADERS_TOPOLOGY
   ${CMAKE_CURRENT_LIST_DIR}/make_k_rings.hpp
   ${CMAKE_CURRENT_LIST_DIR}/make_neighborhoods.hpp
   ${CMAKE_CURRENT_LIST_DIR}/non_manifold_edges.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/non_manifold_vertices.hpp
   ${CMAKE_CURRENT_LIST_DIR}/orient_faces_consistently.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/split_non_manifold_vertices.hpp
 )

@@ -26,6 +26,7 @@ auto register_geometry_module(nanobind::module_ &m) -> void {
   register_chamfer_error(geometry_module);
   register_triangulated(geometry_module);
   register_principal_curvatures(geometry_module);
+  register_quality(geometry_module);
   register_ensure_positive_orientation(geometry_module);
   register_make_mesh_primitives(geometry_module);
   register_make_tube_mesh(geometry_module);

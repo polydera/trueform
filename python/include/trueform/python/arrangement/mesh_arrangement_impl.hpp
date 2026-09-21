@@ -42,8 +42,7 @@ auto mesh_arrangements(
   auto graph = build_range_arrangement(
       tf::make_range(forms.data(), forms.size()),
       tf::arrangement_config{
-          tf::intersect_config{static_cast<tf::intersect_mode>(mode),
-                               tolerance},
+          tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance},
           static_cast<tf::triangulation_type>(triangulation)});
   auto [mesh, tag_labels, face_labels] =
       tf::arrangement::arrangement_worker<tf::none_t, tf::none_t, tf::none_t>(
@@ -62,8 +61,7 @@ auto mesh_arrangements(
   auto graph = build_range_arrangement(
       tf::make_range(forms.data(), forms.size()),
       tf::arrangement_config{
-          tf::intersect_config{static_cast<tf::intersect_mode>(mode),
-                               tolerance},
+          tf::intersect_config{static_cast<tf::intersect_mode>(mode), tolerance},
           static_cast<tf::triangulation_type>(triangulation)});
   auto [mesh, tag_labels, face_labels, curves] =
       tf::arrangement::arrangement_worker<tf::none_t, tf::return_curves_t,

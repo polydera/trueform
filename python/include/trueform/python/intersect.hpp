@@ -19,6 +19,7 @@ namespace tf::py {
 // Forward declarations for intersect module registration
 auto register_intersect_intersection_curves(nanobind::module_ &m) -> void;
 auto register_intersect_self_intersection_curves(nanobind::module_ &m) -> void;
+auto register_intersect_has_self_intersections(nanobind::module_ &m) -> void;
 
 auto register_intersect(nanobind::module_ &m) -> void;
 

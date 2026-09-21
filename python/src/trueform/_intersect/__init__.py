@@ -9,5 +9,7 @@ https://github.com/polydera/trueform
 
 from .intersection_curves import intersection_curves
 from .self_intersection_curves import self_intersection_curves
+from .has_self_intersections import has_self_intersections
 
-__all__ = ['intersection_curves', 'self_intersection_curves']
+__all__ = ['intersection_curves', 'self_intersection_curves',
+           'has_self_intersections']

@@ -12,6 +12,7 @@
 */
 
 #include "trueform/python/intersect/self_intersection_curves.hpp"
+#include <trueform/intersect/intersect_mode.hpp>
 
 namespace tf::py {
 
@@ -22,7 +23,9 @@ auto register_self_intersection_curves_intdynfloat3d(nanobind::module_ &m) -> vo
           return self_intersection_curves(
               mesh, static_cast<tf::intersect_mode>(mode), tolerance);
         },
-        nanobind::arg("mesh"), nanobind::arg("mode") = 0, nanobind::arg("tolerance") = 0.0);
+        nanobind::arg("mesh"),
+        nanobind::arg("mode") = static_cast<int>(tf::intersect_mode::primitives),
+        nanobind::arg("tolerance") = 0.0);
 }
 
 } // namespace tf::py
