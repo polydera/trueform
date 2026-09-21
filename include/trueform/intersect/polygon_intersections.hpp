@@ -34,6 +34,7 @@
 #include "./identity/identity_records.hpp"
 #include "./identity/resolve_delivered_vertices.hpp"
 #include "./intersect_config.hpp"
+#include "./intersect_mode.hpp"
 #include "./records/coplanar_pair_flags.hpp"
 #include "./records/dedup_generator_records.hpp"
 #include "./records/dedup_point_deliveries.hpp"
@@ -93,7 +94,7 @@ public:
   /// never reads them and says so here, before the build.
   auto with_edge_splits(bool value) -> void { _with_edge_splits = value; }
 
-  /// Self-only build of one form (the `within` bit is implied).
+  /// Self-only build of one form (`within` is implied).
   template <typename Policy, typename Lattice>
   auto build(const tf::polygons<Policy> &form, const Lattice &lattice,
              tf::intersect_config config = {}) -> void {
@@ -101,20 +102,20 @@ public:
     clear();
     take_vertex_offsets(lattice);
 
-    const bool primitives = config.mode & tf::intersect_mode::primitives;
+    const bool sos = bool(config.mode & tf::intersect_mode::sos);
 
     tf::local_value<workspace_t> ws;
-    if (primitives)
-      run_self_primitives(form, 0, lattice, ws);
-    else
+    if (sos)
       run_self_sos(form, 0, lattice, ws);
+    else
+      run_self_primitives(form, 0, lattice, ws);
 
     auto apply_to_form = [&form](int, auto &&f) { f(form); };
-    finalize_identity(ws, apply_to_form, Index(1), true, !primitives);
+    finalize_identity(ws, apply_to_form, Index(1), true, sos);
   }
 
   /// Two forms of possibly different policies. Cross records always;
-  /// per-form self records when the mode carries `self_intersections`.
+  /// per-form self records when the config asks for `within`.
   template <typename Policy0, typename Policy1, typename Lattice>
   auto build(const tf::polygons<Policy0> &form0,
              const tf::polygons<Policy1> &form1, const Lattice &lattice,
@@ -124,21 +125,20 @@ public:
     clear();
     take_vertex_offsets(lattice);
 
-    const bool primitives = config.mode & tf::intersect_mode::primitives;
-    const bool with_self = config.mode & tf::intersect_mode::self_intersections;
+    const bool sos = bool(config.mode & tf::intersect_mode::sos);
 
     tf::local_value<workspace_t> ws;
-    if (primitives) {
-      run_primitives_pair(form0, form1, 0, 1, lattice, ws);
-      if (with_self) {
-        run_self_primitives(form0, 0, lattice, ws);
-        run_self_primitives(form1, 1, lattice, ws);
-      }
-    } else {
+    if (sos) {
       run_sos_pair(form0, form1, 0, 1, lattice, ws);
-      if (with_self) {
+      if (bool(config.mode & tf::intersect_mode::within)) {
         run_self_sos(form0, 0, lattice, ws);
         run_self_sos(form1, 1, lattice, ws);
+      }
+    } else {
+      run_primitives_pair(form0, form1, 0, 1, lattice, ws);
+      if (bool(config.mode & tf::intersect_mode::within)) {
+        run_self_primitives(form0, 0, lattice, ws);
+        run_self_primitives(form1, 1, lattice, ws);
       }
     }
 
@@ -148,12 +148,13 @@ public:
       else
         f(form1);
     };
-    finalize_identity(ws, apply_to_form, Index(2), with_self, !primitives);
+    finalize_identity(ws, apply_to_form, Index(2),
+                      bool(config.mode & tf::intersect_mode::within), sos);
   }
 
   /// N forms. Cross records for every pair; per-form self records when
-  /// the mode carries `self_intersections`. A one-form range is the
-  /// self-only build (the bit is implied — nothing else remains).
+  /// the config asks for `within`. A one-form range is the self-only
+  /// build (nothing else remains, so it is implied).
   template <typename Iterator, std::size_t N, typename Lattice>
   auto build(tf::range<Iterator, N> forms, const Lattice &lattice,
              tf::intersect_config config = {}) -> void {
@@ -161,33 +162,33 @@ public:
     take_vertex_offsets(lattice);
 
     const auto n = Index(forms.size());
-    const bool primitives = config.mode & tf::intersect_mode::primitives;
+    const bool sos = bool(config.mode & tf::intersect_mode::sos);
     const bool with_self =
-        n == 1 || (config.mode & tf::intersect_mode::self_intersections);
+        n == 1 || bool(config.mode & tf::intersect_mode::within);
 
     tf::local_value<workspace_t> ws;
     tbb::task_group tg;
     for (Index i = 0; i < n; ++i)
       for (Index j = i + 1; j < n; ++j)
         tg.run([&, i, j]() {
-          if (primitives)
+          if (sos)
+            run_sos_pair(forms[i], forms[j], int(i), int(j), lattice, ws);
+          else
             run_primitives_pair(forms[i], forms[j], int(i), int(j), lattice,
                                 ws);
-          else
-            run_sos_pair(forms[i], forms[j], int(i), int(j), lattice, ws);
         });
     if (with_self)
       for (Index k = 0; k < n; ++k)
         tg.run([&, k]() {
-          if (primitives)
-            run_self_primitives(forms[k], int(k), lattice, ws);
-          else
+          if (sos)
             run_self_sos(forms[k], int(k), lattice, ws);
+          else
+            run_self_primitives(forms[k], int(k), lattice, ws);
         });
     tg.wait();
 
     auto apply_to_form = [forms](int tag, auto &&f) { f(forms[tag]); };
-    finalize_identity(ws, apply_to_form, n, with_self, !primitives);
+    finalize_identity(ws, apply_to_form, n, with_self, sos);
   }
 
   /// The face carrier: every face a point was delivered to, its own
@@ -344,9 +345,11 @@ private:
                     const Lattice &lattice, tf::local_value<workspace_t> &ws) {
     auto &&mel = form.manifold_edge_link();
     tf::intersect::search_face_pairs_self(
-        form, tag, lattice, ws, [&, tag](workspace_t &w, bool is_self) {
+        form, tag, lattice, ws,
+        [&, tag](workspace_t &w, bool is_self) {
           tf::intersect::self_sos_process(w, is_self, form, tag, mel);
-        });
+        },
+        [] { return false; });
   }
 
   template <typename Policy, typename Lattice>
@@ -356,9 +359,11 @@ private:
     auto &&mel = form.manifold_edge_link();
     auto &&fm = form.face_membership();
     tf::intersect::search_face_pairs_self(
-        form, tag, lattice, ws, [&, tag](workspace_t &w, bool is_self) {
+        form, tag, lattice, ws,
+        [&, tag](workspace_t &w, bool is_self) {
           tf::intersect::self_process(w, is_self, form, tag, mel, fm);
-        });
+        },
+        [] { return false; });
   }
 
   /// A record's copies are a function of it, of the topology and of the

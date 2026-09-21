@@ -43,15 +43,12 @@ auto polygon_arrangements_worker(const P &p, tf::arrangement_config config) {
 ///
 /// @tparam Policy The policy type of the mesh.
 /// @param _polygons The input @ref tf::polygons (or tagged form).
-/// @param config The intersection mode flags.
+/// @param config The arrangement configuration.
 /// @return Tuple of (@ref tf::polygons_buffer, face labels).
 template <typename Int = tf::none_t, typename OutputCoordinateType = tf::none_t,
           typename Policy>
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
-                               tf::arrangement_config config = {
-                                   tf::intersect_mode::primitives |
-                                   tf::intersect_mode::resolve_contours |
-                                   tf::intersect_mode::within}) {
+                               tf::arrangement_config config = {}) {
   return arrangement::polygon_arrangements_worker<Int, OutputCoordinateType,
                                           tf::none_t, tf::none_t>(_polygons,
                                                                   config);
@@ -78,11 +75,7 @@ template <typename Int = tf::none_t, typename OutputCoordinateType = tf::none_t,
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
                                tf::return_curves_t) {
   return make_polygon_arrangements<Int, OutputCoordinateType>(
-      _polygons,
-      tf::intersect_config{tf::intersect_mode::primitives |
-                           tf::intersect_mode::resolve_contours |
-                           tf::intersect_mode::within},
-      tf::return_curves);
+      _polygons, tf::arrangement_config{}, tf::return_curves);
 }
 
 /// @ingroup arrangement_mesh
@@ -108,11 +101,7 @@ template <typename Int = tf::none_t, typename OutputCoordinateType = tf::none_t,
 auto make_polygon_arrangements(const tf::polygons<Policy> &_polygons,
                                tf::return_index_map_t) {
   return make_polygon_arrangements<Int, OutputCoordinateType>(
-      _polygons,
-      tf::intersect_config{tf::intersect_mode::primitives |
-                           tf::intersect_mode::resolve_contours |
-                           tf::intersect_mode::within},
-      tf::return_index_map);
+      _polygons, tf::arrangement_config{}, tf::return_index_map);
 }
 
 } // namespace tf

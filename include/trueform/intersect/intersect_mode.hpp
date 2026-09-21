@@ -14,23 +14,15 @@
 
 namespace tf {
 
+/// The classifier and optional within request for an intersection run.
+/// `primitives | within` is the canonical spelling for self-intersections.
 enum class intersect_mode : int {
-  sos = 1,        // SoS fan triangulation — all records are (edge, face)
-  primitives = 2, // Conforming 5-type classification (EF, EE, VE, VF, VV)
-  // Crossings between contours of DIFFERENT classes, (tag_i,tag_j) vs
-  // (tag_i,tag_k). Such a pair needs a third tag to exist, so the graph
-  // derives this from arity and never reads the flag; it is declarative.
-  resolve_crossing_contours = 4,
-  // Crossings within one contour class (tag_i,tag_j): a contour with
-  // itself, or with another contour of the same pair — e.g. two disjoint
-  // components of one mesh cutting the same face.
-  resolve_self_crossing_contours = 8,
-  resolve_contours = resolve_crossing_contours | resolve_self_crossing_contours,
-  // Atomic bit: also generate each form's self-intersection records
-  self_intersections = 16,
-  // What callers write: a self contour class only has self-crossings,
-  // so generating self records implies resolving them
-  within = self_intersections | resolve_self_crossing_contours
+  // Every contact is perturbed into a generic crossing, so all records
+  // are (edge, face) and none is ever coplanar.
+  sos = 1,
+  // Each contact is stated as what it is: EF, EE, VE, VF, VV.
+  primitives = 2,
+  within = 4,
 };
 
 constexpr auto operator|(intersect_mode a, intersect_mode b) -> intersect_mode {

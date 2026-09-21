@@ -56,7 +56,7 @@ auto curves_worker(const Graph &graph) {
 /// @tparam Policy1 The policy type for the second mesh.
 /// @param _polygons0 The first mesh @ref tf::polygons (or tagged form).
 /// @param _polygons1 The second mesh @ref tf::polygons (or tagged form).
-/// @param config The intersection configuration (mode and tolerance).
+/// @param config The intersection configuration.
 /// @return A @ref tf::curves_buffer containing connected intersection curves.
 template <typename Int = tf::none_t,
           typename OutputCoordinateType = tf::none_t, typename Policy0,
@@ -64,7 +64,7 @@ template <typename Int = tf::none_t,
 auto make_intersection_curves(
     const tf::polygons<Policy0> &_polygons0,
     const tf::polygons<Policy1> &_polygons1,
-    tf::intersect_config config = {tf::intersect_mode::primitives}) {
+    tf::intersect_config config = {}) {
   return intersect::curves_worker<OutputCoordinateType>(
       tf::make_arrangement_graph<Int>(_polygons0, _polygons1,
                                        tf::arrangement_config{config}));
@@ -78,14 +78,12 @@ auto make_intersection_curves(
 ///
 /// @tparam Range A range of @ref tf::polygons (or tagged forms).
 /// @param _forms The input meshes.
-/// @param config The intersection configuration (mode and tolerance).
+/// @param config The intersection configuration.
 /// @return A @ref tf::curves_buffer containing connected intersection curves.
 template <typename Int = tf::none_t,
           typename OutputCoordinateType = tf::none_t, typename Range>
 auto make_intersection_curves(
-    const Range &_forms,
-    tf::intersect_config config = {tf::intersect_mode::primitives |
-                                   tf::intersect_mode::resolve_crossing_contours}) {
+    const Range &_forms, tf::intersect_config config = {}) {
   return intersect::curves_worker<OutputCoordinateType>(
       tf::make_arrangement_graph<Int>(_forms, tf::arrangement_config{config}));
 }

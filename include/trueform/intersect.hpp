@@ -26,6 +26,7 @@
  *  Low-level intersection point and topology access.
  */
 
+#include "./intersect/has_self_intersections.hpp"        // IWYU pragma: export
 #include "./intersect/intersections_within_segments.hpp" // IWYU pragma: export
 #include "./intersect/make_intersection_curves.hpp"      // IWYU pragma: export
 #include "./intersect/make_intersection_edges.hpp"       // IWYU pragma: export

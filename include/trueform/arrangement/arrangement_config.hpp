@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../intersect/intersect_config.hpp"
+#include "../intersect/intersect_mode.hpp"
 #include "../topology/triangulation_type.hpp"
 
 namespace tf {
@@ -24,12 +25,15 @@ namespace tf {
 /// Implicitly constructible from @ref tf::intersect_config,
 /// @ref tf::intersect_mode, or @ref tf::triangulation_type alone, so a
 /// call site may spell only the part it cares about.
-/// The default intersect mode is the arrangement surfaces' default
-/// (`primitives | resolve_crossing_contours`), not
-/// `intersect_config`'s bare `primitives`.
+///
+/// The arrangement resolves crossings between contours unconditionally:
+/// between contour classes whenever a third tag exists to make such a
+/// pair, and within one class whenever the run is `within`. Under
+/// @ref tf::intersect_mode::sos no contact is ever coplanar, so coplanar
+/// walls do not pool and the domains they would have separated stay
+/// joined.
 struct arrangement_config {
-  intersect_config intersect = {intersect_mode::primitives |
-                                intersect_mode::resolve_crossing_contours};
+  intersect_config intersect = {};
   triangulation_type triangulation = triangulation_type::cdt;
 
   constexpr arrangement_config() = default;

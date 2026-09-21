@@ -45,8 +45,7 @@ template <typename Polygons> void check_watertight(const Polygons &polygons) {
   // the seam's twin contacts as curves — an output-rounding property of the
   // float output, not a self-crossing
   auto curves = tf::make_self_intersection_curves(
-      polygons, tf::intersect_config{tf::intersect_mode::sos |
-                                     tf::intersect_mode::resolve_contours});
+      polygons, tf::intersect_config{tf::intersect_mode::sos});
   REQUIRE(curves.size() == 0);
 }
 

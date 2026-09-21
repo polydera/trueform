@@ -260,14 +260,11 @@ TEMPLATE_TEST_CASE("csg_solids: stacked boxes weld across the band",
   tf::ensure_positive_orientation(b1.polygons());
 
   const double tolerance = 1e-3;
-  const auto mode = tf::intersect_mode::primitives |
-                    tf::intersect_mode::resolve_contours |
-                    tf::intersect_mode::within;
   auto stacked = [&](real_t gap) {
     return two_form_graph<real_t>(
         b0, b1,
         translation_frame<real_t>(real_t(0), real_t(0), real_t(1) + gap),
-        tf::intersect_config{mode, tolerance});
+        tf::intersect_config{tf::intersect_mode::primitives | tf::intersect_mode::within, tolerance});
   };
 
   SECTION("gap inside the band unions to one solid") {

@@ -925,10 +925,8 @@ auto sphere_at(domains_real_t cx, domains_real_t cy, domains_real_t cz,
   return m;
 }
 
-constexpr auto within_config = tf::intersect_config{
-    tf::intersect_mode::primitives |
-    tf::intersect_mode::resolve_crossing_contours |
-    tf::intersect_mode::within};
+constexpr auto within_config =
+    tf::intersect_config{tf::intersect_mode::primitives | tf::intersect_mode::within, 0.0};
 
 template <typename VolsA, typename VolsB>
 void require_same_volumes(const VolsA &a, const VolsB &b) {
@@ -1149,9 +1147,7 @@ TEST_CASE("cube-on-cube hole: domains, volumes, and face membership "
     for (auto tri : {tf::triangulation_type::cdt,
                      tf::triangulation_type::refined_cdt}) {
       const tf::arrangement_config cfg{
-          tf::intersect_config{tf::intersect_mode::primitives |
-                               tf::intersect_mode::resolve_crossing_contours},
-          tri};
+          tf::intersect_config{tf::intersect_mode::primitives}, tri};
       for (int nary = 0; nary < 2; ++nary) {
         DYNAMIC_SECTION((inside ? "inside" : "top")
                         << (nary ? ", csg n-ary" : ", csg concat")

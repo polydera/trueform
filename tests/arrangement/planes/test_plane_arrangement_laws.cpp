@@ -423,9 +423,7 @@ template <typename Int, typename Real> auto build_scene() -> scene_state_t {
   tf::polygon_intersections<laws_index_t, Real, Int> intersections;
   intersections.with_edge_splits(false);
   const auto intersections_lattice = tf::test::input_lattice_for(tf::make_range(forms.data(), forms.data() + forms.size()), 0.0);
-  intersections.build(tf::make_range(forms.data(), forms.data() + forms.size()), intersections_lattice, tf::intersect_config{tf::intersect_mode::primitives |
-                               tf::intersect_mode::resolve_crossing_contours,
-                           0.0});
+  intersections.build(tf::make_range(forms.data(), forms.data() + forms.size()), intersections_lattice, tf::intersect_config{tf::intersect_mode::primitives, 0.0});
   const auto converter = intersections_lattice.converter();
   const auto get_original =
       [&, converter](int tag, laws_index_t point) -> tf::point<Int, 3> {

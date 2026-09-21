@@ -89,8 +89,7 @@ TEMPLATE_TEST_CASE("self_intersection_concatenation_equivalence", "[self_interse
     auto curves_self =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             combined_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // Same number of curves
     REQUIRE(curves_ab.paths().size() == curves_self.paths().size());
@@ -130,8 +129,7 @@ TEMPLATE_TEST_CASE("self_intersection_sphere_clean", "[self_intersection]",
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             sphere_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     REQUIRE(curves.paths().size() == 0);
 }
@@ -156,8 +154,7 @@ TEMPLATE_TEST_CASE("self_intersection_box_clean", "[self_intersection]",
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             box_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     REQUIRE(curves.paths().size() == 0);
 }
@@ -182,8 +179,7 @@ TEMPLATE_TEST_CASE("self_intersection_cylinder_clean", "[self_intersection]",
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             cylinder_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     REQUIRE(curves.paths().size() == 0);
 }
@@ -208,8 +204,7 @@ TEMPLATE_TEST_CASE("self_intersection_plane_clean", "[self_intersection]",
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             plane_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     REQUIRE(curves.paths().size() == 0);
 }
@@ -241,8 +236,7 @@ TEMPLATE_TEST_CASE("self_intersection_overlapping_planes", "[self_intersection]"
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             combined_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // Exactly 1 self-intersection curve
     REQUIRE(curves.paths().size() == 1);
@@ -283,8 +277,7 @@ TEMPLATE_TEST_CASE("self_intersection_sphere_plane_concatenated", "[self_interse
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             combined_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // 1 intersection curve (closed circle)
     REQUIRE(curves.paths().size() == 1);
@@ -342,8 +335,7 @@ TEMPLATE_TEST_CASE("self_intersection_sphere_multiple_planes_concatenated", "[se
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             combined_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // 3 intersection curves (one per plane)
     REQUIRE(curves.paths().size() == 3);
@@ -455,8 +447,7 @@ TEMPLATE_TEST_CASE("self_intersection_three_planes_vs_vertical_concatenated", "[
     auto curves =
         tf::test::arrangement_curves_of(tf::test::build_self_arrangement(
             combined_operand.form(),
-            tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_contours}));
+            tf::intersect_config{tf::intersect_mode::primitives}));
 
     // 3 intersection curves (one per horizontal plane)
     REQUIRE(curves.paths().size() == 3);

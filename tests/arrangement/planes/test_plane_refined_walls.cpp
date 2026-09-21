@@ -519,9 +519,7 @@ TEMPLATE_TEST_CASE("plane refined walls: the boundary-dominant crease",
   tf::polygon_intersections<Index, Real, Int> intersections;
   intersections.with_edge_splits(false);
   const auto intersections_lattice = tf::test::input_lattice_for(tf::make_range(forms.data(), forms.data() + forms.size()), 0.0);
-  intersections.build(tf::make_range(forms.data(), forms.data() + forms.size()), intersections_lattice, tf::intersect_config{tf::intersect_mode::primitives |
-                               tf::intersect_mode::resolve_crossing_contours,
-                           0.0});
+  intersections.build(tf::make_range(forms.data(), forms.data() + forms.size()), intersections_lattice, tf::intersect_config{tf::intersect_mode::primitives, 0.0});
   const auto converter = intersections_lattice.converter();
   const auto get_original = [&, converter](int tag,
                                            Index point) -> tf::point<Int, 3> {

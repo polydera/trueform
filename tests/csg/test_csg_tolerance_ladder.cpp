@@ -117,10 +117,8 @@ auto read_at(Forms &forms, double tolerance) -> reading_t {
   auto graph = tf::test::build_range_csg_graph(
       tf::make_range(forms.data(), forms.data() + forms.size()),
       tf::test::no_sheets(),
-      tf::arrangement_config{tf::intersect_config{
-          tf::intersect_mode::primitives |
-              tf::intersect_mode::resolve_crossing_contours,
-          tolerance}});
+      tf::arrangement_config{
+          tf::intersect_config{tf::intersect_mode::primitives, tolerance}});
   auto [cells, ids] = tf::test::csg_domains_of(graph);
   static_cast<void>(ids);
 

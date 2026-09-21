@@ -580,8 +580,7 @@ TEST_CASE("extraction is deterministic", "[volume][isosurface]") {
 TEST_CASE("an extracted surface goes through the booleans",
           "[volume][isosurface][csg]") {
   const tf::arrangement_config resolved =
-      tf::intersect_mode::primitives |
-      tf::intersect_mode::resolve_crossing_contours | tf::intersect_mode::within;
+      tf::intersect_config{tf::intersect_mode::primitives | tf::intersect_mode::within, 0.0};
   auto tool_at = [] {
     auto tool = tf::make_box_mesh<int>(0.9f, 0.9f, 3.0f);
     for (auto p : tool.points()) {

@@ -190,15 +190,12 @@ auto components_measure(std::vector<components_mesh_t<Real>> meshes,
     face_offsets[tag + 1] =
         face_offsets[tag] + components_index_t(forms[tag].faces().size());
 
-  const auto mode = within ? tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_crossing_contours |
-                                 tf::intersect_mode::within
-                           : tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_crossing_contours;
   tf::polygon_intersections<components_index_t, Real, Int> intersections;
   intersections.with_edge_splits(false);
   const auto intersections_lattice = tf::test::input_lattice_for(form_range, 0.0);
-  intersections.build(form_range, intersections_lattice, tf::intersect_config{mode, 0.0});
+  intersections.build(
+      form_range, intersections_lattice,
+      tf::intersect_config{tf::intersect_mode::primitives | (within ? tf::intersect_mode::within : tf::intersect_mode{}), 0.0});
   const auto converter = intersections_lattice.converter();
   const auto get_mesh_point = [&](int tag,
                                   components_index_t id) -> tf::point<Int, 3> {

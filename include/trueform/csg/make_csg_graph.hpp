@@ -91,7 +91,7 @@ auto make_csg_graph(Forms in_forms, tf::arrangement_config config = {}) {
 
 /// @ingroup csg
 /// @brief Single-form overload: the graph is the form's self
-///        arrangement (@ref tf::intersect_mode::within is implied).
+///        arrangement (`within` is implied).
 ///        The structural reads apply — @ref tf::make_outer_shell and
 ///        @ref tf::make_csg_domains; boolean expressions need two
 ///        operands.

@@ -103,9 +103,7 @@ auto measure(std::vector<crossings_mesh_t<Real>> meshes) -> detection_facts_t {
   tf::polygon_intersections<crossings_index_t, Real, Int> intersections;
   intersections.with_edge_splits(false);
   const auto intersections_lattice = tf::test::input_lattice_for(tf::make_range(forms.data(), forms.data() + forms.size()), 0.0);
-  intersections.build(tf::make_range(forms.data(), forms.data() + forms.size()), intersections_lattice, tf::intersect_config{tf::intersect_mode::primitives |
-                               tf::intersect_mode::resolve_crossing_contours,
-                           0.0});
+  intersections.build(tf::make_range(forms.data(), forms.data() + forms.size()), intersections_lattice, tf::intersect_config{tf::intersect_mode::primitives, 0.0});
   const auto converter = intersections_lattice.converter();
   const auto get_mesh_point = [&](int tag,
                                   crossings_index_t id) -> tf::point<Int, 3> {

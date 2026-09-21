@@ -16,7 +16,6 @@
 #include "../core/polygons.hpp"
 #include "../core/resolved_output_real.hpp"
 #include "../intersect/intersect_config.hpp"
-#include "../intersect/intersect_mode.hpp"
 #include "./csg_graph.hpp"
 #include "./expression/selection_kind.hpp"
 #include "./graph/compute_chosen_sides.hpp"
@@ -80,15 +79,13 @@ auto make_outer_shell(const tf::csg_graph<Policy, Int, Arrangement> &graph) {
 ///         arrangement ran on, and the converter that produced it is
 ///         returned alongside.
 /// @param _polygons The input @ref tf::polygons (or tagged form).
-/// @param config The intersection mode flags for the self-arrangement.
+/// @param config The intersection configuration for the self-arrangement.
 /// @return A @ref tf::polygons_buffer bounding the enclosed union, or a
 ///         tuple of it and the converter for integer output.
 template <typename Int = tf::none_t, typename OutputCoordinateType = tf::none_t,
           typename Policy>
 auto make_outer_shell(const tf::polygons<Policy> &_polygons,
-                      tf::intersect_config config = {
-                          tf::intersect_mode::primitives |
-                          tf::intersect_mode::resolve_contours}) {
+                      tf::intersect_config config = {}) {
   using InputReal = tf::coordinate_type<Policy>;
   using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
 

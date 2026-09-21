@@ -75,7 +75,7 @@ auto make_arrangement_graph(Forms in_forms,
 
 /// @ingroup arrangement
 /// @brief Single-form overload: the graph is the form's self
-///        arrangement (@ref tf::intersect_mode::within is implied).
+///        arrangement (`within` is implied).
 template <typename Int = tf::none_t, typename Policy>
 auto make_arrangement_graph(const tf::polygons<Policy> &form,
                             tf::arrangement_config config = {}) {

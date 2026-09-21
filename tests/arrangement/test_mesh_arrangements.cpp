@@ -232,8 +232,7 @@ TEST_CASE("mesh_arrangements_box_cylinder_sphere", "[arrangements]") {
   auto [mesh, tag_labels, face_labels, curves] =
       tf::test::mesh_arrangements_with_curves_of(
           tf::test::forms_range(forms),
-          tf::intersect_config{tf::intersect_mode::primitives |
-                               tf::intersect_mode::resolve_crossing_contours});
+          tf::intersect_config{tf::intersect_mode::primitives});
 
   REQUIRE(mesh_arrangements_count_degenerate(mesh) == 0);
 
@@ -281,9 +280,6 @@ TEST_CASE("mesh_arrangements_tolerance_parallel_sheets",
     return sheet;
   };
   const double tolerance = 1e-3;
-  const auto mode = tf::intersect_mode::primitives |
-                    tf::intersect_mode::resolve_contours |
-                    tf::intersect_mode::within;
   auto arrange = [&](real_t d) {
     auto a = make_sheet(real_t(0));
     auto b = make_sheet(d);
@@ -293,7 +289,8 @@ TEST_CASE("mesh_arrangements_tolerance_parallel_sheets",
     operands.push_back(tf::test::make_tagged_operand(b));
     auto forms = tf::test::tagged_forms(operands);
     return tf::test::mesh_arrangements_of(
-        tf::test::forms_range(forms), tf::intersect_config{mode, tolerance});
+        tf::test::forms_range(forms),
+        tf::intersect_config{tf::intersect_mode::primitives | tf::intersect_mode::within, tolerance});
   };
 
   SECTION("gap inside the band welds the sheets") {
@@ -470,11 +467,7 @@ TEST_CASE("coincident plane stack divides a box (free path)",
     operands.push_back(tf::test::make_tagged_operand(m));
   auto forms = tf::test::tagged_forms(operands);
 
-  const auto icfg = tf::intersect_config{
-      tf::intersect_mode::primitives |
-          tf::intersect_mode::resolve_crossing_contours |
-          tf::intersect_mode::resolve_self_crossing_contours,
-      1e-6};
+  const auto icfg = tf::intersect_config{tf::intersect_mode::primitives, 1e-6};
   auto [arr, tag_labels, face_labels] =
       tf::test::mesh_arrangements_of(tf::test::forms_range(forms), icfg);
   (void)face_labels;
@@ -546,18 +539,19 @@ TEST_CASE("three-deep mixed-winding stack keeps consistent windings",
     operands.push_back(tf::test::make_tagged_operand(m));
   auto forms = tf::test::tagged_forms(operands);
 
-  const auto icfg = tf::intersect_config{
-      tf::intersect_mode::primitives |
-          tf::intersect_mode::resolve_crossing_contours |
-          tf::intersect_mode::resolve_self_crossing_contours,
-      1e-6};
+  const auto icfg = tf::intersect_config{tf::intersect_mode::primitives, 1e-6};
   auto [arr, tag_labels, face_labels] =
       tf::test::mesh_arrangements_of(tf::test::forms_range(forms), icfg);
   (void)face_labels;
 
-  // each member's emitted wall triangles must keep that member's own
-  // winding: planes 1 and 3 face +z, plane 2 faces -z
+  // each member emits its whole plane once, in its own winding: planes 1
+  // and 3 face +z, plane 2 faces -z. The signed doubled area is the whole
+  // pin — its sign is the winding, and its magnitude admits no dropped,
+  // doubled or counter-wound triangle — and the triangle count pins the
+  // decomposition a drop and a duplicate together would hide from it.
+  constexpr double doubled_plane_area = 2.0 * 15.0 * 15.0;
   double zsum[3] = {0, 0, 0};
+  int wall_triangles[3] = {0, 0, 0};
   auto pts = arr.polygons().points();
   for (std::size_t i = 0; i < arr.polygons().size(); ++i) {
     const int t = tag_labels[i];
@@ -566,10 +560,14 @@ TEST_CASE("three-deep mixed-winding stack keeps consistent windings",
     auto f = arr.polygons().faces()[i];
     auto n = tf::cross(pts[f[1]] - pts[f[0]], pts[f[2]] - pts[f[0]]);
     zsum[t] += double(n[2]);
+    ++wall_triangles[t];
   }
-  CHECK(zsum[0] > 0);
-  CHECK(zsum[1] < 0);
-  CHECK(zsum[2] > 0);
+  CHECK(zsum[0] == Catch::Approx(doubled_plane_area).epsilon(1e-9));
+  CHECK(zsum[1] == Catch::Approx(-doubled_plane_area).epsilon(1e-9));
+  CHECK(zsum[2] == Catch::Approx(doubled_plane_area).epsilon(1e-9));
+  CHECK(wall_triangles[0] == 18);
+  CHECK(wall_triangles[1] == 18);
+  CHECK(wall_triangles[2] == 18);
 }
 
 TEMPLATE_TEST_CASE("arrangement of a hexagon with a collinear leading run",

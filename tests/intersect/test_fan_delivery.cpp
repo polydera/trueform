@@ -221,9 +221,8 @@ auto build_pair(fan_delivery_fixture &a, fan_delivery_fixture &b)
     -> fan_delivery_ibp_t {
   fan_delivery_ibp_t ibp;
   const auto ibp_lattice = tf::test::input_lattice_for(a.form(), b.form(), 0.0);
-  ibp.build(a.form(), b.form(), ibp_lattice, tf::intersect_config{
-                tf::intersect_mode::primitives |
-                tf::intersect_mode::resolve_crossing_contours});
+  ibp.build(a.form(), b.form(), ibp_lattice,
+            tf::intersect_config{tf::intersect_mode::primitives});
   return ibp;
 }
 
@@ -349,8 +348,7 @@ TEST_CASE("fan: self pair sharing a vertex delivers it around the whole fan",
   fan_delivery_fixture f(m);
   fan_delivery_ibp_t ibp;
   const auto ibp_lattice = tf::test::input_lattice_for(f.form(), 0.0);
-  ibp.build(f.form(), ibp_lattice, tf::intersect_config{tf::intersect_mode::primitives |
-                                           tf::intersect_mode::within});
+  ibp.build(f.form(), ibp_lattice, tf::intersect_config{});
 
   // the self family's emissions are the discovery site of its own
   // shared-vertex deliveries, so its fan is not a product the pair gate

@@ -106,10 +106,7 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
                         tf::triangulation_type::refined_cdt}) {
         auto graph = tf::test::build_range_csg_graph(
             rng, tf::test::no_sheets(),
-            {tf::intersect_config{
-                 tf::intersect_mode::primitives |
-                 tf::intersect_mode::resolve_crossing_contours},
-             mode});
+            {tf::intersect_config{tf::intersect_mode::primitives}, mode});
         for (const auto &[name, e] : k_exprs) {
           DYNAMIC_SECTION((mode == tf::triangulation_type::cdt
                                ? "stock "
@@ -129,9 +126,7 @@ TEST_CASE("triangulation store: box fixtures closed in both modes, stock "
         auto build = [&] {
           return tf::test::build_range_csg_graph(
               rng, tf::test::no_sheets(),
-              {tf::intersect_config{
-                   tf::intersect_mode::primitives |
-                   tf::intersect_mode::resolve_crossing_contours},
+              {tf::intersect_config{tf::intersect_mode::primitives},
                tf::triangulation_type::refined_cdt});
         };
         auto g0 = build();
@@ -172,9 +167,7 @@ TEST_CASE("triangulation store: WantLabels face provenance on the generic "
                     tf::triangulation_type::refined_cdt}) {
     auto graph = tf::test::build_range_csg_graph(
         rng, tf::test::no_sheets(),
-        {tf::intersect_config{tf::intersect_mode::primitives |
-                              tf::intersect_mode::resolve_crossing_contours},
-         mode});
+        {tf::intersect_config{tf::intersect_mode::primitives}, mode});
     auto E = (tf::csg::op(0) | tf::csg::op(1)).compile().evaluator();
     auto membership = tf::csg::graph::compute_domain_membership(
         graph.descriptor(), graph.inclusion(),

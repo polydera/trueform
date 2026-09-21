@@ -173,10 +173,8 @@ struct reading {
 
 template <typename Mesh0, typename Mesh1>
 auto read(const Mesh0 &m0, const Mesh1 &m1, double tolerance) -> reading {
-  const auto config = tf::arrangement_config{tf::intersect_config{
-      tf::intersect_mode::primitives |
-          tf::intersect_mode::resolve_crossing_contours,
-      tolerance}};
+  const auto config = tf::arrangement_config{
+      tf::intersect_config{tf::intersect_mode::primitives, tolerance}};
   auto graph = tf::make_arrangement_graph(m0.polygons(), m1.polygons(), config);
   auto mesh_point =
       [&](pinched_walls_index_t tag,

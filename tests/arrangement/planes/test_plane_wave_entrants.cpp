@@ -106,9 +106,7 @@ struct scene_t {
     const auto lattice = tf::test::input_lattice_for(form_range, 0.0);
     intersections.build(
         form_range, lattice,
-        tf::intersect_config{tf::intersect_mode::primitives |
-                                 tf::intersect_mode::resolve_crossing_contours,
-                             0.0});
+        tf::intersect_config{tf::intersect_mode::primitives, 0.0});
     const auto converter = lattice.converter();
     const auto get_mesh_point =
         [this, converter](int tag, entrants_index_t id) -> tf::point<int_t, 3> {

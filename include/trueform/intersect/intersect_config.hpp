@@ -21,7 +21,9 @@ namespace tf {
 /// planes are quantized to, and so the distance an input vertex may be
 /// moved to stand on them — a statement about the input and not about a
 /// predicate, stated in full by @ref tf::exact::input_lattice — and `0` is
-/// the identity. Implicitly constructible from `intersect_mode`.
+/// the identity. The `within` mode bit asks for each form's own
+/// self-intersections. Implicitly
+/// constructible from `intersect_mode`.
 struct intersect_config {
   intersect_mode mode = intersect_mode::primitives;
   double tolerance = 0.0;

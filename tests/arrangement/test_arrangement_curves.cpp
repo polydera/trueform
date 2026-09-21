@@ -95,14 +95,12 @@ TEST_CASE("arrangement curves: transversal crossing, graph and csg agree",
   // scan and must agree
   auto cb3 = tf::make_intersection_curves(
       box.polygons(), plane.polygons(),
-      tf::intersect_config{tf::intersect_mode::primitives |
-                           tf::intersect_mode::resolve_crossing_contours});
+      tf::intersect_config{tf::intersect_mode::primitives});
   REQUIRE(curve_length(cb3) == Catch::Approx(curve_length(cb)).epsilon(1e-12));
 
   auto cb4 = tf::make_self_intersection_curves(
       tf::concatenated(box.polygons(), plane.polygons()).polygons(),
-      tf::intersect_config{tf::intersect_mode::primitives |
-                           tf::intersect_mode::resolve_crossing_contours});
+      tf::intersect_config{tf::intersect_mode::primitives});
   REQUIRE(curve_length(cb4) == Catch::Approx(curve_length(cb)).epsilon(1e-9));
 
   // a weld-retired point must not be copied into the output mesh:
@@ -290,9 +288,7 @@ TEST_CASE("arrangement curves: synthetic DFN oracle across the full route "
                      tf::triangulation_type::refined_cdt};
   for (auto tri : tris) {
     const tf::arrangement_config cfg{
-        tf::intersect_config{tf::intersect_mode::primitives |
-                             tf::intersect_mode::resolve_crossing_contours},
-        tri};
+        tf::intersect_config{tf::intersect_mode::primitives}, tri};
     DYNAMIC_SECTION("pair, tri=" << int(tri)) {
       auto [m, tags, faces, cb] = tf::make_mesh_arrangements(
           box.polygons(), sheet.polygons(), cfg, tf::return_curves);
@@ -319,12 +315,7 @@ TEST_CASE("arrangement curves: synthetic DFN oracle across the full route "
     DYNAMIC_SECTION("polygon soup, tri=" << int(tri)) {
       auto soup = tf::concatenated(box.polygons(), sheet.polygons());
       auto [m, faces, cb] = tf::make_polygon_arrangements(
-          soup.polygons(),
-          {tf::intersect_config{tf::intersect_mode::primitives |
-                                tf::intersect_mode::resolve_contours |
-                                tf::intersect_mode::within},
-           tri},
-          tf::return_curves);
+          soup.polygons(), {tf::intersect_config{}, tri}, tf::return_curves);
       REQUIRE(cb.curves().size() > 0);
       REQUIRE(curve_length(cb) == Catch::Approx(nm_length(m)).epsilon(1e-6));
       require_no_stray_points(cb);

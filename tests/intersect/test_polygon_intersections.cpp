@@ -656,8 +656,8 @@ TEST_CASE("polygon_intersections: duplicated vertices name one carrier",
 
   poly_intersections_ibp_t ibp;
   const auto ibp_lattice = tf::test::input_lattice_for(a.form(), b.form(), 0.0);
-  ibp.build(a.form(), b.form(), ibp_lattice, tf::intersect_config(tf::intersect_mode::primitives |
-                                 tf::intersect_mode::within));
+  ibp.build(a.form(), b.form(), ibp_lattice,
+            tf::intersect_config(tf::intersect_mode::primitives | tf::intersect_mode::within, 0.0));
   check_tables_closed(ibp, 2);
   check_records_named(ibp, [&](int tag, poly_intersections_index_t object) {
     return face_ids(tag == 0 ? a.mesh : b.mesh, object);

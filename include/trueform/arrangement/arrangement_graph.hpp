@@ -289,7 +289,7 @@ private:
     const auto n_tags = _policy.n_tags();
     if (n_tags == index_type(1))
       config.mode = config.mode | tf::intersect_mode::within;
-    _with_self = bool(config.mode & tf::intersect_mode::self_intersections);
+    _with_self = bool(config.mode & tf::intersect_mode::within);
 
     tf::polygon_intersections<index_type, pipeline_real_type,
                               resolved_int_type>
@@ -322,14 +322,13 @@ private:
             face_counts[std::size_t(t)] + index_type(form.faces().size());
       });
 
-    const bool resolve_self_contours =
-        bool(config.mode & tf::intersect_mode::resolve_self_crossing_contours);
     const bool refined =
         a_config.triangulation == tf::triangulation_type::refined_cdt;
     tf::cdt_refine_config refine_config;
     _world.build(std::move(intersections), get_mesh_point, apply_to_face,
                  apply_form, tf::make_range(face_counts),
-                 resolve_self_contours, _lattice.placed_points().size() != 0);
+                 bool(config.mode & tf::intersect_mode::within),
+                 _lattice.placed_points().size() != 0);
     // the cell is the classification carrier and the piece is the fence's;
     // the triangulation holds both only while the plane is being emitted, so
     // the requests stand before the build

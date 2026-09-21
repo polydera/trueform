@@ -28,15 +28,13 @@ namespace tf {
 ///
 /// @tparam Policy The policy type for the mesh.
 /// @param _polygons The input @ref tf::polygons (or tagged form).
-/// @param config The intersection configuration (mode and tolerance).
+/// @param config The intersection configuration.
 /// @return A @ref tf::curves_buffer containing connected self-intersection
 /// curves.
 template <typename Int = tf::none_t,
           typename OutputCoordinateType = tf::none_t, typename Policy>
 auto make_self_intersection_curves(
-    const tf::polygons<Policy> &_polygons,
-    tf::intersect_config config = {tf::intersect_mode::primitives |
-                                   tf::intersect_mode::resolve_contours}) {
+    const tf::polygons<Policy> &_polygons, tf::intersect_config config = {}) {
   return intersect::curves_worker<OutputCoordinateType>(
       tf::make_arrangement_graph<Int>(_polygons,
                                        tf::arrangement_config{config}));

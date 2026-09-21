@@ -11,6 +11,7 @@ add_executable(trueform_intersect_tests
   test_pinched_loop_walls.cpp
   test_plane_radial_authority.cpp
   test_fan_delivery.cpp
+  test_has_self_intersections.cpp
 )
 
 target_link_libraries(trueform_intersect_tests PRIVATE trueform_test_common)

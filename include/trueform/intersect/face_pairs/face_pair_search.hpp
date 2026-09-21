@@ -202,15 +202,15 @@ void search_face_pairs(
 /// start the inner loop at `i0 + 1` to skip the self-pair and each unordered
 /// pair's mirror.
 ///
-/// A self record's vertex ids are the form's own, not the flat space's —
-/// one form is all a self pair ever sees, and the identity tier rebases
-/// them by the record's tag.
+/// `abort` is the traversal's own: it is asked before every descent and
+/// again after each leaf, so a caller whose process states its verdict
+/// there stops the walk at the pair that proved it.
 template <typename Form, typename Lattice, typename Index, typename Int,
-          typename Payload, typename Process>
+          typename Payload, typename Process, typename Abort>
 void search_face_pairs_self(
     const Form &form, int tag, const Lattice &lattice,
     tf::local_value<face_pair_workspace<Index, Int, Payload>> &ws_lv,
-    const Process &process) {
+    const Process &process, const Abort &abort) {
   const auto &conv = lattice.converter();
   const Int pad = Int(2) * lattice.tolerance_int();
   auto check_bvs = [&](const auto &bv0, const auto &bv1) {
@@ -237,7 +237,7 @@ void search_face_pairs_self(
           const auto from = ws.verts0.size();
           for (decltype(m) k = 0; k < m; ++k)
             ws.verts0.push_back(
-                {Index(poly.indices()[k]),
+                {lattice.flat_vertex(tag, Index(poly.indices()[k])),
                  lattice.point(tag, Index(poly.indices()[k]), poly[k])});
           ws.voff0.push_back(int(ws.verts0.size()));
           ws.ibox0.push_back(placed_face_box(ws.verts0, from));
@@ -250,16 +250,16 @@ void search_face_pairs_self(
           const auto from = ws.verts1.size();
           for (decltype(m) k = 0; k < m; ++k)
             ws.verts1.push_back(
-                {Index(poly.indices()[k]),
+                {lattice.flat_vertex(tag, Index(poly.indices()[k])),
                  lattice.point(tag, Index(poly.indices()[k]), poly[k])});
           ws.voff1.push_back(int(ws.verts1.size()));
           ws.ibox1.push_back(placed_face_box(ws.verts1, from));
           ws.ids1.push_back(std::size_t(id1));
         }
         process(ws, is_self);
-        return false;
+        return abort();
       },
-      [] { return false; }, 6);
+      abort, 6);
 }
 
 /// Concatenate the per-thread workspaces; each intersection's payload id is

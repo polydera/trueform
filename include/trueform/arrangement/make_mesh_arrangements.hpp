@@ -209,10 +209,7 @@ template <typename Int = tf::none_t, typename OutputCoordinateType = tf::none_t,
           typename Range>
 auto make_mesh_arrangements(const Range &forms, tf::return_curves_t) {
   return make_mesh_arrangements<Int, OutputCoordinateType>(
-      forms,
-      tf::intersect_config{tf::intersect_mode::primitives |
-                           tf::intersect_mode::resolve_crossing_contours},
-      tf::return_curves);
+      forms, tf::arrangement_config{}, tf::return_curves);
 }
 
 /// @ingroup arrangement_mesh
@@ -235,10 +232,7 @@ template <typename Int = tf::none_t, typename OutputCoordinateType = tf::none_t,
           typename Range>
 auto make_mesh_arrangements(const Range &forms, tf::return_index_map_t) {
   return make_mesh_arrangements<Int, OutputCoordinateType>(
-      forms,
-      tf::intersect_config{tf::intersect_mode::primitives |
-                           tf::intersect_mode::resolve_crossing_contours},
-      tf::return_index_map);
+      forms, tf::arrangement_config{}, tf::return_index_map);
 }
 
 } // namespace tf

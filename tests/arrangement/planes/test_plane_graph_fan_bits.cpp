@@ -42,7 +42,6 @@
 #include <trueform/intersect/graph/local_arrangement.hpp>
 #include <trueform/intersect/graph/plane_edge_def.hpp>
 #include <trueform/intersect/intersect_config.hpp>
-#include <trueform/intersect/intersect_mode.hpp>
 #include <trueform/intersect/polygon_intersections.hpp>
 
 #include <algorithm>
@@ -167,17 +166,11 @@ auto fan_bits_measure(std::vector<fan_bits_mesh_t<Real>> meshes)
     face_offsets[tag + 1] =
         face_offsets[tag] + fan_bits_index_t(forms[tag].faces().size());
 
-  // a single-form scene needs its own faces intersected to state anything
-  const auto mode = forms.size() == 1
-                        ? tf::intersect_mode::primitives |
-                              tf::intersect_mode::resolve_crossing_contours |
-                              tf::intersect_mode::within
-                        : tf::intersect_mode::primitives |
-                              tf::intersect_mode::resolve_crossing_contours;
   tf::polygon_intersections<fan_bits_index_t, Real, Int> intersections;
   intersections.with_edge_splits(false);
   const auto intersections_lattice = tf::test::input_lattice_for(form_range, 0.0);
-  intersections.build(form_range, intersections_lattice, tf::intersect_config{mode, 0.0});
+  intersections.build(form_range, intersections_lattice,
+                      tf::intersect_config{});
   const auto converter = intersections_lattice.converter();
   const auto get_mesh_point = [&](int tag,
                                   fan_bits_index_t id) -> tf::point<Int, 3> {
