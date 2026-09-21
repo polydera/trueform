@@ -31,6 +31,7 @@
 #include "./topology/boundary_curves.hpp"                  // IWYU pragma: export
 #include "./topology/boundary_edges.hpp"                   // IWYU pragma: export
 #include "./topology/boundary_paths.hpp"                   // IWYU pragma: export
+#include "./topology/boundary_rims.hpp"                    // IWYU pragma: export
 #include "./topology/cdt.hpp"                              // IWYU pragma: export
 #include "./topology/cell_membership.hpp"                  // IWYU pragma: export
 #include "./topology/connect_edges_to_paths.hpp"           // IWYU pragma: export
@@ -44,5 +45,7 @@
 #include "./topology/manifold_edge_link.hpp"               // IWYU pragma: export
 #include "./topology/neighborhoods.hpp"                    // IWYU pragma: export
 #include "./topology/non_manifold_edges.hpp"               // IWYU pragma: export
+#include "./topology/non_manifold_vertices.hpp"            // IWYU pragma: export
 #include "./topology/orient_faces_consistently.hpp"        // IWYU pragma: export
+#include "./topology/split_non_manifold_vertices.hpp"      // IWYU pragma: export
 #include "./topology/vertex_link.hpp"                      // IWYU pragma: export

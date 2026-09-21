@@ -25,7 +25,9 @@
 #include "trueform/cpp/topology/manifold_edge_link.hpp"
 #include "trueform/cpp/topology/neighborhoods.hpp"
 #include "trueform/cpp/topology/non_manifold_edges.hpp"
+#include "trueform/cpp/topology/non_manifold_vertices.hpp"
 #include "trueform/cpp/topology/orient_faces_consistently.hpp"
+#include "trueform/cpp/topology/split_non_manifold_vertices.hpp"
 #include "trueform/cpp/topology/vertex_link.hpp"
 
 #include "trueform/core/algorithm/parallel_transform.hpp"
@@ -33,7 +35,9 @@
 #include "trueform/core/polygons_buffer.hpp"
 #include "trueform/core/static_size.hpp"
 #include "trueform/cpp/core/mesh.hpp"
+#include "trueform/reindex/return_index_map.hpp"
 #include "trueform/topology.hpp"
+#include "trueform/topology/policy/face_membership.hpp"
 #include "trueform/topology/policy/manifold_edge_link.hpp"
 #include "trueform/topology/policy/vertex_link.hpp"
 
@@ -200,6 +204,15 @@ auto non_manifold_edges(const mesh<Index, Real, Dims, Ngon> &value)
   const auto count = static_cast<int>(edges.size());
   return nd_array<Index>::from_buffer(std::move(edges.data_buffer()),
                                       {count, 2});
+}
+
+template <typename Index, typename Real, std::size_t Dims, std::size_t Ngon>
+auto non_manifold_vertices(const mesh<Index, Real, Dims, Ngon> &value)
+    -> nd_array<Index> {
+  auto vertices =
+      tf::make_non_manifold_vertices(value.faces(), value.face_membership());
+  const auto count = static_cast<int>(vertices.size());
+  return nd_array<Index>::from_buffer(std::move(vertices), {count});
 }
 
 template <typename Index, typename Real, std::size_t Dims, std::size_t Ngon>
@@ -396,6 +409,17 @@ auto orient_faces_consistently(const mesh<Index, Real, Dims, Ngon> &value)
   auto oriented = polygons.polygons() | tf::tag(edge_link);
   tf::orient_faces_consistently(oriented);
   return polygons;
+}
+
+template <typename Index, typename Real, std::size_t Dims, std::size_t Ngon>
+auto split_non_manifold_vertices(const mesh<Index, Real, Dims, Ngon> &value)
+    -> split_non_manifold_vertices_result<Index, Real, Dims, Ngon> {
+  auto split = tf::split_non_manifold_vertices(
+      value.polygons() | tf::tag(value.face_membership()),
+      tf::return_index_map);
+  const auto count = static_cast<int>(split.second.size());
+  return {std::move(split.first),
+          nd_array<Index>::from_buffer(std::move(split.second), {count})};
 }
 
 } // namespace tf::cpp

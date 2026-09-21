@@ -17,7 +17,6 @@
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/cpp/csg/detail/supported_outer_shell.hpp"
 #include "trueform/intersect/intersect_config.hpp"
-#include "trueform/intersect/intersect_mode.hpp"
 
 #include <cstddef>
 #include <type_traits>
@@ -35,9 +34,7 @@ namespace tf::cpp {
 /// the MANIFOLD EDGE LINK.
 template <typename Index, typename Real, std::size_t Ngon>
 auto outer_shell(const mesh<Index, Real, 3, Ngon> &value,
-                 tf::intersect_config intersect_config =
-                     {tf::intersect_mode::primitives |
-                      tf::intersect_mode::resolve_contours})
+                 tf::intersect_config intersect_config = {})
     -> tf::polygons_buffer<Index, Real, 3, Ngon>;
 
 // An unsupported index or real has no compiled entry, so it is refused where
@@ -45,9 +42,7 @@ auto outer_shell(const mesh<Index, Real, 3, Ngon> &value,
 template <
     typename Index, typename Real, std::size_t Ngon,
     std::enable_if_t<!detail::is_supported_outer_shell_v<Index, Real>, int> = 0>
-auto outer_shell(const mesh<Index, Real, 3, Ngon> &,
-                 tf::intersect_config = {tf::intersect_mode::primitives |
-                                         tf::intersect_mode::resolve_contours})
+auto outer_shell(const mesh<Index, Real, 3, Ngon> &, tf::intersect_config = {})
     -> void = delete;
 
 #define TF_CPP_EXTERN_TYPED_OUTER_SHELL(Index, Real, Ngon)                     \

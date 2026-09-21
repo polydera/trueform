@@ -16,7 +16,6 @@
 #include "trueform/cpp/core/matrix.hpp"
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/intersect/intersect_config.hpp"
-#include "trueform/intersect/intersect_mode.hpp"
 
 #include <cstddef>
 
@@ -27,10 +26,8 @@ namespace tf::cpp {
 /// caller prebuilds for this family is the TREE, the FACE MEMBERSHIP and
 /// the MANIFOLD EDGE LINK.
 template <typename Index, typename Real, std::size_t Ngon>
-auto self_intersection_curves(
-    const mesh<Index, Real, 3, Ngon> &value,
-    tf::intersect_config config = {tf::intersect_mode::sos |
-                                   tf::intersect_mode::resolve_contours})
+auto self_intersection_curves(const mesh<Index, Real, 3, Ngon> &value,
+                              tf::intersect_config config = {})
     -> tf::curves_buffer<Index, Real, 3>;
 
 #define TF_CPP_EXTERN_SELF_INTERSECTION_CURVES(Index, Real, Ngon)              \

@@ -15,18 +15,20 @@
 #include "trueform/cpp/core/matrix.hpp"
 #include "trueform/cpp/csg/csg_graph.hpp"
 #include "trueform/csg/expression.hpp"
+#include "trueform/csg/expression/selection.hpp"
 #include "trueform/topology/domain_config.hpp"
 
 namespace tf::cpp {
 
-/// @brief One watertight mesh per kept domain.
+/// @brief One watertight mesh per kept domain. A boundary selection only:
+///        an inside read is refused.
 template <typename Index, typename Real>
 auto make_csg_domains(const csg_graph<Index, Real> &graph,
                       tf::domain_config config = tf::domain_config::none)
     -> csg_domains_result<Index, Real>;
 template <typename Index, typename Real>
 auto make_csg_domains(const csg_graph<Index, Real> &graph,
-                      const tf::csg::expr &expression,
+                      const tf::csg::selection_t &selection,
                       tf::domain_config config = tf::domain_config::none)
     -> csg_domains_result<Index, Real>;
 template <typename Index, typename Real>
@@ -36,7 +38,7 @@ auto make_csg_domains_with_labels(
     -> csg_domains_labeled_result<Index, Real>;
 template <typename Index, typename Real>
 auto make_csg_domains_with_labels(
-    const csg_graph<Index, Real> &graph, const tf::csg::expr &expression,
+    const csg_graph<Index, Real> &graph, const tf::csg::selection_t &selection,
     tf::domain_config config = tf::domain_config::none)
     -> csg_domains_labeled_result<Index, Real>;
 template <typename Index, typename Real>
@@ -46,7 +48,7 @@ auto make_csg_domains_with_index_map(
     -> csg_domains_index_map_result<Index, Real>;
 template <typename Index, typename Real>
 auto make_csg_domains_with_index_map(
-    const csg_graph<Index, Real> &graph, const tf::csg::expr &expression,
+    const csg_graph<Index, Real> &graph, const tf::csg::selection_t &selection,
     tf::domain_config config = tf::domain_config::none)
     -> csg_domains_index_map_result<Index, Real>;
 
@@ -55,19 +57,19 @@ auto make_csg_domains_with_index_map(
                                         tf::domain_config)                     \
       -> csg_domains_result<Index, Real>;                                      \
   extern template auto make_csg_domains(                                       \
-      const csg_graph<Index, Real> &, const tf::csg::expr &,                   \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &,            \
       tf::domain_config) -> csg_domains_result<Index, Real>;                   \
   extern template auto make_csg_domains_with_labels(                           \
       const csg_graph<Index, Real> &, tf::domain_config)                       \
       -> csg_domains_labeled_result<Index, Real>;                              \
   extern template auto make_csg_domains_with_labels(                           \
-      const csg_graph<Index, Real> &, const tf::csg::expr &,                   \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &,            \
       tf::domain_config) -> csg_domains_labeled_result<Index, Real>;           \
   extern template auto make_csg_domains_with_index_map(                        \
       const csg_graph<Index, Real> &, tf::domain_config)                       \
       -> csg_domains_index_map_result<Index, Real>;                            \
   extern template auto make_csg_domains_with_index_map(                        \
-      const csg_graph<Index, Real> &, const tf::csg::expr &,                   \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &,            \
       tf::domain_config) -> csg_domains_index_map_result<Index, Real>
 
 TF_CPP_MATRIX_FOR_EACH_INDEX_REAL(TF_CPP_EXTERN_CSG_DOMAINS)

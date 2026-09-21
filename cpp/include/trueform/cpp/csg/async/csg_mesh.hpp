@@ -18,6 +18,7 @@
 #include "trueform/cpp/csg/csg_graph.hpp"
 #include "trueform/cpp/csg/csg_mesh.hpp"
 #include "trueform/csg/expression.hpp"
+#include "trueform/csg/expression/selection.hpp"
 
 #include <future>
 #include <utility>
@@ -41,23 +42,22 @@ auto make_csg_mesh(const csg_graph<Index, Real> &graph)
 
 template <typename Resolver, typename Index, typename Real>
 auto make_csg_mesh(Resolver &&resolver, const csg_graph<Index, Real> &graph,
-                   const tf::csg::expr &expression)
+                   const tf::csg::selection_t &selection)
     -> resolver_result_t<Resolver, tf::polygons_buffer<Index, Real, 3, 3>> {
   auto owned_graph = graph;
-  auto owned_expression = expression;
+  auto owned_selection = selection;
   return submit<tf::polygons_buffer<Index, Real, 3, 3>>(
       std::forward<Resolver>(resolver),
-      [graph = std::move(owned_graph),
-       expression = std::move(owned_expression)] {
-        return cpp::make_csg_mesh(graph, expression);
+      [graph = std::move(owned_graph), selection = std::move(owned_selection)] {
+        return cpp::make_csg_mesh(graph, selection);
       });
 }
 
 template <typename Index, typename Real>
 auto make_csg_mesh(const csg_graph<Index, Real> &graph,
-                   const tf::csg::expr &expression)
+                   const tf::csg::selection_t &selection)
     -> std::future<tf::polygons_buffer<Index, Real, 3, 3>> {
-  return async::make_csg_mesh(future_resolver{}, graph, expression);
+  return async::make_csg_mesh(future_resolver{}, graph, selection);
 }
 
 template <typename Resolver, typename Index, typename Real>
@@ -74,15 +74,14 @@ auto make_csg_mesh_with_labels(Resolver &&resolver,
 template <typename Resolver, typename Index, typename Real>
 auto make_csg_mesh_with_labels(Resolver &&resolver,
                                const csg_graph<Index, Real> &graph,
-                               const tf::csg::expr &expression)
+                               const tf::csg::selection_t &selection)
     -> resolver_result_t<Resolver, csg_mesh_labeled_result<Index, Real>> {
   auto owned_graph = graph;
-  auto owned_expression = expression;
+  auto owned_selection = selection;
   return submit<csg_mesh_labeled_result<Index, Real>>(
       std::forward<Resolver>(resolver),
-      [graph = std::move(owned_graph),
-       expression = std::move(owned_expression)] {
-        return cpp::make_csg_mesh_with_labels(graph, expression);
+      [graph = std::move(owned_graph), selection = std::move(owned_selection)] {
+        return cpp::make_csg_mesh_with_labels(graph, selection);
       });
 }
 
@@ -94,32 +93,31 @@ auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &graph)
 
 template <typename Index, typename Real>
 auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &graph,
-                               const tf::csg::expr &expression)
+                               const tf::csg::selection_t &selection)
     -> std::future<csg_mesh_labeled_result<Index, Real>> {
-  return async::make_csg_mesh_with_labels(future_resolver{}, graph, expression);
+  return async::make_csg_mesh_with_labels(future_resolver{}, graph, selection);
 }
 
 template <typename Resolver, typename Index, typename Real>
 auto make_csg_mesh_with_index_map(Resolver &&resolver,
                                   const csg_graph<Index, Real> &graph,
-                                  const tf::csg::expr &expression)
+                                  const tf::csg::selection_t &selection)
     -> resolver_result_t<Resolver, csg_mesh_index_map_result<Index, Real>> {
   auto owned_graph = graph;
-  auto owned_expression = expression;
+  auto owned_selection = selection;
   return submit<csg_mesh_index_map_result<Index, Real>>(
       std::forward<Resolver>(resolver),
-      [graph = std::move(owned_graph),
-       expression = std::move(owned_expression)] {
-        return cpp::make_csg_mesh_with_index_map(graph, expression);
+      [graph = std::move(owned_graph), selection = std::move(owned_selection)] {
+        return cpp::make_csg_mesh_with_index_map(graph, selection);
       });
 }
 
 template <typename Index, typename Real>
 auto make_csg_mesh_with_index_map(const csg_graph<Index, Real> &graph,
-                                  const tf::csg::expr &expression)
+                                  const tf::csg::selection_t &selection)
     -> std::future<csg_mesh_index_map_result<Index, Real>> {
   return async::make_csg_mesh_with_index_map(future_resolver{}, graph,
-                                             expression);
+                                             selection);
 }
 
 } // namespace tf::cpp::async

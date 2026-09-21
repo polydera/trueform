@@ -115,7 +115,8 @@ auto summarize(const tf::cpp::nd_array<T> &array) -> result_summary {
   return {shape_string(array.raw_shape()), array.length(), digest};
 }
 
-auto summarize(const tf::cpp::histogram_result_int &result) -> result_summary {
+auto summarize(const tf::cpp::histogram_result<std::int32_t> &result)
+    -> result_summary {
   const auto counts = summarize(result.counts);
   const auto edges = summarize(result.edges);
   auto digest = hash_scalar(fnv_offset, counts.digest);
@@ -129,7 +130,8 @@ auto escape_storage(const tf::cpp::nd_array<T> &array) -> void {
   tf_cpp_benchmark_black_box(array.raw_data(), array.length() * sizeof(T));
 }
 
-auto escape_storage(const tf::cpp::histogram_result_int &result) -> void {
+auto escape_storage(const tf::cpp::histogram_result<std::int32_t> &result)
+    -> void {
   escape_storage(result.counts);
   escape_storage(result.edges);
 }

@@ -13,8 +13,8 @@ file(READ "${LINK_MAP}" link_map)
 set(expected_members
   primitive_float_3d.cpp.o
   primitive_double_3d.cpp.o
-  distance_float_int32_3d.cpp.o
-  distance_double_int32_3d.cpp.o)
+  distance_float_3d.cpp.o
+  distance_double_3d.cpp.o)
 foreach(expected_member IN LISTS expected_members)
   string(FIND "${link_map}" "${expected_member}" member_position)
   if(member_position EQUAL -1)
@@ -25,8 +25,8 @@ endforeach()
 
 set(forbidden_patterns
   "primitive_(float|double)_2d\\.cpp\\.o"
-  "distance_(float|double|mixed)_int32_2d\\.cpp\\.o"
-  "distance_(float|double|mixed)_int64_(2d|3d)\\.cpp\\.o")
+  "distance_(float|double|mixed)_(2d|int(32|64)_(2d|3d))\\.cpp\\.o"
+  "distance_mixed_3d\\.cpp\\.o")
 foreach(forbidden_pattern IN LISTS forbidden_patterns)
   if(link_map MATCHES "${forbidden_pattern}")
     message(FATAL_ERROR
@@ -34,4 +34,4 @@ foreach(forbidden_pattern IN LISTS forbidden_patterns)
   endif()
 endforeach()
 
-message(STATUS "Legacy carrier link extracted only approved 3D/int32 shards and legacy distance members")
+message(STATUS "Legacy carrier link extracted only the 3D shards its own reals name")

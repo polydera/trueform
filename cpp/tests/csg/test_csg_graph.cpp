@@ -13,7 +13,9 @@
 #include "carriers.hpp"
 #include "mixed_mesh.hpp"
 #include "trueform/cpp/csg.hpp"
+#include "trueform/cpp/geometry/area.hpp"
 #include "trueform/cpp/geometry/make_box_mesh.hpp"
+#include "trueform/cpp/geometry/make_plane_mesh.hpp"
 #include "trueform/cpp/geometry/signed_volume.hpp"
 #include "trueform/cpp/geometry/volume.hpp"
 
@@ -76,6 +78,18 @@ auto boxes() -> std::vector<csg_owned<tf::cpp::default_index_t, Real>> {
   return result;
 }
 
+/// The sheet and the box the csg documentation states its selection reads
+/// against: a 2x2 separator at z = 0 through the unit box it cuts, so the
+/// cap is area one, the annulus three, and each read has an exact answer.
+template <typename Real>
+auto sheet_and_box() -> std::vector<csg_owned<tf::cpp::default_index_t, Real>> {
+  std::vector<csg_owned<tf::cpp::default_index_t, Real>> result;
+  result.reserve(2);
+  result.push_back({tf::cpp::make_plane_mesh(Real{2}, Real{2})});
+  result.push_back({tf::cpp::make_box_mesh(Real{1}, Real{1}, Real{1})});
+  return result;
+}
+
 /// The views an operand list is, over owners the caller keeps: the vector is
 /// final before the first view is taken of it.
 template <typename Owned>
@@ -102,6 +116,27 @@ template <typename Index, typename Real, std::size_t Ngon>
 auto volume(const tf::polygons_buffer<Index, Real, 3, Ngon> &value) -> Real {
   const csg_owned<Index, Real> owner{value};
   return std::abs(tf::cpp::signed_volume(owner.mesh()));
+}
+
+template <typename Index, typename Real, std::size_t Ngon>
+auto surface_area(const tf::polygons_buffer<Index, Real, 3, Ngon> &value)
+    -> Real {
+  tf::cpp::cache<Index, Real, 3, Ngon> cache;
+  return tf::cpp::area(tf::cpp::test::reading_over(value, cache));
+}
+
+/// The two sheet reads carry the same pieces with opposite windings, so the
+/// one component a surface at z = 0 has says which: twice its signed area.
+template <typename Index, typename Real>
+auto sheet_signed_area(const tf::polygons_buffer<Index, Real, 3, 3> &value)
+    -> Real {
+  auto total = Real{0};
+  for (const auto face : value.polygons()) {
+    const auto first = face[1] - face[0];
+    const auto second = face[2] - face[0];
+    total += first[0] * second[1] - first[1] * second[0];
+  }
+  return total / Real{2};
 }
 
 template <typename Real>
@@ -257,6 +292,16 @@ TEMPLATE_TEST_CASE("csg graph builds once and serves every mesh result",
   CHECK(mapped.face_tag_labels.length() == mapped.mesh.size());
   CHECK(mapped.number_of_tags == 2);
   CHECK(mapped.point_f_offsets.length() == 3);
+  CHECK(mapped.uncut_faces.raw_shape() == tf::small_vector<int, 3>{2, 2});
+  for (std::size_t tag = 0; tag < 2; ++tag) {
+    const auto begin = mapped.uncut_faces[tag * 2];
+    const auto end = mapped.uncut_faces[tag * 2 + 1];
+    CHECK(begin <= end);
+    CHECK(static_cast<std::size_t>(end) <= mapped.mesh.size());
+    for (auto face = begin; face < end; ++face)
+      CHECK(static_cast<std::size_t>(
+                mapped.face_tag_labels[static_cast<std::size_t>(face)]) == tag);
+  }
   CHECK(points.raw_shape() == tf::small_vector<int, 3>{points.shape_at(0), 3});
   CHECK(points.shape_at(0) > 0);
   CHECK(curves.size() > 0);
@@ -323,6 +368,124 @@ TEMPLATE_TEST_CASE("csg graph domain result carriers stay aligned",
   REQUIRE(retained_overlap_inclusion.length() == 2);
   CHECK(retained_overlap_inclusion[0] == std::int8_t{1});
   CHECK(retained_overlap_inclusion[1] == std::int8_t{1});
+}
+
+TEMPLATE_TEST_CASE("csg graph answers the sheet selection reads",
+                   "[cpp][csg][graph][selection]", float, double) {
+  const auto owners = sheet_and_box<TestType>();
+  const auto graph = tf::cpp::make_csg_graph(meshes_of(owners), {0});
+  const auto above_and_outside = ~tf::csg::op(0) & ~tf::csg::op(1);
+
+  const auto annulus =
+      tf::cpp::make_csg_mesh(graph, tf::csg::selection({0}, above_and_outside));
+  const auto cap =
+      tf::cpp::make_csg_mesh(graph, tf::csg::inside({0}, tf::csg::op(1)));
+  const auto annulus_inside =
+      tf::cpp::make_csg_mesh(graph, tf::csg::inside({0}, ~tf::csg::op(1)));
+  const auto bounding_the_box =
+      tf::cpp::make_csg_mesh(graph, tf::csg::selection({0}, tf::csg::op(1)));
+  const auto walls_below =
+      tf::cpp::make_csg_mesh(graph, tf::csg::inside({1}, tf::csg::op(0)));
+  const auto sheet_inside_itself =
+      tf::cpp::make_csg_mesh(graph, tf::csg::inside({0}, tf::csg::op(0)));
+
+  CHECK(static_cast<double>(surface_area(annulus)) ==
+        Catch::Approx(3.0).margin(1e-5));
+  CHECK(static_cast<double>(surface_area(cap)) ==
+        Catch::Approx(1.0).margin(1e-5));
+  CHECK(static_cast<double>(surface_area(annulus_inside)) ==
+        Catch::Approx(3.0).margin(1e-5));
+  CHECK(static_cast<double>(surface_area(walls_below)) ==
+        Catch::Approx(3.0).margin(1e-5));
+  // both sides of each sheet piece answer the same, so neither bounds
+  CHECK(bounding_the_box.size() == 0);
+  CHECK(sheet_inside_itself.size() == 0);
+
+  // a boundary read winds away from its region, an inside read keeps the
+  // sheet's own +z
+  CHECK(static_cast<double>(sheet_signed_area(annulus)) ==
+        Catch::Approx(-3.0).margin(1e-5));
+  CHECK(static_cast<double>(sheet_signed_area(cap)) ==
+        Catch::Approx(1.0).margin(1e-5));
+  CHECK(static_cast<double>(sheet_signed_area(annulus_inside)) ==
+        Catch::Approx(3.0).margin(1e-5));
+
+  const tf::csg::selection_t cap_read = tf::csg::inside({0}, tf::csg::op(1));
+  const auto labeled = tf::cpp::make_csg_mesh_with_labels(graph, cap_read);
+  const auto mapped = tf::cpp::make_csg_mesh_with_index_map(graph, cap_read);
+  CHECK(labeled.mesh.size() == cap.size());
+  REQUIRE(labeled.tag_labels.length() == cap.size());
+  CHECK(labeled.face_labels.length() == labeled.tag_labels.length());
+  for (const auto tag : labeled.tag_labels)
+    CHECK(tag == tf::cpp::default_index_t{0});
+  CHECK(mapped.mesh.size() == cap.size());
+  CHECK(mapped.face_tag_labels.length() == cap.size());
+  CHECK(mapped.point_tag_labels.length() == mapped.mesh.points_buffer().size());
+  CHECK(mapped.number_of_tags == 2);
+
+  // an expression IS a selection: the boundary read of every form
+  const auto carved = tf::csg::op(1) - tf::csg::op(0);
+  const auto from_expression = tf::cpp::make_csg_mesh(graph, carved);
+  const auto from_selection =
+      tf::cpp::make_csg_mesh(graph, tf::csg::selection(carved));
+  CHECK(from_expression.size() > 0);
+  CHECK(arrays_equal(tf::cpp::test::face_indices_of(from_expression),
+                     tf::cpp::test::face_indices_of(from_selection)));
+  CHECK(arrays_equal(result_points(from_expression),
+                     result_points(from_selection)));
+
+  CHECK_THROWS_AS(
+      tf::cpp::make_csg_mesh(graph, tf::csg::selection({2}, tf::csg::op(0))),
+      std::out_of_range);
+}
+
+TEMPLATE_TEST_CASE("csg graph domains take a boundary selection only",
+                   "[cpp][csg][graph][domains][selection]", float, double) {
+  const auto owners = boxes<TestType>();
+  const auto graph = tf::cpp::make_csg_graph(meshes_of(owners));
+  const auto overlap = tf::csg::op(0) & tf::csg::op(1);
+  const auto config = tf::domain_config::exclude_outer_shell |
+                      tf::domain_config::ignore_open_fragments;
+
+  const auto from_expression =
+      tf::cpp::make_csg_domains(graph, overlap, config);
+  const auto from_selection =
+      tf::cpp::make_csg_domains(graph, tf::csg::selection(overlap), config);
+  const auto restricted = tf::cpp::make_csg_domains(
+      graph, tf::csg::selection({0}, overlap), config);
+  const auto labeled = tf::cpp::make_csg_domains_with_labels(
+      graph, tf::csg::selection({0}, overlap), config);
+  const auto mapped = tf::cpp::make_csg_domains_with_index_map(
+      graph, tf::csg::selection({0}, overlap), config);
+
+  REQUIRE(from_expression.meshes.size() == 1);
+  REQUIRE(from_selection.meshes.size() == 1);
+  CHECK(arrays_equal(from_expression.ids, from_selection.ids));
+  CHECK(arrays_equal(tf::cpp::test::face_indices_of(from_expression.meshes[0]),
+                     tf::cpp::test::face_indices_of(from_selection.meshes[0])));
+
+  // the overlap cell is walled by both boxes, so naming one keeps its walls
+  REQUIRE(restricted.meshes.size() == 1);
+  CHECK(restricted.meshes[0].size() > 0);
+  CHECK(restricted.meshes[0].size() < from_selection.meshes[0].size());
+  CHECK(labeled.meshes.size() == restricted.meshes.size());
+  CHECK(labeled.tag_data.length() > 0);
+  for (const auto tag : labeled.tag_data)
+    CHECK(tag == tf::cpp::default_index_t{0});
+  check_domain_index_map_alignment(mapped, restricted.meshes.size(), 2);
+
+  const auto inside_read = tf::csg::inside({0}, overlap);
+  CHECK_THROWS_AS(tf::cpp::make_csg_domains(graph, inside_read, config),
+                  std::invalid_argument);
+  CHECK_THROWS_AS(
+      tf::cpp::make_csg_domains_with_labels(graph, inside_read, config),
+      std::invalid_argument);
+  CHECK_THROWS_AS(
+      tf::cpp::make_csg_domains_with_index_map(graph, inside_read, config),
+      std::invalid_argument);
+  CHECK_THROWS_AS(tf::cpp::make_csg_domains(
+                      graph, tf::csg::selection({2}, overlap), config),
+                  std::out_of_range);
 }
 
 TEMPLATE_TEST_CASE("csg graph validates construction expressions and queries",

@@ -18,7 +18,6 @@
 #include "trueform/cpp/core/matrix.hpp"
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/cpp/core/nd_array.hpp"
-#include "trueform/intersect/intersect_mode.hpp"
 
 #include <cstddef>
 
@@ -47,19 +46,13 @@ struct polygon_arrangement_with_curves_result {
 /// the MANIFOLD EDGE LINK.
 template <typename Index, typename Real, std::size_t Ngon>
 auto polygon_arrangements(const mesh<Index, Real, 3, Ngon> &value,
-                          tf::arrangement_config config =
-                              tf::intersect_config{
-                                  tf::intersect_mode::primitives |
-                                  tf::intersect_mode::resolve_contours})
+                          tf::arrangement_config config = {})
     -> polygon_arrangement_result<Index, Real, Ngon>;
 
 /// @brief The same self arrangement, with the exact curves beside it.
 template <typename Index, typename Real, std::size_t Ngon>
-auto polygon_arrangements_with_curves(
-    const mesh<Index, Real, 3, Ngon> &value,
-    tf::arrangement_config config =
-        tf::intersect_config{tf::intersect_mode::primitives |
-                             tf::intersect_mode::resolve_contours})
+auto polygon_arrangements_with_curves(const mesh<Index, Real, 3, Ngon> &value,
+                                      tf::arrangement_config config = {})
     -> polygon_arrangement_with_curves_result<Index, Real, Ngon>;
 
 #define TF_CPP_EXTERN_POLYGON_ARRANGEMENTS(Index, Real, Ngon)                  \

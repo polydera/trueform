@@ -715,14 +715,22 @@ TEST_CASE("arithmetic and scalar forms preserve every storage dtype",
           "[cpp][core][elementwise]") {
   check_arithmetic<std::int8_t>();
   check_arithmetic<std::int32_t>();
+  check_arithmetic<std::int64_t>();
   check_arithmetic<float>();
   check_arithmetic<double>();
+
+  const auto wide = std::int64_t{1} << 40;
+  const auto wide_values = make_array<std::int64_t>({wide, wide}, {2});
+  check_values(tf::cpp::add(wide_values, wide_values), {2 * wide, 2 * wide});
+  check_values(tf::cpp::mul_scalar(wide_values, std::int64_t{1024}),
+               {wide << 10, wide << 10});
 }
 
 TEST_CASE("assignment variants preserve every storage dtype",
           "[cpp][core][elementwise]") {
   check_assignments<std::int8_t>();
   check_assignments<std::int32_t>();
+  check_assignments<std::int64_t>();
   check_assignments<float>();
   check_assignments<double>();
 }
@@ -772,8 +780,17 @@ TEST_CASE("comparisons and logical operations return int8 arrays",
           "[cpp][core][elementwise]") {
   check_comparisons<std::int8_t>();
   check_comparisons<std::int32_t>();
+  check_comparisons<std::int64_t>();
   check_comparisons<float>();
   check_comparisons<double>();
+
+  const auto low = std::int64_t{1};
+  const auto high = (std::int64_t{1} << 32) + 1;
+  const auto wide_high = make_array<std::int64_t>({high}, {1});
+  const auto wide_low = make_array<std::int64_t>({low}, {1});
+  check_values(tf::cpp::eq(wide_high, wide_low), {std::int8_t{0}});
+  check_values(tf::cpp::gt(wide_high, wide_low), {std::int8_t{1}});
+  check_values(tf::cpp::lt_scalar(wide_low, high), {std::int8_t{1}});
 
   const auto a = make_array<std::int8_t>(
       {std::int8_t{0}, std::int8_t{1}, std::int8_t{2}}, {3});
@@ -812,12 +829,23 @@ TEST_CASE("general unary and vector operations retain their dtype matrices",
           "[cpp][core][elementwise]") {
   check_general_unaries<std::int8_t>();
   check_general_unaries<std::int32_t>();
+  check_general_unaries<std::int64_t>();
   check_general_unaries<float>();
   check_general_unaries<double>();
 
   check_vector_operations<std::int32_t>();
+  check_vector_operations<std::int64_t>();
   check_vector_operations<float>();
   check_vector_operations<double>();
+
+  const auto root = std::int64_t{1} << 21;
+  const auto square = root * root;
+  const auto wide_row = make_array<std::int64_t>({root, root, root}, {3});
+  check_values(tf::cpp::dot(wide_row, wide_row), {3 * square});
+  const auto wide_matrix =
+      make_array<std::int64_t>({root, root, root, root}, {2, 2});
+  check_values(tf::cpp::mat_mul(wide_matrix, wide_matrix),
+               {2 * square, 2 * square, 2 * square, 2 * square});
 }
 
 TEST_CASE("above-threshold single carriers remain valid for vector kernels",
@@ -1025,20 +1053,36 @@ TEST_CASE("normalize supports whole arrays and selected axes",
                   std::invalid_argument);
 }
 
-TEST_CASE("all twelve cross-dtype casts link from the native archive",
+TEST_CASE("all twenty cross-dtype casts link from the native archive",
           "[cpp][core][elementwise]") {
   check_cast<std::int8_t, std::int32_t>();
+  check_cast<std::int8_t, std::int64_t>();
   check_cast<std::int8_t, float>();
   check_cast<std::int8_t, double>();
   check_cast<std::int32_t, std::int8_t>();
+  check_cast<std::int32_t, std::int64_t>();
   check_cast<std::int32_t, float>();
   check_cast<std::int32_t, double>();
+  check_cast<std::int64_t, std::int8_t>();
+  check_cast<std::int64_t, std::int32_t>();
+  check_cast<std::int64_t, float>();
+  check_cast<std::int64_t, double>();
   check_cast<float, std::int8_t>();
   check_cast<float, std::int32_t>();
+  check_cast<float, std::int64_t>();
   check_cast<float, double>();
   check_cast<double, std::int8_t>();
   check_cast<double, std::int32_t>();
+  check_cast<double, std::int64_t>();
   check_cast<double, float>();
+
+  const auto exact = std::int64_t{1} << 53;
+  const auto wide = make_array<std::int64_t>({exact}, {1});
+  check_values(tf::cpp::cast<std::int64_t, double>(wide),
+               {static_cast<double>(exact)});
+  check_values(tf::cpp::cast<double, std::int64_t>(
+                   make_array<double>({static_cast<double>(exact)}, {1})),
+               {exact});
 }
 
 TEST_CASE("async elementwise fronts match sync and resolver-selected results",

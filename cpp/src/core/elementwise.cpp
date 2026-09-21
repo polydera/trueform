@@ -1142,6 +1142,7 @@ auto cast(const nd_array<From> &a) -> nd_array<To> {
 
 TF_CPP_INSTANTIATE_ARITHMETIC(std::int8_t);
 TF_CPP_INSTANTIATE_ARITHMETIC(std::int32_t);
+TF_CPP_INSTANTIATE_ARITHMETIC(std::int64_t);
 TF_CPP_INSTANTIATE_ARITHMETIC(float);
 TF_CPP_INSTANTIATE_ARITHMETIC(double);
 
@@ -1164,6 +1165,7 @@ TF_CPP_INSTANTIATE_ARITHMETIC(double);
 
 TF_CPP_INSTANTIATE_ASSIGN(std::int8_t);
 TF_CPP_INSTANTIATE_ASSIGN(std::int32_t);
+TF_CPP_INSTANTIATE_ASSIGN(std::int64_t);
 TF_CPP_INSTANTIATE_ASSIGN(float);
 TF_CPP_INSTANTIATE_ASSIGN(double);
 
@@ -1185,6 +1187,7 @@ TF_CPP_INSTANTIATE_ASSIGN(double);
 
 TF_CPP_INSTANTIATE_COMPARISONS(std::int8_t);
 TF_CPP_INSTANTIATE_COMPARISONS(std::int32_t);
+TF_CPP_INSTANTIATE_COMPARISONS(std::int64_t);
 TF_CPP_INSTANTIATE_COMPARISONS(float);
 TF_CPP_INSTANTIATE_COMPARISONS(double);
 
@@ -1232,6 +1235,7 @@ TF_CPP_INSTANTIATE_FLOAT_UNARIES(double);
 
 TF_CPP_INSTANTIATE_GENERAL(std::int8_t);
 TF_CPP_INSTANTIATE_GENERAL(std::int32_t);
+TF_CPP_INSTANTIATE_GENERAL(std::int64_t);
 TF_CPP_INSTANTIATE_GENERAL(float);
 TF_CPP_INSTANTIATE_GENERAL(double);
 
@@ -1247,6 +1251,7 @@ TF_CPP_INSTANTIATE_GENERAL(double);
       -> nd_array<T>
 
 TF_CPP_INSTANTIATE_VECTOR(std::int32_t);
+TF_CPP_INSTANTIATE_VECTOR(std::int64_t);
 TF_CPP_INSTANTIATE_VECTOR(float);
 TF_CPP_INSTANTIATE_VECTOR(double);
 
@@ -1259,16 +1264,24 @@ template auto inverted<double>(const nd_array<double> &) -> nd_array<double>;
   template auto cast<FROM, TO>(const nd_array<FROM> &) -> nd_array<TO>
 
 TF_CPP_INSTANTIATE_CAST(std::int8_t, std::int32_t);
+TF_CPP_INSTANTIATE_CAST(std::int8_t, std::int64_t);
 TF_CPP_INSTANTIATE_CAST(std::int8_t, float);
 TF_CPP_INSTANTIATE_CAST(std::int8_t, double);
 TF_CPP_INSTANTIATE_CAST(std::int32_t, std::int8_t);
+TF_CPP_INSTANTIATE_CAST(std::int32_t, std::int64_t);
 TF_CPP_INSTANTIATE_CAST(std::int32_t, float);
 TF_CPP_INSTANTIATE_CAST(std::int32_t, double);
+TF_CPP_INSTANTIATE_CAST(std::int64_t, std::int8_t);
+TF_CPP_INSTANTIATE_CAST(std::int64_t, std::int32_t);
+TF_CPP_INSTANTIATE_CAST(std::int64_t, float);
+TF_CPP_INSTANTIATE_CAST(std::int64_t, double);
 TF_CPP_INSTANTIATE_CAST(float, std::int8_t);
 TF_CPP_INSTANTIATE_CAST(float, std::int32_t);
+TF_CPP_INSTANTIATE_CAST(float, std::int64_t);
 TF_CPP_INSTANTIATE_CAST(float, double);
 TF_CPP_INSTANTIATE_CAST(double, std::int8_t);
 TF_CPP_INSTANTIATE_CAST(double, std::int32_t);
+TF_CPP_INSTANTIATE_CAST(double, std::int64_t);
 TF_CPP_INSTANTIATE_CAST(double, float);
 
 #undef TF_CPP_INSTANTIATE_CAST

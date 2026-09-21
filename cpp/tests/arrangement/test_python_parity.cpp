@@ -166,16 +166,12 @@ TEMPLATE_TEST_CASE(
   const auto inputs = three_way_triangles<TestType>();
   const auto combined = combined_three_way_triangles<TestType>();
   const auto meshes = parity_meshes_of(inputs);
-  const auto mode = tf::intersect_mode::primitives |
-                    tf::intersect_mode::resolve_crossing_contours;
-  const tf::intersect_config config{mode, 0.0};
+  const tf::intersect_config config{tf::intersect_mode::primitives, 0.0};
 
   // All four Python routes have public C++ facade equivalents.
   const auto intersections = tf::cpp::intersection_curves(meshes, config);
-  const auto self_intersections = tf::cpp::self_intersection_curves(
-      combined.mesh(),
-      {tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours,
-       0.0});
+  const auto self_intersections =
+      tf::cpp::self_intersection_curves(combined.mesh(), config);
   const auto mesh_arrangement =
       tf::cpp::mesh_arrangements_with_curves(meshes, config);
   const auto polygon_arrangement =

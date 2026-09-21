@@ -63,12 +63,30 @@ def main():
         zf.write(NUGET_DIR / "trueform.targets",
                  "build/native/polydera.trueform.targets")
 
-        # Headers
+        # Headers. version.hpp is generated: the working tree's copy may
+        # be stale, so it is rendered here from the version this pack
+        # reads, and whatever lies on disk is skipped.
+        version_rel = "trueform/version.hpp"
+        junk = (".bak", ".orig", ".tmp", ".swp")
         for header in sorted(INCLUDE_DIR.rglob("*")):
-            if header.is_file():
-                arcname = "build/native/include/" + \
-                    str(header.relative_to(INCLUDE_DIR))
-                zf.write(header, arcname)
+            if not header.is_file():
+                continue
+            if header.name.endswith(junk) or header.name == ".DS_Store":
+                continue
+            rel = str(header.relative_to(INCLUDE_DIR))
+            if rel == version_rel:
+                continue
+            zf.write(header, "build/native/include/" + rel)
+
+        major, minor, patch = version.split(".")
+        version_hpp = (ROOT / "cmake" / "version.hpp.in").read_text()
+        version_hpp = (
+            version_hpp.replace("@PROJECT_VERSION_MAJOR@", major)
+            .replace("@PROJECT_VERSION_MINOR@", minor)
+            .replace("@PROJECT_VERSION_PATCH@", patch)
+            .replace("@PROJECT_VERSION@", version)
+        )
+        zf.writestr("build/native/include/" + version_rel, version_hpp)
 
         # README
         zf.write(NUGET_DIR / "README.md", "README.md")

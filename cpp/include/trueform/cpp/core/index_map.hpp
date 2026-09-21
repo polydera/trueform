@@ -14,9 +14,9 @@
 
 #include "trueform/core/index_map.hpp"
 #include "trueform/cpp/core/index_type.hpp"
-#include "trueform/cpp/core/matrix.hpp"
 #include "trueform/cpp/core/nd_array.hpp"
 
+#include <cstdint>
 #include <type_traits>
 
 namespace tf::cpp {
@@ -36,10 +36,7 @@ template <typename Index = default_index_t> struct index_map {
   auto is_valid() const -> bool;
 };
 
-#define TF_CPP_EXTERN_INDEX_MAP(Index) extern template struct index_map<Index>
-
-TF_CPP_MATRIX_FOR_EACH_INDEX(TF_CPP_EXTERN_INDEX_MAP)
-
-#undef TF_CPP_EXTERN_INDEX_MAP
+extern template struct index_map<std::int32_t>;
+extern template struct index_map<std::int64_t>;
 
 } // namespace tf::cpp

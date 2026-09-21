@@ -17,7 +17,6 @@
 #include "trueform/cpp/core/matrix.hpp"
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/intersect/intersect_config.hpp"
-#include "trueform/intersect/intersect_mode.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -31,19 +30,16 @@ namespace tf::cpp {
 /// the MANIFOLD EDGE LINK.
 template <typename Index0, typename Real, typename Index1, std::size_t Ngon0,
           std::size_t Ngon1>
-auto intersection_curves(
-    const mesh<Index0, Real, 3, Ngon0> &a,
-    const mesh<Index1, Real, 3, Ngon1> &b,
-    tf::intersect_config config = {tf::intersect_mode::sos})
+auto intersection_curves(const mesh<Index0, Real, 3, Ngon0> &a,
+                         const mesh<Index1, Real, 3, Ngon1> &b,
+                         tf::intersect_config config = {})
     -> tf::curves_buffer<common_index_t<Index0, Index1>, Real, 3>;
 
 /// @brief Exact intersection curves of a range of operands. A range is
 /// homogeneous, so its element states the arity the operands are read at.
 template <typename Index, typename Real, std::size_t Ngon>
 auto intersection_curves(const std::vector<mesh<Index, Real, 3, Ngon>> &meshes,
-                         tf::intersect_config config =
-                             {tf::intersect_mode::sos |
-                              tf::intersect_mode::resolve_crossing_contours})
+                         tf::intersect_config config = {})
     -> tf::curves_buffer<Index, Real, 3>;
 
 #define TF_CPP_EXTERN_INTERSECTION_CURVES_PAIR(Index0, Real, Index1, Ngon0,    \

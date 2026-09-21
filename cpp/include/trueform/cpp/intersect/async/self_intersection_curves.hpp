@@ -18,7 +18,6 @@
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/cpp/intersect/self_intersection_curves.hpp"
 #include "trueform/intersect/intersect_config.hpp"
-#include "trueform/intersect/intersect_mode.hpp"
 
 #include <cstddef>
 #include <future>
@@ -27,10 +26,9 @@
 namespace tf::cpp::async {
 
 template <typename Resolver, typename Index, typename Real, std::size_t Ngon>
-auto self_intersection_curves(
-    Resolver &&resolver, const mesh<Index, Real, 3, Ngon> &value,
-    tf::intersect_config config = {tf::intersect_mode::sos |
-                                   tf::intersect_mode::resolve_contours})
+auto self_intersection_curves(Resolver &&resolver,
+                              const mesh<Index, Real, 3, Ngon> &value,
+                              tf::intersect_config config = {})
     -> resolver_result_t<Resolver, tf::curves_buffer<Index, Real, 3>> {
   return submit<tf::curves_buffer<Index, Real, 3>>(
       std::forward<Resolver>(resolver),
@@ -38,10 +36,8 @@ auto self_intersection_curves(
 }
 
 template <typename Index, typename Real, std::size_t Ngon>
-auto self_intersection_curves(
-    const mesh<Index, Real, 3, Ngon> &value,
-    tf::intersect_config config = {tf::intersect_mode::sos |
-                                   tf::intersect_mode::resolve_contours})
+auto self_intersection_curves(const mesh<Index, Real, 3, Ngon> &value,
+                              tf::intersect_config config = {})
     -> std::future<tf::curves_buffer<Index, Real, 3>> {
   return async::self_intersection_curves(future_resolver{}, value, config);
 }

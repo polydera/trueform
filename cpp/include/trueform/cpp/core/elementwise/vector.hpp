@@ -46,6 +46,7 @@ template <typename T> auto normalize_inplace(nd_array<T> &a, int axis) -> void;
   extern template auto normalize_inplace<T>(nd_array<T> &, int) -> void
 
 TF_CPP_EXTERN_VECTOR(std::int32_t);
+TF_CPP_EXTERN_VECTOR(std::int64_t);
 TF_CPP_EXTERN_VECTOR(float);
 TF_CPP_EXTERN_VECTOR(double);
 TF_CPP_EXTERN_NORMALIZE(float);

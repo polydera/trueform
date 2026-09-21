@@ -179,8 +179,15 @@ def run_python_tests(source_dir: Path, venv_info: VenvInfo = None) -> bool:
     errors = int(error_match.group(1)) if error_match else 0
     total = passed + failed
 
+    # The names and reasons, straight from pytest's own summary section.
+    detail_lines = [
+        l for l in output.splitlines()
+        if l.startswith("FAILED ") or l.startswith("ERROR ")
+    ]
+    detail = "\n".join(detail_lines[:30])
+
     if errors > 0:
-        print_fail("pytest", f"{errors} collection errors")
+        print_fail("pytest", f"{errors} collection errors\n{detail}")
         return False
 
     if total > 0:
@@ -188,7 +195,9 @@ def run_python_tests(source_dir: Path, venv_info: VenvInfo = None) -> bool:
             print_pass(f"pytest ({passed}/{total} passed)")
             return True
         else:
-            print_fail("pytest", f"{passed}/{total} passed, {failed} failed")
+            print_fail(
+                "pytest",
+                f"{passed}/{total} passed, {failed} failed\n{detail}")
             return False
 
     if success:

@@ -15,9 +15,12 @@
 #include "trueform/cpp/topology/boundary_curves.hpp"
 #include "trueform/cpp/topology/boundary_edges.hpp"
 #include "trueform/cpp/topology/boundary_paths.hpp"
+#include "trueform/cpp/topology/boundary_rims.hpp"
 
 #include "trueform/core/algorithm/parallel_copy.hpp"
 #include "trueform/core/algorithm/parallel_transform.hpp"
+#include "trueform/core/buffer.hpp"
+#include "trueform/core/checked.hpp"
 #include "trueform/core/points.hpp"
 #include "trueform/core/range.hpp"
 #include "trueform/core/views/indirect_range.hpp"
@@ -28,6 +31,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 
 namespace tf::cpp {
@@ -45,6 +49,26 @@ auto boundary_paths(const mesh<Index, Real, Dims, Ngon> &value)
     -> offset_blocked_buffer<Index, Index> {
   auto paths = tf::make_boundary_paths(value.faces(), value.face_membership());
   return offset_blocked_buffer<Index, Index>::from_buffer(std::move(paths));
+}
+
+template <typename Index, typename Real, std::size_t Dims, std::size_t Ngon>
+auto boundary_rims(const mesh<Index, Real, Dims, Ngon> &value)
+    -> boundary_rims_result<Index> {
+  auto rims = tf::make_boundary_rims(value.faces(), value.face_membership());
+  const auto count = static_cast<int>(rims.closed.size());
+
+  tf::buffer<std::int8_t> closed;
+  closed.allocate(rims.closed.size());
+  tf::parallel_transform(
+      rims.closed, closed,
+      [](bool closes) { return static_cast<std::int8_t>(closes); },
+      tf::checked);
+
+  return {offset_blocked_buffer<Index, Index>::from_buffer(
+              std::move(rims.vertices)),
+          offset_blocked_buffer<Index, Index>::from_buffer(
+              std::move(rims.faces)),
+          nd_array<std::int8_t>::from_buffer(std::move(closed), {count})};
 }
 
 /// The paths name the mesh's own vertices, so the points they reach are

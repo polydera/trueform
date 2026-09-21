@@ -19,6 +19,8 @@
 #include "trueform/core/polygons_buffer.hpp"
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/cpp/csg/csg_graph.hpp"
+#include "trueform/csg/expression/selection.hpp"
+#include "trueform/csg/expression/selection_kind.hpp"
 #include "trueform/csg/make_csg_domains.hpp"
 #include "trueform/csg/make_csg_mesh.hpp"
 #include "trueform/csg/make_intersection_curves.hpp"
@@ -58,6 +60,22 @@ inline auto require_expression(const tf::csg::expr &expression,
         "csg complement expression must have exactly one child");
   for (const auto &child : children)
     require_expression(child, number_of_tags);
+}
+
+inline auto require_selection(const tf::csg::selection_t &selection,
+                              std::size_t number_of_tags) -> void {
+  for (const auto tag : selection.tags())
+    if (tag < 0 || static_cast<std::size_t>(tag) >= number_of_tags)
+      throw std::out_of_range("csg selection tag is out of range");
+  if (selection.has_expression())
+    require_expression(selection.expression(), number_of_tags);
+}
+
+inline auto require_boundary_selection(const tf::csg::selection_t &selection)
+    -> void {
+  if (selection.kind() != tf::csg::selection_kind::boundary)
+    throw std::invalid_argument(
+        "make_csg_domains: selection must be a boundary read");
 }
 
 template <typename Index, typename Real>
@@ -246,21 +264,21 @@ auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &graph)
 
 template <typename Index, typename Real>
 auto make_csg_mesh(const csg_graph<Index, Real> &graph,
-                   const tf::csg::expr &expression)
+                   const tf::csg::selection_t &selection)
     -> tf::polygons_buffer<Index, Real, 3, 3> {
   const auto &data = csg_graph_detail::access::of(graph);
-  csg_graph_detail::require_expression(expression, data.meshes.size());
-  return tf::make_csg_mesh(data.graph, expression);
+  csg_graph_detail::require_selection(selection, data.meshes.size());
+  return tf::make_csg_mesh(data.graph, selection);
 }
 
 template <typename Index, typename Real>
 auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &graph,
-                               const tf::csg::expr &expression)
+                               const tf::csg::selection_t &selection)
     -> csg_mesh_labeled_result<Index, Real> {
   const auto &data = csg_graph_detail::access::of(graph);
-  csg_graph_detail::require_expression(expression, data.meshes.size());
+  csg_graph_detail::require_selection(selection, data.meshes.size());
   auto [output, tag_labels, face_labels] =
-      tf::make_csg_mesh(data.graph, expression, tf::return_source_ids);
+      tf::make_csg_mesh(data.graph, selection, tf::return_source_ids);
   return {std::move(output),
           nd_array<Index>::from_buffer(std::move(tag_labels)),
           nd_array<Index>::from_buffer(std::move(face_labels))};
@@ -268,14 +286,15 @@ auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &graph,
 
 template <typename Index, typename Real>
 auto make_csg_mesh_with_index_map(const csg_graph<Index, Real> &graph,
-                                  const tf::csg::expr &expression)
+                                  const tf::csg::selection_t &selection)
     -> csg_mesh_index_map_result<Index, Real> {
   const auto &data = csg_graph_detail::access::of(graph);
-  csg_graph_detail::require_expression(expression, data.meshes.size());
+  csg_graph_detail::require_selection(selection, data.meshes.size());
   auto [output, map] =
-      tf::make_csg_mesh(data.graph, expression, tf::return_index_map);
+      tf::make_csg_mesh(data.graph, selection, tf::return_index_map);
   auto [point_f_offsets, point_f_data] =
       csg_graph_detail::blocks_to_arrays(std::move(map.point_f));
+  const auto n_uncut_tags = static_cast<int>(map.uncut_faces.size());
   return {std::move(output),
           nd_array<Index>::from_buffer(std::move(map.point_tag_labels)),
           nd_array<Index>::from_buffer(std::move(map.point_labels)),
@@ -283,6 +302,8 @@ auto make_csg_mesh_with_index_map(const csg_graph<Index, Real> &graph,
           nd_array<Index>::from_buffer(std::move(map.face_labels)),
           std::move(point_f_offsets),
           std::move(point_f_data),
+          nd_array<Index>::from_buffer(std::move(map.uncut_faces.data_buffer()),
+                                       {n_uncut_tags, 2}),
           static_cast<Index>(map.n_original_points),
           static_cast<Index>(map.n_tags),
           static_cast<Index>(map.n_output_points)};
@@ -301,12 +322,14 @@ auto make_csg_domains(const csg_graph<Index, Real> &graph,
 
 template <typename Index, typename Real>
 auto make_csg_domains(const csg_graph<Index, Real> &graph,
-                      const tf::csg::expr &expression, tf::domain_config config)
+                      const tf::csg::selection_t &selection,
+                      tf::domain_config config)
     -> csg_domains_result<Index, Real> {
   const auto &data = csg_graph_detail::access::of(graph);
-  csg_graph_detail::require_expression(expression, data.meshes.size());
+  csg_graph_detail::require_selection(selection, data.meshes.size());
+  csg_graph_detail::require_boundary_selection(selection);
   csg_graph_detail::require_domain_config(config);
-  auto [cells, ids] = tf::make_csg_domains(data.graph, expression, config);
+  auto [cells, ids] = tf::make_csg_domains(data.graph, selection, config);
   return {csg_graph_detail::cells_to_meshes<Index, Real>(cells),
           nd_array<Index>::from_buffer(std::move(ids))};
 }
@@ -333,14 +356,15 @@ auto make_csg_domains_with_labels(const csg_graph<Index, Real> &graph,
 
 template <typename Index, typename Real>
 auto make_csg_domains_with_labels(const csg_graph<Index, Real> &graph,
-                                  const tf::csg::expr &expression,
+                                  const tf::csg::selection_t &selection,
                                   tf::domain_config config)
     -> csg_domains_labeled_result<Index, Real> {
   const auto &data = csg_graph_detail::access::of(graph);
-  csg_graph_detail::require_expression(expression, data.meshes.size());
+  csg_graph_detail::require_selection(selection, data.meshes.size());
+  csg_graph_detail::require_boundary_selection(selection);
   csg_graph_detail::require_domain_config(config);
   auto [cells, ids, tag_blocks, face_blocks] = tf::make_csg_domains(
-      data.graph, expression, config, tf::return_source_ids);
+      data.graph, selection, config, tf::return_source_ids);
   auto [tag_offsets, tag_data] =
       csg_graph_detail::blocks_to_arrays(std::move(tag_blocks));
   auto [face_offsets, face_data] =
@@ -388,14 +412,15 @@ auto make_csg_domains_with_index_map(const csg_graph<Index, Real> &graph,
 
 template <typename Index, typename Real>
 auto make_csg_domains_with_index_map(const csg_graph<Index, Real> &graph,
-                                     const tf::csg::expr &expression,
+                                     const tf::csg::selection_t &selection,
                                      tf::domain_config config)
     -> csg_domains_index_map_result<Index, Real> {
   const auto &data = csg_graph_detail::access::of(graph);
-  csg_graph_detail::require_expression(expression, data.meshes.size());
+  csg_graph_detail::require_selection(selection, data.meshes.size());
+  csg_graph_detail::require_boundary_selection(selection);
   csg_graph_detail::require_domain_config(config);
-  auto [cells, ids, map] = tf::make_csg_domains(data.graph, expression, config,
-                                                tf::return_index_map);
+  auto [cells, ids, map] =
+      tf::make_csg_domains(data.graph, selection, config, tf::return_index_map);
   auto [face_tag_offsets, face_tag_data] =
       csg_graph_detail::blocks_to_arrays(std::move(map.face_tag_blocks));
   auto [face_offsets, face_data] =

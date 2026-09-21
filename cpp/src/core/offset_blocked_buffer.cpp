@@ -172,11 +172,7 @@ auto as_offset_blocked(const nd_array<std::int64_t> &array)
   return offset_blocked_buffer<std::int64_t, std::int64_t>::from_uniform(array);
 }
 
-#define TF_CPP_INSTANTIATE_OFFSET_BLOCKED_BUFFER(Index)                        \
-  template class offset_blocked_buffer<Index, Index>
-
-TF_CPP_MATRIX_FOR_EACH_INDEX(TF_CPP_INSTANTIATE_OFFSET_BLOCKED_BUFFER)
-
-#undef TF_CPP_INSTANTIATE_OFFSET_BLOCKED_BUFFER
+template class offset_blocked_buffer<std::int32_t, std::int32_t>;
+template class offset_blocked_buffer<std::int64_t, std::int64_t>;
 
 } // namespace tf::cpp

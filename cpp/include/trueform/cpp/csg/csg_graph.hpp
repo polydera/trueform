@@ -39,6 +39,8 @@ template <typename Index, typename Real> struct csg_mesh_index_map_result {
   nd_array<Index> face_labels;
   nd_array<Index> point_f_offsets;
   nd_array<Index> point_f_data;
+  /// (n_tags, 2): each tag's [begin, end) span of uncut output faces
+  nd_array<Index> uncut_faces;
   Index number_of_original_points = 0;
   Index number_of_tags = 0;
   Index number_of_output_points = 0;

@@ -42,6 +42,7 @@ auto random(tf::small_vector<int, 3> shape, T lower, T upper) -> nd_array<T>;
 
 TF_CPP_EXTERN_FILLED(std::int8_t);
 TF_CPP_EXTERN_FILLED(std::int32_t);
+TF_CPP_EXTERN_FILLED(std::int64_t);
 TF_CPP_EXTERN_FILLED(float);
 TF_CPP_EXTERN_FILLED(double);
 
@@ -52,6 +53,7 @@ TF_CPP_EXTERN_FILLED(double);
   extern template auto arange<T>(T, T, T) -> nd_array<T>
 
 TF_CPP_EXTERN_RANGE(std::int32_t);
+TF_CPP_EXTERN_RANGE(std::int64_t);
 TF_CPP_EXTERN_RANGE(float);
 TF_CPP_EXTERN_RANGE(double);
 
@@ -64,6 +66,7 @@ extern template auto linspace<double>(double, double, int) -> nd_array<double>;
   extern template auto random<T>(tf::small_vector<int, 3>, T, T) -> nd_array<T>
 
 TF_CPP_EXTERN_RANDOM(std::int32_t);
+TF_CPP_EXTERN_RANDOM(std::int64_t);
 TF_CPP_EXTERN_RANDOM(float);
 TF_CPP_EXTERN_RANDOM(double);
 

@@ -24,7 +24,10 @@ namespace tf::cpp {
       -> offset_blocked_buffer<std::int32_t, std::int32_t>;                    \
   template auto boundary_curves<std::int32_t, float, 3, Ngon>(                 \
       const mesh<std::int32_t, float, 3, Ngon> &)                              \
-      -> boundary_curves_result<std::int32_t, float, 3>
+      -> boundary_curves_result<std::int32_t, float, 3>;                       \
+  template auto boundary_rims<std::int32_t, float, 3, Ngon>(                   \
+      const mesh<std::int32_t, float, 3, Ngon> &)                              \
+      -> boundary_rims_result<std::int32_t>
 
 TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_MESH_BOUNDARY)
 

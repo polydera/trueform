@@ -17,16 +17,6 @@
 
 namespace tf::cpp {
 
-template auto distance2(const primitive<float, 3> &,
-                        const primitive<double, 3> &)
-    -> distance_result<double>;
-template auto distance2(const primitive<double, 3> &,
-                        const primitive<float, 3> &) -> distance_result<double>;
-template auto distance(const primitive<float, 3> &,
-                       const primitive<double, 3> &) -> distance_result<double>;
-template auto distance(const primitive<double, 3> &,
-                       const primitive<float, 3> &) -> distance_result<double>;
-
 template <std::size_t Ngon>
 using mesh_float_t = mesh<std::int32_t, float, 3, Ngon>;
 template <std::size_t Ngon>
@@ -62,10 +52,6 @@ using point_cloud_double = point_cloud<double, 3>;
 
 TF_CPP_MATRIX_FOR_EACH_NGON_PAIR(TF_CPP_INSTANTIATE_MIXED_FF_MESH_MESH)
 TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_MIXED_FF_MESH_CLOUD)
-TF_CPP_INSTANTIATE_MIXED_FF(distance2, point_cloud_float, point_cloud_double,
-                            point_cloud_float, point_cloud_double);
-TF_CPP_INSTANTIATE_MIXED_FF(distance, point_cloud_float, point_cloud_double,
-                            point_cloud_float, point_cloud_double);
 
 #undef TF_CPP_INSTANTIATE_MIXED_FF_MESH_CLOUD
 #undef TF_CPP_INSTANTIATE_MIXED_FF_MESH_MESH

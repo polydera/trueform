@@ -11,7 +11,7 @@ target_link_libraries(trueform_cpp_test_common INTERFACE
 )
 target_compile_options(trueform_cpp_test_common INTERFACE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
-  $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4244 /wd4267 /wd4458 /wd4701>
+  $<$<CXX_COMPILER_ID:MSVC>:/bigobj /W3 /wd4244 /wd4267 /wd4458 /wd4701>
 )
 
 add_subdirectory(arrangement)

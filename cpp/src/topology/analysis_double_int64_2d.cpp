@@ -29,6 +29,8 @@ namespace tf::cpp {
       const mesh<std::int64_t, double, 2, Ngon> &) -> std::int32_t;            \
   template auto non_manifold_edges<std::int64_t, double, 2, Ngon>(             \
       const mesh<std::int64_t, double, 2, Ngon> &) -> nd_array<std::int64_t>;  \
+  template auto non_manifold_vertices<std::int64_t, double, 2, Ngon>(          \
+      const mesh<std::int64_t, double, 2, Ngon> &) -> nd_array<std::int64_t>;  \
   template auto k_rings<std::int64_t, double, 2, Ngon>(                        \
       const mesh<std::int64_t, double, 2, Ngon> &, std::int32_t, bool)         \
       -> offset_blocked_buffer<std::int64_t, std::int64_t>;                    \
@@ -45,6 +47,14 @@ TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_MESH_ANALYSIS)
 
 TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_ORIENT_FACES)
 
+#define TF_CPP_INSTANTIATE_SPLIT_NON_MANIFOLD_VERTICES(Ngon)                   \
+  template auto split_non_manifold_vertices<std::int64_t, double, 2, Ngon>(    \
+      const mesh<std::int64_t, double, 2, Ngon> &)                             \
+      -> split_non_manifold_vertices_result<std::int64_t, double, 2, Ngon>
+
+TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_SPLIT_NON_MANIFOLD_VERTICES)
+
+#undef TF_CPP_INSTANTIATE_SPLIT_NON_MANIFOLD_VERTICES
 #undef TF_CPP_INSTANTIATE_ORIENT_FACES
 #undef TF_CPP_INSTANTIATE_MESH_ANALYSIS
 

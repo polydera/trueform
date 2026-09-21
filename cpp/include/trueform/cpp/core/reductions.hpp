@@ -86,6 +86,7 @@ auto all(const nd_array<std::int8_t> &array, int axis) -> nd_array<std::int8_t>;
 
 TF_CPP_EXTERN_REDUCTIONS(std::int8_t);
 TF_CPP_EXTERN_REDUCTIONS(std::int32_t);
+TF_CPP_EXTERN_REDUCTIONS(std::int64_t);
 TF_CPP_EXTERN_REDUCTIONS(float);
 TF_CPP_EXTERN_REDUCTIONS(double);
 

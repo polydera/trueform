@@ -78,6 +78,10 @@ tf_cpp_add_shards(
   src/geometry/primitive_geometry_float_3d.cpp
   src/geometry/primitive_geometry_double_2d.cpp
   src/geometry/primitive_geometry_double_3d.cpp
+  src/geometry/quality_float_int32_3d.cpp
+  src/geometry/quality_float_int64_3d.cpp
+  src/geometry/quality_double_int32_3d.cpp
+  src/geometry/quality_double_int64_3d.cpp
   src/geometry/registration_fit_float_2d.cpp
   src/geometry/registration_fit_float_3d.cpp
   src/geometry/registration_fit_double_2d.cpp
@@ -112,6 +116,10 @@ tf_cpp_add_shards(
   src/intersect/intersection_curves_double_int32_int64_3d.cpp
   src/intersect/intersection_curves_double_int64_int32_3d.cpp
   src/intersect/intersection_curves_double_int64_int64_3d.cpp
+  src/intersect/has_self_intersections_float_int32_3d.cpp
+  src/intersect/has_self_intersections_float_int64_3d.cpp
+  src/intersect/has_self_intersections_double_int32_3d.cpp
+  src/intersect/has_self_intersections_double_int64_3d.cpp
   src/spatial/closest_metric_point_float_2d.cpp
   src/spatial/closest_metric_point_float_3d.cpp
   src/spatial/closest_metric_point_double_2d.cpp
@@ -124,14 +132,20 @@ tf_cpp_add_shards(
   src/spatial/closest_metric_point_pair_double_3d.cpp
   src/spatial/closest_metric_point_pair_mixed_2d.cpp
   src/spatial/closest_metric_point_pair_mixed_3d.cpp
+  src/spatial/distance_float_2d.cpp
+  src/spatial/distance_float_3d.cpp
   src/spatial/distance_float_int32_2d.cpp
   src/spatial/distance_float_int32_3d.cpp
   src/spatial/distance_float_int64_2d.cpp
   src/spatial/distance_float_int64_3d.cpp
+  src/spatial/distance_double_2d.cpp
+  src/spatial/distance_double_3d.cpp
   src/spatial/distance_double_int32_2d.cpp
   src/spatial/distance_double_int32_3d.cpp
   src/spatial/distance_double_int64_2d.cpp
   src/spatial/distance_double_int64_3d.cpp
+  src/spatial/distance_mixed_2d.cpp
+  src/spatial/distance_mixed_3d.cpp
   src/spatial/distance_mixed_int32_2d.cpp
   src/spatial/distance_mixed_int32_3d.cpp
   src/spatial/distance_mixed_int64_2d.cpp
@@ -226,7 +240,7 @@ target_link_libraries(trueform_cpp PUBLIC tf::trueform)
 
 target_compile_options(trueform_cpp PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
-  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+  $<$<CXX_COMPILER_ID:MSVC>:/bigobj /W4>
 )
 
 # Unoptimized facade template instantiations emit millions of weak symbols and

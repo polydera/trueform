@@ -362,6 +362,7 @@ auto set_difference(const nd_array<T> &a, const nd_array<T> &b) -> nd_array<T> {
 
 TF_CPP_INSTANTIATE_SORTING(std::int8_t);
 TF_CPP_INSTANTIATE_SORTING(std::int32_t);
+TF_CPP_INSTANTIATE_SORTING(std::int64_t);
 TF_CPP_INSTANTIATE_SORTING(float);
 TF_CPP_INSTANTIATE_SORTING(double);
 

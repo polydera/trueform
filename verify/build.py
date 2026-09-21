@@ -92,9 +92,33 @@ def print_pass(name: str) -> None:
 
 def print_fail(name: str, error: str = "") -> None:
     print(f"  {colored('[FAIL]', Colors.RED)} {name}")
-    if error:
-        for line in error.strip().split("\n")[:10]:
-            print(f"         {line}")
+    if not error:
+        return
+    lines = error.strip().split("\n")
+
+    def is_hit(l: str) -> bool:
+        low = l.lower()
+        if "performing test" in low:
+            return False  # configure probes report '- Failed' as normal output
+        return "error" in low or "fatal" in low or "failed" in low
+
+    shown: list = []
+    taken = set()
+    for i, l in enumerate(lines):
+        if not is_hit(l):
+            continue
+        for j in range(i, min(i + 4, len(lines))):
+            if j not in taken:
+                taken.add(j)
+                shown.append(lines[j])
+        if len(shown) >= 60:
+            break
+    if not shown:
+        shown = lines[-15:]
+    for line in shown[:60]:
+        print(f"         {line}")
+    if len(shown) > 60:
+        print(f"         ... more in the captured log")
 
 
 def print_skip(name: str, reason: str = "") -> None:
@@ -245,7 +269,8 @@ class BuildVerifier:
     # =========================================================================
     # Configure
     # =========================================================================
-    def do_configure(self, skip_vtk: bool = False) -> bool:
+    def do_configure(self, skip_vtk: bool = False,
+                     with_static: bool = False) -> bool:
         self.build_dir.mkdir(parents=True, exist_ok=True)
 
         cmake_args = [
@@ -254,7 +279,7 @@ class BuildVerifier:
             "-B", str(self.build_dir),
             f"-DCMAKE_INSTALL_PREFIX={self.install_prefix}",
             "-DCMAKE_BUILD_TYPE=Release",
-            "-DTF_BUILD_CPP=ON",
+            f"-DTF_BUILD_CPP={'ON' if with_static else 'OFF'}",
             "-DTF_BUILD_EXAMPLES=ON",
             "-DTF_BUILD_TESTS=ON",
         ]
@@ -264,8 +289,9 @@ class BuildVerifier:
             cmake_args.extend([
                 "-DTF_BUILD_VTK_INTEGRATION=ON",
                 "-DTF_BUILD_VTK_EXAMPLES=ON",
-                "-DTF_BUILD_CPP_VTK_EXAMPLES=ON",
             ])
+            if with_static:
+                cmake_args.append("-DTF_BUILD_CPP_VTK_EXAMPLES=ON")
 
         try:
             self.run_cmd(cmake_args, cwd=self.build_dir)
@@ -287,13 +313,14 @@ class BuildVerifier:
                 "trueform_examples", False, e.stdout if e.stdout else str(e)
             )
 
-    def build_tests(self) -> bool:
+    def build_tests(self, with_static: bool = False) -> bool:
+        target = "trueform_all_tests" if with_static else "trueform_tests"
         try:
-            self._cmake_build("trueform_all_tests")
-            return self.record_result("trueform_all_tests", True)
+            self._cmake_build(target)
+            return self.record_result(target, True)
         except subprocess.CalledProcessError as e:
             return self.record_result(
-                "trueform_all_tests", False, e.stdout if e.stdout else str(e)
+                target, False, e.stdout if e.stdout else str(e)
             )
 
     def build_vtk(self) -> bool:
@@ -695,6 +722,7 @@ int main() {
         skip_vtk: bool = False,
         skip_python: bool = False,
         skip_examples: bool = False,
+        with_static: bool = False,
     ) -> bool:
         print_step("Setup")
         if not self.do_setup():
@@ -705,7 +733,7 @@ int main() {
             return False
 
         print_step("Configure")
-        if not self.do_configure(skip_vtk=skip_vtk):
+        if not self.do_configure(skip_vtk=skip_vtk, with_static=with_static):
             return False
 
         # Create venv for Python wheel build
@@ -722,7 +750,7 @@ int main() {
             print_skip("trueform_examples", "skipped by user")
         else:
             self.build_examples()
-        self.build_tests()
+        self.build_tests(with_static=with_static)
 
         vtk_ok = False
         if skip_vtk:
@@ -737,7 +765,11 @@ int main() {
                     print_skip("trueform_cpp_vtk_examples", "skipped by user")
                 else:
                     self.build_vtk_examples()
-                    self.build_cpp_vtk_examples()
+                    if with_static:
+                        self.build_cpp_vtk_examples()
+                    else:
+                        print_skip("trueform_cpp_vtk_examples",
+                                   "static facade off (--with-static)")
             else:
                 print_skip("trueform_vtk_examples", "VTK build failed")
                 print_skip("trueform_cpp_vtk_examples", "VTK build failed")
@@ -782,11 +814,12 @@ int main() {
         print_step("Test find_package")
         self.test_find_package()
 
-        if skip_examples:
-            print_step("Build cpp examples")
+        print_step("Build cpp examples")
+        if not with_static:
+            print_skip("cpp examples", "static facade off (--with-static)")
+        elif skip_examples:
             print_skip("cpp examples", "skipped by user")
         else:
-            print_step("Build cpp examples")
             self.build_cpp_examples()
 
         if skip_vtk:
@@ -840,6 +873,7 @@ def run_build_cpp_only(
     work_dir: Path = None,
     skip_vtk: bool = False,
     skip_examples: bool = False,
+    with_static: bool = False,
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
@@ -885,7 +919,8 @@ def run_build_cpp_only(
             return False
 
         print_step("Configure")
-        if not verifier.do_configure(skip_vtk=skip_vtk):
+        if not verifier.do_configure(skip_vtk=skip_vtk,
+                                     with_static=with_static):
             return False
 
         print_step("Build")
@@ -893,7 +928,7 @@ def run_build_cpp_only(
             print_skip("trueform_examples", "skipped by user")
         else:
             verifier.build_examples()
-        verifier.build_tests()
+        verifier.build_tests(with_static=with_static)
 
         if skip_vtk:
             print_skip("trueform_vtk", "skipped by user")
@@ -907,7 +942,11 @@ def run_build_cpp_only(
                     print_skip("trueform_cpp_vtk_examples", "skipped by user")
                 else:
                     verifier.build_vtk_examples()
-                    verifier.build_cpp_vtk_examples()
+                    if with_static:
+                        verifier.build_cpp_vtk_examples()
+                    else:
+                        print_skip("trueform_cpp_vtk_examples",
+                                   "static facade off (--with-static)")
             else:
                 print_skip("trueform_vtk_examples", "VTK build failed")
                 print_skip("trueform_cpp_vtk_examples", "VTK build failed")
@@ -929,11 +968,12 @@ def run_build_cpp_only(
         print_step("Test find_package")
         verifier.test_find_package()
 
-        if skip_examples:
-            print_step("Build cpp examples")
+        print_step("Build cpp examples")
+        if not with_static:
+            print_skip("cpp examples", "static facade off (--with-static)")
+        elif skip_examples:
             print_skip("cpp examples", "skipped by user")
         else:
-            print_step("Build cpp examples")
             verifier.build_cpp_examples()
 
         if skip_vtk:
@@ -1054,6 +1094,7 @@ def run_build(
     skip_vtk: bool = False,
     skip_python: bool = False,
     skip_examples: bool = False,
+    with_static: bool = False,
     branch: str = None,
     keep: bool = False,
     source_dir: Path = None,
@@ -1095,6 +1136,7 @@ def run_build(
             skip_vtk=skip_vtk,
             skip_python=skip_python,
             skip_examples=skip_examples,
+            with_static=with_static,
         )
     except KeyboardInterrupt:
         print(colored("\nInterrupted by user", Colors.YELLOW))

@@ -343,6 +343,13 @@ target_link_libraries(
   trueform_installed_closest_metric_point_pair_float_2d
   PRIVATE tf::trueform_cpp)
 
+add_executable(trueform_installed_distance_primitive_float_3d
+  distance_primitive_float_3d.cpp)
+target_compile_features(trueform_installed_distance_primitive_float_3d
+  PRIVATE cxx_std_17)
+target_link_libraries(trueform_installed_distance_primitive_float_3d
+  PRIVATE tf::trueform_cpp)
+
 add_executable(trueform_installed_registration_float_2d
   registration_float_2d.cpp)
 target_compile_features(trueform_installed_registration_float_2d
@@ -601,12 +608,15 @@ set(ray_cast_float_2d_link_map
   "${CMAKE_CURRENT_BINARY_DIR}/trueform_installed_ray_cast_float_2d.map")
 set(closest_metric_point_pair_float_2d_link_map
   "${CMAKE_CURRENT_BINARY_DIR}/trueform_installed_closest_metric_point_pair_float_2d.map")
+set(distance_primitive_float_3d_link_map
+  "${CMAKE_CURRENT_BINARY_DIR}/trueform_installed_distance_primitive_float_3d.map")
 if(APPLE)
   foreach(link_target IN ITEMS
       intersects_float_int64_2d
       neighbor_search_float_int64_2d
       gather_ids_float_int64_2d
-      ray_cast_float_2d)
+      ray_cast_float_2d
+      distance_primitive_float_3d)
     target_link_options(trueform_installed_${link_target} PRIVATE
       "-Wl,-map,${${link_target}_link_map}")
   endforeach()
@@ -618,7 +628,8 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
       intersects_float_int64_2d
       neighbor_search_float_int64_2d
       gather_ids_float_int64_2d
-      ray_cast_float_2d)
+      ray_cast_float_2d
+      distance_primitive_float_3d)
     target_link_options(trueform_installed_${link_target} PRIVATE
       "-Wl,-Map,${${link_target}_link_map}")
   endforeach()
@@ -791,6 +802,8 @@ add_test(NAME trueform_installed_ray_cast_float_2d
   COMMAND trueform_installed_ray_cast_float_2d)
 add_test(NAME trueform_installed_closest_metric_point_pair_float_2d
   COMMAND trueform_installed_closest_metric_point_pair_float_2d)
+add_test(NAME trueform_installed_distance_primitive_float_3d
+  COMMAND trueform_installed_distance_primitive_float_3d)
 add_test(NAME trueform_installed_registration_float_2d
   COMMAND trueform_installed_registration_float_2d)
 add_test(NAME trueform_installed_primitive_geometry_float_2d
@@ -982,6 +995,15 @@ if(APPLE OR CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     trueform_installed_closest_metric_point_pair_float_2d_extraction
     PROPERTIES DEPENDS
       trueform_installed_closest_metric_point_pair_float_2d)
+  add_test(NAME trueform_installed_distance_primitive_float_3d_extraction
+    COMMAND "${CMAKE_COMMAND}"
+      "-DLINK_MAP=${distance_primitive_float_3d_link_map}"
+      "-DSHARD_LABEL=float 3D primitive distance"
+      "-DEXPECTED_OBJECT=distance_float_3d.cpp.o"
+      "-DFORBIDDEN_PATTERN=distance_(float|double|mixed)(_int(32|64))?_[23]d\\.cpp\\.o"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/CheckAxisShardLinkMap.cmake")
+  set_tests_properties(trueform_installed_distance_primitive_float_3d_extraction
+    PROPERTIES DEPENDS trueform_installed_distance_primitive_float_3d)
 
   add_test(NAME trueform_installed_legacy_primitive_normals_extraction
     COMMAND "${CMAKE_COMMAND}"

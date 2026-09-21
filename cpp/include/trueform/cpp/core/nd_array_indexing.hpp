@@ -70,6 +70,7 @@ auto boolean_index(const nd_array<T> &array, const nd_array<std::int8_t> &mask)
 
 TF_CPP_EXTERN_INDEXING(std::int8_t);
 TF_CPP_EXTERN_INDEXING(std::int32_t);
+TF_CPP_EXTERN_INDEXING(std::int64_t);
 TF_CPP_EXTERN_INDEXING(float);
 TF_CPP_EXTERN_INDEXING(double);
 

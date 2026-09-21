@@ -178,12 +178,19 @@ TEST_CASE("nd_array factories preserve the supported dtype matrices",
           "[cpp][core][ndarray-operations]") {
   check_basic_factories<std::int8_t>();
   check_basic_factories<std::int32_t>();
+  check_basic_factories<std::int64_t>();
   check_basic_factories<float>();
   check_basic_factories<double>();
 
   check_range_factories<std::int32_t>();
+  check_range_factories<std::int64_t>();
   check_range_factories<float>();
   check_range_factories<double>();
+
+  const auto wide = std::int64_t{1} << 40;
+  check_values(tf::cpp::full<std::int64_t>({2}, wide), {wide, wide});
+  check_values(tf::cpp::arange<std::int64_t>(wide, wide + 3, 1),
+               {wide, wide + 1, wide + 2});
 
   check_values(tf::cpp::linspace<float>(0, 1, 5),
                {0.0F, 0.25F, 0.5F, 0.75F, 1.0F});
@@ -192,16 +199,24 @@ TEST_CASE("nd_array factories preserve the supported dtype matrices",
 
 TEST_CASE("random arrays use native shapes and supported dtypes",
           "[cpp][core][ndarray-operations]") {
+  const auto wide = std::int64_t{1} << 40;
   const auto integers = tf::cpp::random<std::int32_t>({4, 3}, 2, 8);
+  const auto wide_integers =
+      tf::cpp::random<std::int64_t>({4, 3}, wide, wide + 6);
   const auto floats = tf::cpp::random<float>({4, 3}, -1, 1);
   const auto doubles = tf::cpp::random<double>({4, 3}, -2, 2);
 
   CHECK((integers.raw_shape() == tf::small_vector<int, 3>{4, 3}));
+  CHECK((wide_integers.raw_shape() == tf::small_vector<int, 3>{4, 3}));
   CHECK((floats.raw_shape() == tf::small_vector<int, 3>{4, 3}));
   CHECK((doubles.raw_shape() == tf::small_vector<int, 3>{4, 3}));
   for (const auto value : integers) {
     CHECK(value >= 2);
     CHECK(value <= 8);
+  }
+  for (const auto value : wide_integers) {
+    CHECK(value >= wide);
+    CHECK(value <= wide + 6);
   }
   for (const auto value : floats) {
     CHECK(value >= -1);
@@ -217,6 +232,7 @@ TEST_CASE("nd_array structural operations support every storage dtype",
           "[cpp][core][ndarray-operations]") {
   check_structural_operations<std::int8_t>();
   check_structural_operations<std::int32_t>();
+  check_structural_operations<std::int64_t>();
   check_structural_operations<float>();
   check_structural_operations<double>();
 }

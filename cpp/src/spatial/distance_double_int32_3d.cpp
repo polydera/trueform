@@ -26,13 +26,6 @@ using point_cloud_type = point_cloud<double, 3>;
 #define TF_CPP_INSTANTIATE_DISTANCE(Operation, Left, Right, Result)            \
   template auto Operation(Left, Right) -> Result
 
-TF_CPP_INSTANTIATE_DISTANCE(distance2, const distance_query_t<double> &,
-                            const distance_query_t<double> &,
-                            distance_result<double>);
-TF_CPP_INSTANTIATE_DISTANCE(distance, const distance_query_t<double> &,
-                            const distance_query_t<double> &,
-                            distance_result<double>);
-
 #define TF_CPP_INSTANTIATE_FP(Operation, Form, QueryReal)                      \
   TF_CPP_INSTANTIATE_DISTANCE(Operation, const Form &,                         \
                               const distance_query_t<QueryReal> &,             \
@@ -42,12 +35,7 @@ TF_CPP_INSTANTIATE_DISTANCE(distance, const distance_query_t<double> &,
   TF_CPP_INSTANTIATE_FP(distance2, mesh_t<Ngon>, QueryReal);                   \
   TF_CPP_INSTANTIATE_FP(distance, mesh_t<Ngon>, QueryReal)
 
-#define TF_CPP_INSTANTIATE_FP_CLOUD(QueryReal)                                 \
-  TF_CPP_INSTANTIATE_FP(distance2, point_cloud_type, QueryReal);               \
-  TF_CPP_INSTANTIATE_FP(distance, point_cloud_type, QueryReal)
-
 TF_CPP_MATRIX_FOR_EACH_REAL_NGON(TF_CPP_INSTANTIATE_FP_MESH)
-TF_CPP_MATRIX_FOR_EACH_REAL(TF_CPP_INSTANTIATE_FP_CLOUD)
 
 #define TF_CPP_INSTANTIATE_FF(Operation, Left, Right)                          \
   TF_CPP_INSTANTIATE_DISTANCE(Operation, const Left &, const Right &, double)
@@ -64,13 +52,10 @@ TF_CPP_MATRIX_FOR_EACH_REAL(TF_CPP_INSTANTIATE_FP_CLOUD)
 
 TF_CPP_MATRIX_FOR_EACH_NGON_PAIR(TF_CPP_INSTANTIATE_FF_MESH_MESH)
 TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_FF_MESH_CLOUD)
-TF_CPP_INSTANTIATE_FF(distance2, point_cloud_type, point_cloud_type);
-TF_CPP_INSTANTIATE_FF(distance, point_cloud_type, point_cloud_type);
 
 #undef TF_CPP_INSTANTIATE_FF_MESH_CLOUD
 #undef TF_CPP_INSTANTIATE_FF_MESH_MESH
 #undef TF_CPP_INSTANTIATE_FF
-#undef TF_CPP_INSTANTIATE_FP_CLOUD
 #undef TF_CPP_INSTANTIATE_FP_MESH
 #undef TF_CPP_INSTANTIATE_FP
 #undef TF_CPP_INSTANTIATE_DISTANCE

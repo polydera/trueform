@@ -17,6 +17,7 @@
 #include "trueform/cpp/csg/csg_domains.hpp"
 #include "trueform/cpp/csg/csg_graph.hpp"
 #include "trueform/csg/expression.hpp"
+#include "trueform/csg/expression/selection.hpp"
 #include "trueform/topology/domain_config.hpp"
 
 #include <future>
@@ -38,16 +39,16 @@ namespace tf::cpp::async {
   }                                                                            \
   template <typename Resolver, typename Index, typename Real>                  \
   auto Name(Resolver &&resolver, const csg_graph<Index, Real> &graph,          \
-            const tf::csg::expr &expression,                                   \
+            const tf::csg::selection_t &selection,                             \
             tf::domain_config config = tf::domain_config::none)                \
       -> resolver_result_t<Resolver, Result<Index, Real>> {                    \
     auto owned_graph = graph;                                                  \
-    auto owned_expression = expression;                                        \
+    auto owned_selection = selection;                                          \
     return submit<Result<Index, Real>>(                                        \
         std::forward<Resolver>(resolver),                                      \
         [graph = std::move(owned_graph),                                       \
-         expression = std::move(owned_expression),                             \
-         config] { return cpp::Name(graph, expression, config); });            \
+         selection = std::move(owned_selection),                               \
+         config] { return cpp::Name(graph, selection, config); });             \
   }                                                                            \
   template <typename Index, typename Real>                                     \
   auto Name(const csg_graph<Index, Real> &graph,                               \
@@ -57,10 +58,10 @@ namespace tf::cpp::async {
   }                                                                            \
   template <typename Index, typename Real>                                     \
   auto Name(const csg_graph<Index, Real> &graph,                               \
-            const tf::csg::expr &expression,                                   \
+            const tf::csg::selection_t &selection,                             \
             tf::domain_config config = tf::domain_config::none)                \
       -> std::future<Result<Index, Real>> {                                    \
-    return async::Name(future_resolver{}, graph, expression, config);          \
+    return async::Name(future_resolver{}, graph, selection, config);           \
   }
 
 TF_CPP_CSG_ASYNC_DOMAINS(make_csg_domains, csg_domains_result)

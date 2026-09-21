@@ -64,6 +64,9 @@ endfunction()
 # -- nd_array, curves, index_map, mesh_structure, obb, cdt -- cross the whole
 # matrix inside one translation unit and name no axis at all, so a token a name
 # does not carry is an axis the shard does not have and never a default.
+# index_map and offset_blocked_buffer state both widths regardless of the
+# matrix: a point cloud's ids and default_index_t are int32 by construction,
+# and as_offset_blocked reads int64, so neither width is the matrix's to drop.
 function(tf_cpp_matrix_filter_sources out)
   set(kept "")
   foreach(source IN LISTS ARGN)

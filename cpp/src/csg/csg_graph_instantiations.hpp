@@ -28,31 +28,31 @@
   template auto make_csg_mesh(const csg_graph<Index, Real> &)                  \
       -> tf::polygons_buffer<Index, Real, 3, 3>;                               \
   template auto make_csg_mesh(const csg_graph<Index, Real> &,                  \
-                              const tf::csg::expr &)                           \
+                              const tf::csg::selection_t &)                    \
       -> tf::polygons_buffer<Index, Real, 3, 3>;                               \
   template auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &)      \
       -> csg_mesh_labeled_result<Index, Real>;                                 \
   template auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &,      \
-                                          const tf::csg::expr &)               \
+                                          const tf::csg::selection_t &)        \
       -> csg_mesh_labeled_result<Index, Real>;                                 \
   template auto make_csg_mesh_with_index_map(const csg_graph<Index, Real> &,   \
-                                             const tf::csg::expr &)            \
+                                             const tf::csg::selection_t &)     \
       -> csg_mesh_index_map_result<Index, Real>;                               \
   template auto make_csg_domains(const csg_graph<Index, Real> &,               \
                                  tf::domain_config)                            \
       -> csg_domains_result<Index, Real>;                                      \
-  template auto make_csg_domains(const csg_graph<Index, Real> &,               \
-                                 const tf::csg::expr &, tf::domain_config)     \
-      -> csg_domains_result<Index, Real>;                                      \
+  template auto make_csg_domains(                                              \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &,            \
+      tf::domain_config) -> csg_domains_result<Index, Real>;                   \
   template auto make_csg_domains_with_labels(const csg_graph<Index, Real> &,   \
                                              tf::domain_config)                \
       -> csg_domains_labeled_result<Index, Real>;                              \
   template auto make_csg_domains_with_labels(                                  \
-      const csg_graph<Index, Real> &, const tf::csg::expr &,                   \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &,            \
       tf::domain_config) -> csg_domains_labeled_result<Index, Real>;           \
   template auto make_csg_domains_with_index_map(                               \
       const csg_graph<Index, Real> &, tf::domain_config)                       \
       -> csg_domains_index_map_result<Index, Real>;                            \
   template auto make_csg_domains_with_index_map(                               \
-      const csg_graph<Index, Real> &, const tf::csg::expr &,                   \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &,            \
       tf::domain_config) -> csg_domains_index_map_result<Index, Real>

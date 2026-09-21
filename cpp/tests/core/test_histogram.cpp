@@ -131,7 +131,35 @@ auto density_reference(std::vector<float> counts,
   return counts;
 }
 
-auto density_integral(const tf::cpp::histogram_result_float &result) -> double {
+template <typename T> auto check_bincount_dtype() -> void {
+  const auto values = make_array<T>({1, 1, 2, 3, 3, 3}, {6});
+  const auto counts = tf::cpp::bincount(values);
+  CHECK((counts.raw_shape() == tf::small_vector<int, 3>{4}));
+  check_values(counts, {T{0}, T{2}, T{1}, T{3}});
+
+  const auto weights = make_array<float>({0.5F, 1, 2, 3, 4, 5}, {6});
+  const auto weighted = tf::cpp::bincount(values, weights, 6);
+  CHECK((weighted.raw_shape() == tf::small_vector<int, 3>{6}));
+  check_values(weighted, {0.0F, 1.5F, 2.0F, 12.0F, 0.0F, 0.0F});
+
+  const auto empty = make_array<T>({}, {0});
+  check_values(tf::cpp::bincount(empty, 3), {T{0}, T{0}, T{0}});
+  const auto singleton = make_array<T>({4}, {1});
+  check_values(tf::cpp::bincount(singleton), {T{0}, T{0}, T{0}, T{0}, T{1}});
+}
+
+template <typename T> auto check_bincount_refusals() -> void {
+  const auto negative = make_array<T>({0, -1}, {2});
+  CHECK_THROWS_AS(tf::cpp::bincount(negative), std::invalid_argument);
+  const auto values = make_array<T>({0, 1}, {2});
+  const auto short_weights = make_array<float>({1}, {1});
+  CHECK_THROWS_AS(tf::cpp::bincount(values, -1), std::invalid_argument);
+  CHECK_THROWS_AS(tf::cpp::bincount(values, short_weights),
+                  std::invalid_argument);
+}
+
+auto density_integral(const tf::cpp::histogram_result<float> &result)
+    -> double {
   double integral = 0.0;
   for (std::size_t index = 0; index < result.counts.length(); ++index)
     integral +=
@@ -144,38 +172,40 @@ auto density_integral(const tf::cpp::histogram_result_float &result) -> double {
 
 TEST_CASE("bincount returns native integer and weighted arrays",
           "[cpp][core][histogram]") {
-  const auto values = make_array<std::int32_t>({1, 1, 2, 3, 3, 3}, {6});
-  const auto counts = tf::cpp::bincount(values);
-  CHECK((counts.raw_shape() == tf::small_vector<int, 3>{4}));
-  check_values(counts, {std::int32_t{0}, std::int32_t{2}, std::int32_t{1},
-                        std::int32_t{3}});
-
-  const auto weights = make_array<float>({0.5F, 1, 2, 3, 4, 5}, {6});
-  const auto weighted = tf::cpp::bincount(values, weights, 6);
-  CHECK((weighted.raw_shape() == tf::small_vector<int, 3>{6}));
-  check_values(weighted, {0.0F, 1.5F, 2.0F, 12.0F, 0.0F, 0.0F});
-
-  const auto empty = make_array<std::int32_t>({}, {0});
-  check_values(tf::cpp::bincount(empty, 3),
-               {std::int32_t{0}, std::int32_t{0}, std::int32_t{0}});
-  const auto singleton = make_array<std::int32_t>({4}, {1});
-  check_values(tf::cpp::bincount(singleton),
-               {std::int32_t{0}, std::int32_t{0}, std::int32_t{0},
-                std::int32_t{0}, std::int32_t{1}});
+  check_bincount_dtype<std::int32_t>();
+  check_bincount_dtype<std::int64_t>();
 }
 
 TEST_CASE("bincount validates values, lengths, and minimum length",
           "[cpp][core][histogram]") {
-  const auto negative = make_array<std::int32_t>({0, -1}, {2});
-  CHECK_THROWS_AS(tf::cpp::bincount(negative), std::invalid_argument);
+  check_bincount_refusals<std::int32_t>();
+  check_bincount_refusals<std::int64_t>();
   const auto too_large =
       make_array<std::int32_t>({std::numeric_limits<std::int32_t>::max()}, {1});
   CHECK_THROWS_AS(tf::cpp::bincount(too_large), std::length_error);
-  const auto values = make_array<std::int32_t>({0, 1}, {2});
-  const auto short_weights = make_array<float>({1}, {1});
-  CHECK_THROWS_AS(tf::cpp::bincount(values, -1), std::invalid_argument);
-  CHECK_THROWS_AS(tf::cpp::bincount(values, short_weights),
-                  std::invalid_argument);
+}
+
+TEST_CASE("bincount counts an id into its own bin at the id's own width",
+          "[cpp][core][histogram]") {
+  const auto beyond = make_array<std::int64_t>({std::int64_t{1} << 40}, {1});
+  CHECK_THROWS_AS(tf::cpp::bincount(beyond), std::length_error);
+
+  const auto aliasing =
+      make_array<std::int64_t>({3, (std::int64_t{1} << 32) + 5}, {2});
+  const auto weights = make_array<float>({1, 1}, {2});
+  CHECK_THROWS_AS(tf::cpp::bincount(aliasing), std::length_error);
+  CHECK_THROWS_AS(tf::cpp::bincount(aliasing, 6), std::length_error);
+  CHECK_THROWS_AS(tf::cpp::bincount(aliasing, weights), std::length_error);
+
+  const auto high = (std::int64_t{1} << 20) + 1;
+  const auto ids = make_array<std::int64_t>({high, 3, high}, {3});
+  const auto counts = tf::cpp::bincount(ids);
+  static_assert(
+      std::is_same_v<decltype(counts), const tf::cpp::nd_array<std::int64_t>>);
+  REQUIRE(counts.length() == static_cast<std::size_t>(high) + 1);
+  CHECK(counts[static_cast<std::size_t>(high)] == 2);
+  CHECK(counts[3] == 1);
+  CHECK(counts[5] == 0);
 }
 
 TEST_CASE("equal-width histograms cover count, weighted, and density results",
@@ -219,6 +249,14 @@ TEST_CASE("equal-width histograms cover count, weighted, and density results",
       std::numeric_limits<float>::quiet_NaN());
   check_values(empty_result.counts, {std::int32_t{0}, std::int32_t{0}});
   check_values(empty_result.edges, {0.0F, 0.5F, 1.0F});
+
+  const auto wide =
+      tf::cpp::histogram_equal_width<std::int64_t>(values, 4, 0, 1);
+  static_assert(std::is_same_v<decltype(wide),
+                               const tf::cpp::histogram_result<std::int64_t>>);
+  check_values(wide.counts, {std::int64_t{1}, std::int64_t{1}, std::int64_t{1},
+                             std::int64_t{2}});
+  check_values(wide.edges, {0.0F, 0.25F, 0.5F, 0.75F, 1.0F});
 }
 
 TEST_CASE("explicit-edge histograms preserve edges and unequal density widths",
@@ -240,6 +278,13 @@ TEST_CASE("explicit-edge histograms preserve edges and unequal density widths",
   const auto repeated_edges = make_array<float>({0, 1, 1, 2}, {4});
   const auto repeated = tf::cpp::histogram_edges(values, repeated_edges);
   CHECK(repeated.counts.length() == 3);
+
+  const auto wide = tf::cpp::histogram_edges<std::int64_t>(values, edges);
+  static_assert(std::is_same_v<decltype(wide),
+                               const tf::cpp::histogram_result<std::int64_t>>);
+  check_values(wide.counts,
+               {std::int64_t{1}, std::int64_t{2}, std::int64_t{2}});
+  CHECK(wide.edges.raw_owner() == edges.raw_owner());
 }
 
 TEST_CASE("large unweighted histograms are exact across thread caps",
@@ -291,6 +336,14 @@ TEST_CASE("large unweighted histograms are exact across thread caps",
     check_same_storage(cap_one.edges, cap_eight.edges);
     check_count_oracle(cap_one.counts, oracle, oracle_total);
     check_count_oracle(cap_eight.counts, oracle, oracle_total);
+
+    const auto wide = run_with_thread_cap(8, [&] {
+      return tf::cpp::histogram_equal_width<std::int64_t>(values, bin_count,
+                                                          0.0F, 1.0F);
+    });
+    REQUIRE(wide.counts.length() == oracle.size());
+    for (std::size_t bin = 0; bin < oracle.size(); ++bin)
+      CHECK(wide.counts[bin] == static_cast<std::int64_t>(oracle[bin]));
   }
 
   SECTION("explicit edges") {
@@ -487,21 +540,44 @@ TEST_CASE("async histograms retain inputs and preserve native result types",
   check_values(counts_future.get(), {std::int32_t{0}, std::int32_t{2},
                                      std::int32_t{1}, std::int32_t{1}});
 
+  auto wide_values = make_array<std::int64_t>({1, 1, 2, 3}, {4});
+  auto wide_counts_future = tf::cpp::async::bincount(wide_values);
+  static_assert(std::is_same_v<decltype(wide_counts_future),
+                               std::future<tf::cpp::nd_array<std::int64_t>>>);
+  wide_values.destroy();
+  check_values(wide_counts_future.get(), {std::int64_t{0}, std::int64_t{2},
+                                          std::int64_t{1}, std::int64_t{1}});
+
   const auto samples = make_array<float>({0, 0.25F, 0.75F, 1}, {4});
   const auto weights = make_array<float>({1, 2, 3, 4}, {4});
   auto weighted =
       tf::cpp::async::histogram_equal_width(samples, weights, 2, 0, 1);
   static_assert(std::is_same_v<decltype(weighted),
-                               std::future<tf::cpp::histogram_result_float>>);
+                               std::future<tf::cpp::histogram_result<float>>>);
   check_values(weighted.get().counts, {3.0F, 7.0F});
 
   const auto edges = make_array<float>({0, 0.5F, 1}, {3});
   auto custom_pending = tf::cpp::async::histogram_edges(
       tf::cpp::async::future_resolver{}, samples, edges);
-  static_assert(std::is_same_v<decltype(custom_pending),
-                               std::future<tf::cpp::histogram_result_int>>);
+  static_assert(
+      std::is_same_v<decltype(custom_pending),
+                     std::future<tf::cpp::histogram_result<std::int32_t>>>);
   const auto custom = custom_pending.get();
   check_values(custom.counts, {std::int32_t{2}, std::int32_t{2}});
+
+  auto wide_pending = tf::cpp::async::histogram_edges<std::int64_t>(
+      tf::cpp::async::future_resolver{}, samples, edges);
+  static_assert(
+      std::is_same_v<decltype(wide_pending),
+                     std::future<tf::cpp::histogram_result<std::int64_t>>>);
+  check_values(wide_pending.get().counts, {std::int64_t{2}, std::int64_t{2}});
+
+  auto wide_bins =
+      tf::cpp::async::histogram_equal_width<std::int64_t>(samples, 2, 0, 1);
+  static_assert(
+      std::is_same_v<decltype(wide_bins),
+                     std::future<tf::cpp::histogram_result<std::int64_t>>>);
+  check_values(wide_bins.get().counts, {std::int64_t{2}, std::int64_t{2}});
 
   auto density = tf::cpp::async::histogram_density_edges(
       samples, edges, weights.shallow_copy());

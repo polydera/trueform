@@ -14,6 +14,7 @@ Examples:
     python -m verify                                        # Full verification
     python -m verify --cpp-only                             # C++ build and tests
     python -m verify --cpp-only --skip-vtk --skip-examples  # Fast C++ tests only
+    python -m verify --with-static                          # Include the compiled facade
     python -m verify --python-only                          # Python tests only
     python -m verify --keep                                 # Keep build artifacts
 """
@@ -43,6 +44,11 @@ def main() -> int:
         type=Path,
         default=None,
         help="Installation prefix (default: <work-dir>/install)",
+    )
+    parser.add_argument(
+        "--with-static",
+        action="store_true",
+        help="Also build the compiled C++ facade and its tests (slow)",
     )
     parser.add_argument(
         "--skip-vtk",
@@ -103,6 +109,7 @@ def main() -> int:
     if args.cpp_only:
         build_success = run_build_cpp_only(
             work_dir=work_dir,
+            with_static=args.with_static,
             skip_vtk=args.skip_vtk,
             skip_examples=args.skip_examples,
             branch=args.branch,
@@ -143,6 +150,7 @@ def main() -> int:
         build_success = run_build(
             work_dir=work_dir,
             install_prefix=args.install_prefix,
+            with_static=args.with_static,
             skip_vtk=args.skip_vtk,
             skip_python=args.skip_python,
             skip_examples=args.skip_examples,

@@ -379,8 +379,7 @@ TEMPLATE_TEST_CASE(
     for (const auto coordinate : point)
       CHECK(std::abs(coordinate) <= Real{1});
 
-  auto bad_intersect = tf::intersect_config{
-      tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours};
+  auto bad_intersect = tf::intersect_config{tf::intersect_mode::primitives};
   bad_intersect.tolerance = std::numeric_limits<double>::infinity();
   CHECK_THROWS_AS(
       (tf::cpp::outer_shell<Index, Real>(transformed.mesh(), bad_intersect)),
@@ -470,8 +469,7 @@ TEMPLATE_TEST_CASE("outer shell defines empty and invalid input behavior",
 
   const auto valid = tf::cpp::test::operand_of(
       tf::cpp::make_box_mesh(TestType{2}, TestType{2}, TestType{2}));
-  auto bad_intersect = tf::intersect_config{
-      tf::intersect_mode::primitives | tf::intersect_mode::resolve_contours};
+  auto bad_intersect = tf::intersect_config{tf::intersect_mode::primitives};
   bad_intersect.tolerance = std::numeric_limits<double>::infinity();
   CHECK_THROWS_AS(tf::cpp::outer_shell(valid.mesh(), bad_intersect),
                   std::invalid_argument);

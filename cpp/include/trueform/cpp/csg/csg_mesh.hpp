@@ -16,42 +16,43 @@
 #include "trueform/cpp/core/matrix.hpp"
 #include "trueform/cpp/csg/csg_graph.hpp"
 #include "trueform/csg/expression.hpp"
+#include "trueform/csg/expression/selection.hpp"
 
 namespace tf::cpp {
 
-/// @brief The mesh an expression names, whole or with its source labels.
+/// @brief The mesh a selection names, whole or with its source labels.
 template <typename Index, typename Real>
 auto make_csg_mesh(const csg_graph<Index, Real> &graph)
     -> tf::polygons_buffer<Index, Real, 3, 3>;
 template <typename Index, typename Real>
 auto make_csg_mesh(const csg_graph<Index, Real> &graph,
-                   const tf::csg::expr &expression)
+                   const tf::csg::selection_t &selection)
     -> tf::polygons_buffer<Index, Real, 3, 3>;
 template <typename Index, typename Real>
 auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &graph)
     -> csg_mesh_labeled_result<Index, Real>;
 template <typename Index, typename Real>
 auto make_csg_mesh_with_labels(const csg_graph<Index, Real> &graph,
-                               const tf::csg::expr &expression)
+                               const tf::csg::selection_t &selection)
     -> csg_mesh_labeled_result<Index, Real>;
 template <typename Index, typename Real>
 auto make_csg_mesh_with_index_map(const csg_graph<Index, Real> &graph,
-                                  const tf::csg::expr &expression)
+                                  const tf::csg::selection_t &selection)
     -> csg_mesh_index_map_result<Index, Real>;
 
 #define TF_CPP_EXTERN_CSG_MESH(Index, Real)                                    \
   extern template auto make_csg_mesh(const csg_graph<Index, Real> &)           \
       -> tf::polygons_buffer<Index, Real, 3, 3>;                               \
   extern template auto make_csg_mesh(const csg_graph<Index, Real> &,           \
-                                     const tf::csg::expr &)                    \
+                                     const tf::csg::selection_t &)             \
       -> tf::polygons_buffer<Index, Real, 3, 3>;                               \
   extern template auto make_csg_mesh_with_labels(                              \
       const csg_graph<Index, Real> &) -> csg_mesh_labeled_result<Index, Real>; \
   extern template auto make_csg_mesh_with_labels(                              \
-      const csg_graph<Index, Real> &, const tf::csg::expr &)                   \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &)            \
       -> csg_mesh_labeled_result<Index, Real>;                                 \
   extern template auto make_csg_mesh_with_index_map(                           \
-      const csg_graph<Index, Real> &, const tf::csg::expr &)                   \
+      const csg_graph<Index, Real> &, const tf::csg::selection_t &)            \
       -> csg_mesh_index_map_result<Index, Real>
 
 TF_CPP_MATRIX_FOR_EACH_INDEX_REAL(TF_CPP_EXTERN_CSG_MESH)

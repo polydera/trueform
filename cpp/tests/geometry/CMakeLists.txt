@@ -9,6 +9,7 @@ add_executable(trueform_cpp_geometry_tests
   test_orientation.cpp
   test_orientation_matrix.cpp
   test_python_parity.cpp
+  test_quality.cpp
   test_registration.cpp
   test_smoothing.cpp
   test_triangulate.cpp

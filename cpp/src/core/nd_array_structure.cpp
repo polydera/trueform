@@ -360,6 +360,7 @@ template <typename T> auto clone(const nd_array<T> &array) -> nd_array<T> {
 
 TF_CPP_INSTANTIATE_ND_ARRAY_STRUCTURE(std::int8_t);
 TF_CPP_INSTANTIATE_ND_ARRAY_STRUCTURE(std::int32_t);
+TF_CPP_INSTANTIATE_ND_ARRAY_STRUCTURE(std::int64_t);
 TF_CPP_INSTANTIATE_ND_ARRAY_STRUCTURE(float);
 TF_CPP_INSTANTIATE_ND_ARRAY_STRUCTURE(double);
 

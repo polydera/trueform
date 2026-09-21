@@ -4,6 +4,7 @@ add_executable(trueform_cpp_topology_tests
   test_python_parity.cpp
   test_topology.cpp
   test_topology_analysis_matrix.cpp
+  test_topology_diagnostics.cpp
 )
 target_link_libraries(trueform_cpp_topology_tests PRIVATE
   trueform_cpp_test_common

@@ -175,9 +175,7 @@ TEMPLATE_TEST_CASE("mesh arrangements expose labels curves caches and modes",
   CHECK(owners[0].cache.is_manifold_edge_link_fresh(meshes[0].geometry()));
 
   const auto with_curves = tf::cpp::mesh_arrangements_with_curves(
-      meshes, {{tf::intersect_mode::primitives |
-                    tf::intersect_mode::resolve_crossing_contours,
-                1e-6},
+      meshes, {{tf::intersect_mode::primitives, 1e-6},
                tf::triangulation_type::refined_cdt});
   CHECK(coherent(with_curves));
   CHECK(with_curves.curves.size() > 0);
@@ -303,7 +301,7 @@ TEMPLATE_TEST_CASE("arrangements validate lists handles indices and configs",
 
   CHECK(coherent(tf::cpp::mesh_arrangements(
       empties,
-      {tf::intersect_mode::primitives | tf::intersect_mode::within, 0.0})));
+      tf::intersect_config{tf::intersect_mode::primitives | tf::intersect_mode::within, 0.0})));
 }
 
 TEMPLATE_TEST_CASE("arrangement async entries read the operands they borrow",
@@ -563,9 +561,7 @@ auto check_arrangement_case() -> void {
   const auto crossing = crossing_owner.mesh();
 
   const auto config =
-      tf::arrangement_config{{tf::intersect_mode::primitives |
-                                  tf::intersect_mode::resolve_crossing_contours,
-                              0.0},
+      tf::arrangement_config{{tf::intersect_mode::primitives, 0.0},
                              tf::triangulation_type::cdt};
   const auto plain = tf::cpp::mesh_arrangements(forms, config);
   const auto with_curves =
@@ -817,9 +813,7 @@ TEST_CASE("exact Python three-sphere arrangement fixture preserves topology",
   CHECK(statistics.endpoints == 2);
 
   const auto refined = tf::cpp::mesh_arrangements(
-      spheres, {{tf::intersect_mode::primitives |
-                     tf::intersect_mode::resolve_crossing_contours,
-                 0.0},
+      spheres, {{tf::intersect_mode::primitives, 0.0},
                 tf::triangulation_type::refined_cdt});
   CHECK(refined.mesh.points_buffer().size() >= cdt.mesh.points_buffer().size());
   CHECK(refined.mesh.size() >= cdt.mesh.size());

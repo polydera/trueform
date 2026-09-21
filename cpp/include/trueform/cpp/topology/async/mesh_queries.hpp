@@ -20,10 +20,13 @@
 #include "trueform/cpp/topology/boundary_curves.hpp"
 #include "trueform/cpp/topology/boundary_edges.hpp"
 #include "trueform/cpp/topology/boundary_paths.hpp"
+#include "trueform/cpp/topology/boundary_rims.hpp"
 #include "trueform/cpp/topology/euler_characteristic.hpp"
 #include "trueform/cpp/topology/is_closed.hpp"
 #include "trueform/cpp/topology/is_manifold.hpp"
 #include "trueform/cpp/topology/non_manifold_edges.hpp"
+#include "trueform/cpp/topology/non_manifold_vertices.hpp"
+#include "trueform/cpp/topology/split_non_manifold_vertices.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -59,11 +62,16 @@ TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(is_manifold, bool)
 TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(is_non_manifold, bool)
 TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(euler_characteristic, std::int32_t)
 TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(non_manifold_edges, nd_array<Index>)
+TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(non_manifold_vertices, nd_array<Index>)
+TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(
+    split_non_manifold_vertices,
+    split_non_manifold_vertices_result<Index, Real, Dims, Ngon>)
 TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(boundary_edges, nd_array<Index>)
 TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(boundary_paths,
                                   offset_blocked_buffer<Index, Index>)
 TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(boundary_curves,
                                   boundary_curves_result<Index, Real, Dims>)
+TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY(boundary_rims, boundary_rims_result<Index>)
 
 #undef TF_CPP_DEFINE_ASYNC_MESH_TOPOLOGY
 

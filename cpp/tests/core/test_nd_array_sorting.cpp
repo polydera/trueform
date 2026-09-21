@@ -130,8 +130,19 @@ TEST_CASE("sorting and ordered sets support every storage dtype",
           "[cpp][core][ndarray-sorting]") {
   check_sorting_dtype<std::int8_t>();
   check_sorting_dtype<std::int32_t>();
+  check_sorting_dtype<std::int64_t>();
   check_sorting_dtype<float>();
   check_sorting_dtype<double>();
+
+  const auto wide = std::int64_t{1} << 40;
+  const auto wide_values =
+      make_array<std::int64_t>({wide + 2, wide, wide + 1}, {3});
+  check_values(tf::cpp::sort(wide_values), {wide, wide + 1, wide + 2});
+  check_values(tf::cpp::argsort(wide_values),
+               {std::int32_t{1}, std::int32_t{2}, std::int32_t{0}});
+  const auto wide_duplicates =
+      make_array<std::int64_t>({wide, wide, wide + 1}, {3});
+  check_values(tf::cpp::unique(wide_duplicates), {wide, wide + 1});
 }
 
 TEST_CASE("row sorting dispatch matches lexicographic oracles",

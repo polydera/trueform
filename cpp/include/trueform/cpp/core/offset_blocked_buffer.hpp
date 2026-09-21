@@ -14,7 +14,6 @@
 
 #include "trueform/core/offset_block_buffer.hpp"
 #include "trueform/core/views/offset_block_range.hpp"
-#include "trueform/cpp/core/matrix.hpp"
 #include "trueform/cpp/core/nd_array.hpp"
 
 #include <cstdint>
@@ -75,11 +74,7 @@ auto as_offset_blocked(const nd_array<std::int32_t> &array)
 auto as_offset_blocked(const nd_array<std::int64_t> &array)
     -> offset_blocked_buffer<std::int64_t, std::int64_t>;
 
-#define TF_CPP_EXTERN_OFFSET_BLOCKED_BUFFER(Index)                             \
-  extern template class offset_blocked_buffer<Index, Index>
-
-TF_CPP_MATRIX_FOR_EACH_INDEX(TF_CPP_EXTERN_OFFSET_BLOCKED_BUFFER)
-
-#undef TF_CPP_EXTERN_OFFSET_BLOCKED_BUFFER
+extern template class offset_blocked_buffer<std::int32_t, std::int32_t>;
+extern template class offset_blocked_buffer<std::int64_t, std::int64_t>;
 
 } // namespace tf::cpp

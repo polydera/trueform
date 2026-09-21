@@ -13,8 +13,10 @@
 #include "carriers.hpp"
 #include "parity_checks.hpp"
 
+#include "trueform/cpp/intersect/async/has_self_intersections.hpp"
 #include "trueform/cpp/intersect/async/intersection_curves.hpp"
 #include "trueform/cpp/intersect/async/self_intersection_curves.hpp"
+#include "trueform/cpp/intersect/has_self_intersections.hpp"
 #include "trueform/cpp/intersect/intersection_curves.hpp"
 #include "trueform/cpp/intersect/self_intersection_curves.hpp"
 
@@ -168,6 +170,27 @@ TEMPLATE_TEST_CASE("self intersection handles hit no-hit and empty meshes",
   CHECK(empty_result.size() == 0);
 }
 
+TEMPLATE_TEST_CASE("self intersection predicate answers hit no-hit and empty",
+                   "[cpp][intersect][self]", float, double) {
+  const auto crossing = self_crossing_mesh<TestType>();
+  const auto triangle = horizontal_triangle<TestType>();
+  const auto empty = empty_mesh<TestType>();
+
+  CHECK(tf::cpp::has_self_intersections(crossing.mesh()));
+  CHECK(!tf::cpp::has_self_intersections(triangle.mesh()));
+  CHECK(!tf::cpp::has_self_intersections(empty.mesh()));
+
+  auto hit_future = tf::cpp::async::has_self_intersections(crossing.mesh());
+  static_assert(std::is_same_v<decltype(hit_future), std::future<bool>>);
+  CHECK(hit_future.get());
+
+  auto submissions = std::make_shared<std::atomic<int>>(0);
+  auto counted = tf::cpp::async::has_self_intersections(
+      counting_resolver{submissions}, triangle.mesh());
+  CHECK(submissions->load(std::memory_order_relaxed) == 1);
+  CHECK(!counted.get());
+}
+
 TEMPLATE_TEST_CASE("exact intersection validates forms indices and fields",
                    "[cpp][intersect][validation]", float, double) {
   // a default-constructed owner is the EMPTY mesh, which meets nothing
@@ -231,14 +254,20 @@ TEMPLATE_TEST_CASE("exact intersection validates configuration before empties",
   check_invalid_mode(static_cast<int>(tf::intersect_mode::sos) |
                      static_cast<int>(tf::intersect_mode::primitives));
   check_invalid_mode(static_cast<int>(tf::intersect_mode::sos) | 32);
-  check_invalid_mode(
-      static_cast<int>(tf::intersect_mode::sos | tf::intersect_mode::within));
 
-  for (const auto mode : {
-           tf::intersect_mode::sos,
-           tf::intersect_mode::primitives,
-           tf::intersect_mode::sos | tf::intersect_mode::resolve_contours,
-       }) {
+  // a curve entry's arity states `within`; a caller spelling it is refused
+  const auto within_config =
+      tf::intersect_config{tf::intersect_mode::primitives | tf::intersect_mode::within, 0.0};
+  CHECK_THROWS_AS(
+      tf::cpp::intersection_curves(empty_a, empty_b, within_config),
+      std::invalid_argument);
+  CHECK_THROWS_AS(tf::cpp::intersection_curves(one_empty, within_config),
+                  std::invalid_argument);
+  CHECK_THROWS_AS(tf::cpp::self_intersection_curves(empty_a, within_config),
+                  std::invalid_argument);
+
+  for (const auto mode :
+       {tf::intersect_mode::sos, tf::intersect_mode::primitives}) {
     CHECK(tf::cpp::intersection_curves(empty_a, empty_b, {mode, 0.0}).size() ==
           0);
     CHECK(tf::cpp::intersection_curves(one_empty, {mode, 0.0}).size() == 0);
@@ -252,13 +281,15 @@ TEMPLATE_TEST_CASE("exact intersection validates configuration before empties",
   CHECK_THROWS_AS(invalid_tolerance_future.get(), std::invalid_argument);
 
   auto invalid_mode_future = tf::cpp::async::self_intersection_curves(
-      empty_a, {tf::intersect_mode::sos | tf::intersect_mode::primitives, 0.0});
+      empty_a,
+      {static_cast<tf::intersect_mode>(
+           static_cast<int>(tf::intersect_mode::sos) |
+           static_cast<int>(tf::intersect_mode::primitives)),
+       0.0});
   CHECK_THROWS_AS(invalid_mode_future.get(), std::invalid_argument);
 
   auto valid_future = tf::cpp::async::intersection_curves(
-      one_empty, {tf::intersect_mode::primitives |
-                      tf::intersect_mode::resolve_crossing_contours,
-                  0.0});
+      one_empty, {tf::intersect_mode::primitives, 0.0});
   CHECK(valid_future.get().size() == 0);
 }
 

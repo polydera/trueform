@@ -13,6 +13,7 @@
 #pragma once
 
 #include "trueform/intersect/intersect_config.hpp"
+#include "trueform/intersect/intersect_mode.hpp"
 
 #include <cmath>
 #include <stdexcept>
@@ -20,9 +21,13 @@
 
 namespace tf::cpp::intersect_detail {
 
+/// The facade refuses what the compiled entry cannot answer: a tolerance its
+/// coordinate type cannot hold, a mode naming an invalid classifier or within
+/// combination, and — where `allow_within` is false — a `within` the entry's
+/// own arity states.
 template <typename Real>
 auto require_config(tf::intersect_config config, const char *operation,
-                    bool allow_self_intersections = false) -> void {
+                    bool allow_within = false) -> void {
   if (!std::isfinite(config.tolerance))
     throw std::invalid_argument(std::string(operation) +
                                 ": tolerance must be finite");
@@ -34,28 +39,21 @@ auto require_config(tf::intersect_config config, const char *operation,
         std::string(operation) +
         ": tolerance must be representable in the coordinate type");
 
-  constexpr auto base_mask = static_cast<int>(tf::intersect_mode::sos) |
-                             static_cast<int>(tf::intersect_mode::primitives);
-  constexpr auto self_mask =
-      static_cast<int>(tf::intersect_mode::self_intersections);
-  constexpr auto known_mask =
-      base_mask |
-      static_cast<int>(tf::intersect_mode::resolve_crossing_contours) |
-      static_cast<int>(tf::intersect_mode::resolve_self_crossing_contours) |
-      self_mask;
   const auto mode = static_cast<int>(config.mode);
-  if ((mode & ~known_mask) != 0)
+  const auto classifier =
+      mode & (static_cast<int>(tf::intersect_mode::sos) |
+              static_cast<int>(tf::intersect_mode::primitives));
+  const bool within = config.mode & tf::intersect_mode::within;
+  if ((classifier != static_cast<int>(tf::intersect_mode::sos) &&
+       classifier != static_cast<int>(tf::intersect_mode::primitives)) ||
+      (mode != classifier &&
+       mode != (classifier | static_cast<int>(tf::intersect_mode::within))))
     throw std::invalid_argument(std::string(operation) +
-                                ": mode contains unknown flags");
-  const auto base_mode = mode & base_mask;
-  if (base_mode != static_cast<int>(tf::intersect_mode::sos) &&
-      base_mode != static_cast<int>(tf::intersect_mode::primitives))
+                                ": mode must be sos or primitives, optionally "
+                                "with within");
+  if (!allow_within && within)
     throw std::invalid_argument(std::string(operation) +
-                                ": mode must select exactly one base mode");
-  if (!allow_self_intersections && (mode & self_mask) != 0)
-    throw std::invalid_argument(
-        std::string(operation) +
-        ": self-intersection flags are not applicable to curve extraction");
+                                ": within is stated by the entry's own arity");
 }
 
 } // namespace tf::cpp::intersect_detail

@@ -252,8 +252,18 @@ TEST_CASE("nd_array indexing supports every storage dtype",
           "[cpp][core][ndarray-indexing]") {
   check_indexing_dtype<std::int8_t>();
   check_indexing_dtype<std::int32_t>();
+  check_indexing_dtype<std::int64_t>();
   check_indexing_dtype<float>();
   check_indexing_dtype<double>();
+
+  const auto wide = std::int64_t{1} << 40;
+  const auto wide_rows =
+      make_array<std::int64_t>({wide, wide + 1, wide + 2, wide + 3}, {2, 2});
+  const auto reversed = make_array<std::int32_t>({1, 0}, {2});
+  check_values(tf::cpp::take(wide_rows, reversed, 0),
+               {wide + 2, wide + 3, wide, wide + 1});
+  const auto second = make_array<std::int8_t>({0, 1}, {2});
+  check_values(tf::cpp::boolean_index(wide_rows, second), {wide + 2, wide + 3});
 }
 
 TEST_CASE("multi_take matches the old mixed-radix oracle across generic "

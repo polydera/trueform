@@ -17,7 +17,6 @@
 #include "trueform/cpp/core/async/future_state.hpp"
 #include "trueform/cpp/core/async/submit.hpp"
 #include "trueform/cpp/core/mesh.hpp"
-#include "trueform/intersect/intersect_mode.hpp"
 
 #include <cstddef>
 #include <future>
@@ -28,11 +27,8 @@ namespace tf::cpp::async {
 #define TF_CPP_DEFINE_ASYNC_POLYGON_ARRANGEMENTS(Operation, Result)            \
   template <typename Resolver, typename Index, typename Real,                  \
             std::size_t Ngon>                                                  \
-  auto Operation(                                                              \
-      Resolver &&resolver, const mesh<Index, Real, 3, Ngon> &value,            \
-      tf::arrangement_config config =                                          \
-          tf::intersect_config{tf::intersect_mode::primitives |                \
-                               tf::intersect_mode::resolve_contours})          \
+  auto Operation(Resolver &&resolver, const mesh<Index, Real, 3, Ngon> &value, \
+                 tf::arrangement_config config = {})                           \
       -> resolver_result_t<Resolver, Result<Index, Real, Ngon>> {              \
     return submit<Result<Index, Real, Ngon>>(                                  \
         std::forward<Resolver>(resolver),                                      \
@@ -40,11 +36,8 @@ namespace tf::cpp::async {
   }                                                                            \
                                                                                \
   template <typename Index, typename Real, std::size_t Ngon>                   \
-  auto Operation(                                                              \
-      const mesh<Index, Real, 3, Ngon> &value,                                 \
-      tf::arrangement_config config =                                          \
-          tf::intersect_config{tf::intersect_mode::primitives |                \
-                               tf::intersect_mode::resolve_contours})          \
+  auto Operation(const mesh<Index, Real, 3, Ngon> &value,                      \
+                 tf::arrangement_config config = {})                           \
       -> std::future<Result<Index, Real, Ngon>> {                              \
     return async::Operation(future_resolver{}, value, config);                 \
   }

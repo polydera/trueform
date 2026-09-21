@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 project(trueform_cpp_examples LANGUAGES CXX)
 
 find_package(trueform CONFIG REQUIRED)
+if(NOT TARGET tf::trueform_cpp)
+  message(FATAL_ERROR
+    "the installed trueform carries no compiled facade: install with "
+    "-DTF_BUILD_CPP=ON to build these examples")
+endif()
 include(CTest)
 
 function(add_trueform_example target source)

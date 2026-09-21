@@ -53,6 +53,7 @@ auto assign_masked_array(nd_array<T> &target, const nd_array<std::int8_t> &mask,
 
 TF_CPP_EXTERN_ASSIGN(std::int8_t);
 TF_CPP_EXTERN_ASSIGN(std::int32_t);
+TF_CPP_EXTERN_ASSIGN(std::int64_t);
 TF_CPP_EXTERN_ASSIGN(float);
 TF_CPP_EXTERN_ASSIGN(double);
 

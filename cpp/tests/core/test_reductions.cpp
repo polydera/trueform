@@ -115,6 +115,7 @@ TEST_CASE("reductions preserve the complete dtype and result matrix",
           "[cpp][core][reductions]") {
   check_reduction_dtype<std::int8_t>();
   check_reduction_dtype<std::int32_t>();
+  check_reduction_dtype<std::int64_t>();
   check_reduction_dtype<float>();
   check_reduction_dtype<double>();
 
@@ -124,6 +125,14 @@ TEST_CASE("reductions preserve the complete dtype and result matrix",
                                tf::cpp::nd_array<std::int32_t>>);
   CHECK(tf::cpp::sum(bytes) == 300);
   check_values(tf::cpp::sum(bytes, 0), {std::int32_t{300}});
+
+  const auto wide = std::int64_t{1} << 40;
+  const auto wide_values = make_array<std::int64_t>({wide, wide, wide}, {3});
+  static_assert(
+      std::is_same_v<decltype(tf::cpp::sum(wide_values)), std::int64_t>);
+  CHECK(tf::cpp::sum(wide_values) == 3 * wide);
+  check_values(tf::cpp::sum(wide_values, 0), {3 * wide});
+  CHECK(tf::cpp::max(wide_values) == wide);
 
   const auto integers = make_array<std::int32_t>({1, 2}, {2});
   const auto doubles = make_array<double>({1, 2}, {2});

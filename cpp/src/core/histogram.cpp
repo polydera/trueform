@@ -58,22 +58,27 @@ auto count_schedule(std::size_t bin_count) -> tf::checked_t {
   }
 }
 
-auto maximum_nonnegative(const nd_array<std::int32_t> &values) -> int {
+/// @brief How many bins the ids demand: one per id up to the largest of them.
+///
+/// A bin is addressed by `int` — an nd_array is at most int-many elements — so
+/// an id at or past that range names no bin, whatever width it arrived in.
+template <typename T> auto bincount_domain(const nd_array<T> &values) -> int {
   const auto negative = tf::parallel_contains(
-      values.make_range(), [](std::int32_t value) { return value < 0; },
-      checked_work(1));
+      values.make_range(), [](T value) { return value < 0; }, checked_work(1));
   if (negative)
     throw std::invalid_argument("bincount: input contains a negative value");
-  int maximum = -1;
+  auto maximum = T{-1};
   tf::blocked_reduce(
-      values.make_range(), maximum, int{-1},
-      [](const auto &block, int &local) {
+      values.make_range(), maximum, T{-1},
+      [](const auto &block, T &local) {
         for (const auto value : block)
-          local = std::max(local, static_cast<int>(value));
+          local = std::max(local, value);
       },
-      [](int local, int &output) { output = std::max(output, local); },
+      [](T local, T &output) { output = std::max(output, local); },
       checked_work(1));
-  return maximum;
+  if (maximum >= static_cast<T>(std::numeric_limits<int>::max()))
+    throw std::length_error("bincount: output is too large");
+  return static_cast<int>(maximum) + 1;
 }
 
 template <typename T>
@@ -270,48 +275,47 @@ auto apply_density(nd_array<float> &counts, const nd_array<float> &edges)
 
 } // namespace
 
-auto bincount(const nd_array<std::int32_t> &values, int minimum_length)
-    -> nd_array<std::int32_t> {
+template <typename T>
+auto bincount(const nd_array<T> &values, int minimum_length) -> nd_array<T> {
   if (minimum_length < 0)
     throw std::invalid_argument("bincount: minimum_length must be >= 0");
-  const auto maximum = maximum_nonnegative(values);
-  if (maximum == std::numeric_limits<int>::max())
-    throw std::length_error("bincount: output is too large");
-  const auto bin_count = std::max(maximum + 1, minimum_length);
-  auto counts = count_binned<std::int32_t>(
-      values, nullptr, bin_count, [](std::int32_t value) { return value; });
-  return nd_array<std::int32_t>::from_buffer(std::move(counts), {bin_count});
+  const auto bin_count = std::max(bincount_domain(values), minimum_length);
+  auto counts = count_binned<T>(values, nullptr, bin_count, [](T value) {
+    return static_cast<int>(value);
+  });
+  return nd_array<T>::from_buffer(std::move(counts), {bin_count});
 }
 
-auto bincount(const nd_array<std::int32_t> &values,
-              const nd_array<float> &weights, int minimum_length)
-    -> nd_array<float> {
+template <typename T>
+auto bincount(const nd_array<T> &values, const nd_array<float> &weights,
+              int minimum_length) -> nd_array<float> {
   if (minimum_length < 0)
     throw std::invalid_argument("bincount: minimum_length must be >= 0");
   require_weights(values, weights, "bincount");
-  const auto maximum = maximum_nonnegative(values);
-  if (maximum == std::numeric_limits<int>::max())
-    throw std::length_error("bincount: output is too large");
-  const auto bin_count = std::max(maximum + 1, minimum_length);
-  auto counts = count_binned<float>(values, &weights, bin_count,
-                                    [](std::int32_t value) { return value; });
+  const auto bin_count = std::max(bincount_domain(values), minimum_length);
+  auto counts = count_binned<float>(values, &weights, bin_count, [](T value) {
+    return static_cast<int>(value);
+  });
   return nd_array<float>::from_buffer(std::move(counts), {bin_count});
 }
 
+template <typename Count>
 auto histogram_equal_width(const nd_array<float> &values, int bin_count,
-                           float lower, float upper) -> histogram_result_int {
+                           float lower, float upper)
+    -> histogram_result<Count> {
   if (bin_count <= 0)
     throw std::invalid_argument("histogram: bins must be > 0");
   const auto bounds = resolve_range(values, lower, upper);
-  auto counts = count_equal_width<std::int32_t>(values, nullptr, bin_count,
-                                                bounds.first, bounds.second);
-  return {nd_array<std::int32_t>::from_buffer(std::move(counts), {bin_count}),
+  auto counts = count_equal_width<Count>(values, nullptr, bin_count,
+                                         bounds.first, bounds.second);
+  return {nd_array<Count>::from_buffer(std::move(counts), {bin_count}),
           linear_edges(bounds.first, bounds.second, bin_count)};
 }
 
 auto histogram_equal_width(const nd_array<float> &values,
                            const nd_array<float> &weights, int bin_count,
-                           float lower, float upper) -> histogram_result_float {
+                           float lower, float upper)
+    -> histogram_result<float> {
   if (bin_count <= 0)
     throw std::invalid_argument("histogram: bins must be > 0");
   require_weights(values, weights, "histogram");
@@ -322,17 +326,18 @@ auto histogram_equal_width(const nd_array<float> &values,
           linear_edges(bounds.first, bounds.second, bin_count)};
 }
 
+template <typename Count>
 auto histogram_edges(const nd_array<float> &values,
-                     const nd_array<float> &edges) -> histogram_result_int {
+                     const nd_array<float> &edges) -> histogram_result<Count> {
   const auto bin_count = require_edges(edges);
-  auto counts = count_edges<std::int32_t>(values, nullptr, edges, bin_count);
-  return {nd_array<std::int32_t>::from_buffer(std::move(counts), {bin_count}),
+  auto counts = count_edges<Count>(values, nullptr, edges, bin_count);
+  return {nd_array<Count>::from_buffer(std::move(counts), {bin_count}),
           edges.shallow_copy()};
 }
 
 auto histogram_edges(const nd_array<float> &values,
                      const nd_array<float> &weights,
-                     const nd_array<float> &edges) -> histogram_result_float {
+                     const nd_array<float> &edges) -> histogram_result<float> {
   const auto bin_count = require_edges(edges);
   require_weights(values, weights, "histogram");
   auto counts = count_edges<float>(values, &weights, edges, bin_count);
@@ -343,7 +348,7 @@ auto histogram_edges(const nd_array<float> &values,
 auto histogram_density_equal_width(const nd_array<float> &values, int bin_count,
                                    float lower, float upper,
                                    std::optional<nd_array<float>> weights)
-    -> histogram_result_float {
+    -> histogram_result<float> {
   if (bin_count <= 0)
     throw std::invalid_argument("histogram: bins must be > 0");
   if (weights)
@@ -362,7 +367,7 @@ auto histogram_density_equal_width(const nd_array<float> &values, int bin_count,
 auto histogram_density_edges(const nd_array<float> &values,
                              const nd_array<float> &edges,
                              std::optional<nd_array<float>> weights)
-    -> histogram_result_float {
+    -> histogram_result<float> {
   const auto bin_count = require_edges(edges);
   if (weights)
     require_weights(values, *weights, "histogram");
@@ -373,5 +378,19 @@ auto histogram_density_edges(const nd_array<float> &values,
   apply_density(counts, edges);
   return {std::move(counts), edges.shallow_copy()};
 }
+
+#define TF_CPP_INSTANTIATE_HISTOGRAM(T)                                        \
+  template auto bincount<T>(const nd_array<T> &, int) -> nd_array<T>;          \
+  template auto bincount<T>(const nd_array<T> &, const nd_array<float> &, int) \
+      -> nd_array<float>;                                                      \
+  template auto histogram_equal_width<T>(const nd_array<float> &, int, float,  \
+                                         float) -> histogram_result<T>;        \
+  template auto histogram_edges<T>(                                            \
+      const nd_array<float> &, const nd_array<float> &) -> histogram_result<T>
+
+TF_CPP_INSTANTIATE_HISTOGRAM(std::int32_t);
+TF_CPP_INSTANTIATE_HISTOGRAM(std::int64_t);
+
+#undef TF_CPP_INSTANTIATE_HISTOGRAM
 
 } // namespace tf::cpp

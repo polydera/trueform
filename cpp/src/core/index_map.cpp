@@ -12,6 +12,7 @@
  */
 #include "trueform/cpp/core/index_map.hpp"
 
+#include <cstdint>
 #include <utility>
 
 namespace tf::cpp {
@@ -32,10 +33,7 @@ template <typename Index> auto index_map<Index>::is_valid() const -> bool {
   return f.is_valid() && kept_ids.is_valid();
 }
 
-#define TF_CPP_INSTANTIATE_INDEX_MAP(Index) template struct index_map<Index>
-
-TF_CPP_MATRIX_FOR_EACH_INDEX(TF_CPP_INSTANTIATE_INDEX_MAP)
-
-#undef TF_CPP_INSTANTIATE_INDEX_MAP
+template struct index_map<std::int32_t>;
+template struct index_map<std::int64_t>;
 
 } // namespace tf::cpp

@@ -370,6 +370,7 @@ auto all(const nd_array<std::int8_t> &array, int axis)
 
 TF_CPP_INSTANTIATE_REDUCTIONS(std::int8_t);
 TF_CPP_INSTANTIATE_REDUCTIONS(std::int32_t);
+TF_CPP_INSTANTIATE_REDUCTIONS(std::int64_t);
 TF_CPP_INSTANTIATE_REDUCTIONS(float);
 TF_CPP_INSTANTIATE_REDUCTIONS(double);
 
