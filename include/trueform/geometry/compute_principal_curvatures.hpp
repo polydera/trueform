@@ -140,8 +140,10 @@ auto compute_principal_curvatures(
 
   // Solve least squares
   std::array<T, cols> coeffs;
+  std::array<std::size_t, cols> perm;
   tf::linalg::solve_least_squares(state.A.data(), state.b_vec.data(),
-                                  coeffs.data(), n, cols, state.work.data());
+                                  coeffs.data(), n, cols, state.work.data(),
+                                  perm.data());
 
   T a = coeffs[0];
   T b_coef = coeffs[1];

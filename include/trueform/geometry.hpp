@@ -37,6 +37,8 @@
  */
 
 #include "./geometry/chamfer_error.hpp"                // IWYU pragma: export
+#include "./geometry/compute_dihedral_angles.hpp"      // IWYU pragma: export
+#include "./geometry/compute_face_quality.hpp"         // IWYU pragma: export
 #include "./geometry/compute_normals.hpp"              // IWYU pragma: export
 #include "./geometry/compute_point_normals.hpp"        // IWYU pragma: export
 #include "./geometry/compute_principal_curvatures.hpp" // IWYU pragma: export

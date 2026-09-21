@@ -2,6 +2,7 @@ add_executable(trueform_geometry_tests
   test_curvature.cpp
   test_triangulation.cpp
   test_alignment.cpp
+  test_face_quality.cpp
 )
 
 target_link_libraries(trueform_geometry_tests PRIVATE trueform_test_common)
