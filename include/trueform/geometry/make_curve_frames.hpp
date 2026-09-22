@@ -28,8 +28,9 @@ namespace tf {
 /// @brief Compute parallel transport frames along a curve.
 ///
 /// Writes tangents, normals, and binormals into pre-allocated ranges.
-/// Detects closed curves (first ~ last point) automatically and
-/// applies wrap-around tangents and twist correction.
+/// Detects closed curves (first ~ last point) automatically and applies
+/// wrap-around tangents and twist correction, so the repeated point
+/// carries the frame of the first.
 ///
 /// @param curve The input curve.
 /// @param tangents Output range for tangents (size == curve.size()).
@@ -56,6 +57,8 @@ void make_curve_frames(const tf::curve<3, CurvePolicy> &curve,
 
   auto diff = curve[n - 1] - curve[0];
   bool closed = tf::dot(diff, diff) < tf::epsilon<RealT> * tf::epsilon<RealT>;
+  // The repeated last point is index 0's own vertex, so the cycle is n - 1.
+  const auto period = n - 1;
 
   auto rodrigues = [](const auto &v, const auto &k, RealT cos_t, RealT sin_t) {
     return v * cos_t + tf::cross(k, v) * sin_t +
@@ -66,8 +69,8 @@ void make_curve_frames(const tf::curve<3, CurvePolicy> &curve,
     tf::parallel_for_each(
         tf::make_sequence_range(n),
         [&](std::size_t i) {
-          auto prev = (i == 0) ? n - 1 : i - 1;
-          auto next = (i + 1) % n;
+          auto prev = (i + period - 1) % period;
+          auto next = (i + 1) % period;
           tangents[i] = tf::make_unit_vector(curve[next] - curve[prev]);
         },
         tf::checked);
@@ -110,9 +113,9 @@ void make_curve_frames(const tf::curve<3, CurvePolicy> &curve,
     if (tf::dot(tangents[0], tf::cross(normals[0], normals[n - 1])) > RealT{0})
       twist = -twist;
 
-    auto inv_n = RealT{1} / static_cast<RealT>(n);
+    auto inv_period = RealT{1} / static_cast<RealT>(period);
     for (std::size_t i = 1; i < n; ++i) {
-      auto angle = twist * static_cast<RealT>(i) * inv_n;
+      auto angle = twist * static_cast<RealT>(i) * inv_period;
       normals[i] = tf::make_unit_vector(
           rodrigues(normals[i], tangents[i], std::cos(angle), std::sin(angle)));
       binormals[i] = tf::make_unit_vector(tf::cross(tangents[i], normals[i]));
