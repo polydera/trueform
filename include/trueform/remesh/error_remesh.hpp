@@ -16,8 +16,6 @@
 #include "../core/algorithm/compose_index_maps.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
 #include "../core/algorithm/parallel_iota.hpp"
-#include "../core/coordinate_dims.hpp"
-#include "../core/coordinate_type.hpp"
 #include "../core/index_map.hpp"
 #include "../core/none.hpp"
 #include "../core/points_buffer.hpp"
@@ -30,7 +28,6 @@
 #include "./feature_handler.hpp"
 #include "./improve_config.hpp"
 #include "./improve_triangulation.hpp"
-#include "./preserve_regions.hpp"
 #include "./regions/region_label.hpp"
 
 #include <type_traits>
@@ -55,7 +52,7 @@ auto error_collapse(tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
   auto checker = tf::make_collapse_checker<Real>(cfg.min_quality, tf::none,
                                                  cfg.check_normals);
   auto handler = tf::make_collapse_handler<Real>(score, checker,
-                                                 features.as_view(), cfg);
+                                                 features.as_view(), cfg, true);
   return tf::collapse_edges(he, points, handler);
 }
 

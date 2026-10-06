@@ -29,6 +29,10 @@ template <typename Real>
 struct length_collapse_config : collapse_guard_config<Real> {
   Real max_length = std::numeric_limits<Real>::max();
 
+  /// Place each collapse at its quadric minimizer instead of on the surviving
+  /// endpoint.
+  bool use_quadric = true;
+
   length_collapse_config(
       Real max_length = std::numeric_limits<Real>::max(),
       Real min_quality = Real(-1), bool preserve_boundary = true,
@@ -37,9 +41,9 @@ struct length_collapse_config : collapse_guard_config<Real> {
       Real feature_weight = Real(100), double stabilizer = 1e-6,
       bool check_normals = false)
       : collapse_guard_config<Real>{min_quality, check_normals,
-                                    preserve_boundary, use_quadric, parallel,
+                                    preserve_boundary, parallel,
                                     feature_angle, feature_weight, stabilizer},
-        max_length(max_length) {}
+        max_length(max_length), use_quadric(use_quadric) {}
 };
 
 } // namespace tf

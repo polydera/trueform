@@ -40,15 +40,13 @@ template <typename Real> struct collapse_guard_config : collapse_config<Real> {
   /// invert a triangle's normal (a fold). Runtime guard.
   bool check_normals = false;
 
-  collapse_guard_config(Real min_quality = Real(-1),
-                          bool check_normals = false,
-                          bool preserve_boundary = true, bool use_quadric = true,
-                          bool parallel = true,
-                          tf::rad<Real> feature_angle = tf::rad<Real>(Real(-1)),
-                          Real feature_weight = Real(100),
-                          double stabilizer = 1e-6)
-      : collapse_config<Real>{preserve_boundary, use_quadric, parallel,
-                              feature_angle, feature_weight, stabilizer},
+  collapse_guard_config(Real min_quality = Real(-1), bool check_normals = false,
+                        bool preserve_boundary = true, bool parallel = true,
+                        tf::rad<Real> feature_angle = tf::rad<Real>(Real(-1)),
+                        Real feature_weight = Real(100),
+                        double stabilizer = 1e-6)
+      : collapse_config<Real>{preserve_boundary, parallel, feature_angle,
+                              feature_weight, stabilizer},
         min_quality(min_quality), check_normals(check_normals) {}
 };
 

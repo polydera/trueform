@@ -62,8 +62,8 @@ auto collapse_short_edges(
   auto features = tf::remesh::build_feature_handler(
       he, points, config.feature_angle, regions, protection);
 
-  auto handler = tf::make_collapse_handler<Real>(score, checker,
-                                                  features.as_view(), config);
+  auto handler = tf::make_collapse_handler<Real>(
+      score, checker, features.as_view(), config, config.use_quadric);
   Index n = tf::collapse_edges(he, points, handler);
   return {n, std::move(features)};
 }
@@ -106,8 +106,8 @@ auto collapse_short_edges(
   auto features = tf::remesh::build_feature_handler(
       he, points, config.feature_angle, regions, protection);
 
-  auto handler = tf::make_collapse_handler<Real>(score, checker,
-                                                  features.as_view(), config);
+  auto handler = tf::make_collapse_handler<Real>(
+      score, checker, features.as_view(), config, config.use_quadric);
   Index n = tf::collapse_edges(he, points, handler, target_faces);
   return {n, std::move(features)};
 }

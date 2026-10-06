@@ -32,7 +32,7 @@ struct decimate_config : collapse_guard_config<Real> {
                   Real feature_weight = Real(100), double stabilizer = 1e-3,
                   bool check_normals = true)
       : collapse_guard_config<Real>{min_quality, check_normals,
-                                    preserve_boundary, true, parallel,
+                                    preserve_boundary, parallel,
                                     feature_angle, feature_weight,
                                     stabilizer} {}
 };

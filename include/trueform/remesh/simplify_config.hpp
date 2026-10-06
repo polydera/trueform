@@ -64,7 +64,7 @@ struct simplify_config : collapse_guard_config<Real> {
                   int iterations = 1, int relaxation_iters = 3,
                   Real lambda = Real(0.5))
       : collapse_guard_config<Real>{min_quality, check_normals,
-                                    preserve_boundary, true, parallel,
+                                    preserve_boundary, parallel,
                                     feature_angle, feature_weight, stabilizer},
         error_rel(error_rel), iterations(iterations),
         optimize_iterations(optimize_iterations),

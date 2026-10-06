@@ -97,7 +97,7 @@ auto isotropic_remesh(tf::half_edges<Index> &he,
       features.as_view(), config.preserve_boundary);
 
   auto collapse_handler = tf::make_collapse_handler<Real>(
-      collapse_score, checker, features.as_view(), config);
+      collapse_score, checker, features.as_view(), config, config.use_quadric);
 
   // Running original->current vertex map (forward only); split-added vertices
   // are never in this [0, n0) domain.

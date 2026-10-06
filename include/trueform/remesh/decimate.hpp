@@ -27,7 +27,6 @@
 #include "./regions/region_label.hpp"
 
 #include <tuple>
-#include <type_traits>
 #include <utility>
 
 namespace tf::remesh {
@@ -56,8 +55,8 @@ auto decimate(tf::half_edges<Index> &he, tf::points<PointsPolicy> &points,
                                                     config.feature_angle,
                                                     regions, protection);
 
-  auto handler = tf::make_collapse_handler<Real>(score, checker,
-                                                  features.as_view(), config);
+  auto handler = tf::make_collapse_handler<Real>(
+      score, checker, features.as_view(), config, true);
   Index n_collapsed =
       tf::collapse_edges(he, points, handler, target_faces);
   return {n_collapsed, std::move(features)};

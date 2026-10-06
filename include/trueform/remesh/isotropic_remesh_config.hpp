@@ -37,6 +37,10 @@ struct isotropic_remesh_config : collapse_guard_config<Real> {
   /// Damping factor for tangential relaxation in (0, 1].
   Real lambda = Real(0.5);
 
+  /// Place each collapse at its quadric minimizer instead of on the surviving
+  /// endpoint.
+  bool use_quadric = false;
+
   isotropic_remesh_config(Real target_length, int iterations = 3,
                 int relaxation_iters = 3, Real min_quality = Real(0.3),
                 Real lambda = Real(0.5), bool preserve_boundary = true,
@@ -45,10 +49,11 @@ struct isotropic_remesh_config : collapse_guard_config<Real> {
                 Real feature_weight = Real(100), double stabilizer = 1e-6,
                 bool check_normals = false)
       : collapse_guard_config<Real>{min_quality, check_normals,
-                                    preserve_boundary, use_quadric, parallel,
+                                    preserve_boundary, parallel,
                                     feature_angle, feature_weight, stabilizer},
         target_length(target_length), iterations(iterations),
-        relaxation_iters(relaxation_iters), lambda(lambda) {}
+        relaxation_iters(relaxation_iters), lambda(lambda),
+        use_quadric(use_quadric) {}
 };
 
 /// @brief Create a remesh config with just a target edge length.

@@ -19,13 +19,12 @@ namespace tf {
 /// @ingroup remesh
 /// @brief Shared configuration for collapse_handler.
 ///
-/// Controls the machinery (quadrics, feature mask, boundary preservation,
-/// parallelism) that is independent of the scoring/acceptance policy.
+/// Controls the machinery (feature mask, boundary preservation, parallelism)
+/// that is independent of the scoring/acceptance policy.
 ///
 /// @tparam Real The scalar type.
 template <typename Real> struct collapse_config {
   bool preserve_boundary = true;
-  bool use_quadric = true;
   bool parallel = true;
   tf::rad<Real> feature_angle{Real(-1)};
   Real feature_weight = Real(100);
