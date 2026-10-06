@@ -20,7 +20,6 @@
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../intersect/graph/vertex.hpp"
-#include "./arrangement_descriptor.hpp"
 #include "./triangle_component_labels.hpp"
 #include <cstddef>
 #include <limits>
@@ -28,7 +27,8 @@
 namespace tf::csg::graph {
 
 /// @ingroup csg_graph_internals
-/// @brief Exact per-bundle AABB in SoS coordinates.
+/// @brief Exact AABB per key in SoS coordinates, each component's
+///        triangles and uncut faces grown into `key_of_component[c]`.
 ///
 /// Two disjoint carriers: each form's uncut faces (their own local
 /// point ids) and the arrangement's exposed triangle stream (created
@@ -41,10 +41,10 @@ namespace tf::csg::graph {
 /// `own_tag` names the owning form outright. Only a pooled carrier can
 /// hand a triangle another form's corner; there `own_tag` is -1 and the
 /// flat id is searched.
-template <typename Index, typename Int, typename Arrangement,
-          typename ApplyToForm, typename ReadPoint>
-auto compute_bundle_aabbs(
-    const tf::csg::graph::arrangement_descriptor<Index> &desc,
+template <typename Index, typename Int, typename KeyOfComponent,
+          typename Arrangement, typename ApplyToForm, typename ReadPoint>
+auto compute_keyed_aabbs(
+    const KeyOfComponent &key_of_component, Index n_keys,
     const Arrangement &arrangement,
     const tf::csg::graph::triangle_component_labels<Index> &labels,
     const ApplyToForm &apply_to_form, const ReadPoint &read_point)
@@ -53,7 +53,6 @@ auto compute_bundle_aabbs(
   using source = tf::intersect::graph::vertex_source;
   using bbox_t = tf::aabb<Int, 3>;
 
-  const Index n_bundles = desc.n_bundles;
   const Index n_tags = arrangement.n_tags();
   const Int int_max = std::numeric_limits<Int>::max();
   const Int int_min = std::numeric_limits<Int>::min();
@@ -61,19 +60,20 @@ auto compute_bundle_aabbs(
   bbox_t init_bbox = tf::make_aabb(tf::make_point(int_max, int_max, int_max),
                                    tf::make_point(int_min, int_min, int_min));
   tf::buffer<bbox_t> bboxes;
-  bboxes.allocate(static_cast<std::size_t>(n_bundles));
-  for (Index b = Index(0); b < n_bundles; ++b)
-    bboxes[b] = init_bbox;
+  bboxes.allocate(static_cast<std::size_t>(n_keys));
+  for (Index k = Index(0); k < n_keys; ++k)
+    bboxes[k] = init_bbox;
 
   if (n_tags == Index(0))
     return bboxes;
 
-  // The bundle axis is global and a block touches a run of it. A block-local
-  // dense array over it makes every block pay for every bundle in the
-  // arrangement — and on the branch where a bundle IS a component
-  // (@ref tf::csg::graph::make_arrangement_descriptor with no fans) that axis
-  // is the whole component space. The block carries the bundles it names; a
-  // box is a min/max, so the order they are grown in cannot change one.
+  // The key axis is global and a block touches a run of it. A block-local
+  // dense array over it makes every block pay for every key in the
+  // arrangement — and keyed by bundle, on the branch where a bundle IS a
+  // component (@ref tf::csg::graph::make_arrangement_descriptor with no
+  // fans), that axis is the whole component space. The block carries the
+  // keys it names; a box is a min/max, so the order they are grown in
+  // cannot change one.
   using local_t = tf::sparse_block_accumulator<Index, bbox_t>;
   const auto grow = [](bbox_t &box, const tf::point<Int, 3> &pt) {
     for (int k = 0; k < 3; ++k) {
@@ -127,7 +127,7 @@ auto compute_bundle_aabbs(
                     if (c == labels_t::none_label)
                       continue;
                     auto &box =
-                        local.touch(desc.bundle_of_component[c], init_bbox);
+                        local.touch(key_of_component[c], init_bbox);
                     const auto n_fv = face.size();
                     for (std::size_t i = 0; i < n_fv; ++i)
                       grow(box, point_of(Index(face[i])));
@@ -166,7 +166,7 @@ auto compute_bundle_aabbs(
           const Index c = triangle_labels[Index(e)];
           if (c == labels_t::none_label)
             continue;
-          auto &box = local.touch(desc.bundle_of_component[c], init_bbox);
+          auto &box = local.touch(key_of_component[c], init_bbox);
           const Index own_tag = pooled[triangle_slots[Index(e)]]
                                     ? Index(-1)
                                     : triangle_tags[Index(e)];

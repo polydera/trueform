@@ -24,6 +24,7 @@
 #include "../../core/small_vector.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "./is_arrangement_frontier.hpp"
 #include "./label_plane_arrangement_components.hpp"
 #include "./make_surface_component_labels.hpp"
 #include "./resolve_face_edge.hpp"
@@ -60,11 +61,24 @@ namespace tf::csg::graph {
 ///                names, whose endpoints resolve to one original face
 ///                edge whose peer is uncut.
 ///
+/// The arrangement's connectivity is the authority wherever it speaks; the
+/// input's manifold link answers only where the arrangement is silent. A
+/// cut triangle's side reaches the link only on a frontier
+/// (@ref tf::csg::graph::is_arrangement_frontier), for the bridges and the
+/// open mask alike. So a component is open where an original boundary edge
+/// meets nothing, not wherever one lies. A sheet rim welded onto a wall
+/// shares its pieces with the wall's triangles, so the sheet bounds two
+/// regions and severs the volume into the same two halves under every
+/// `domain_config` — `ignore_open_fragments` finds no open fragment to fuse.
+/// A rim crossing the air between two created points is a frontier and
+/// stays open.
+///
 /// Dead (coplanar-duplicate) triangles carry `none_label` — their cell
 /// is their survivor's, so the component loses nothing by it.
 /// @ref triangle_labels covers the exposed stream (cut faces only),
 /// @ref polygon_labels the uncut faces. The open mask is the manifold
-/// edge link's boundary answer on both tiers.
+/// edge link's boundary answer on the uncut tier and on the cut tier's
+/// frontier.
 template <typename Index> class triangle_component_labels {
 public:
   using label_type = Index;
@@ -81,7 +95,7 @@ public:
     return tf::make_range(_polygon_labels[std::size_t(tag)]);
   }
   /// @brief Per-component open flag (`1` = touches an original mesh
-  ///        boundary).
+  ///        boundary edge the arrangement attaches to nothing).
   auto open_component_mask() const {
     return tf::make_range(_open_component_mask);
   }
@@ -224,9 +238,7 @@ private:
 
   /// Bridge pairs between a cut triangle's component and the surface
   /// component of an uncut neighbour across the source mesh's manifold
-  /// edge. A candidate slot lies on a piece no other live triangle names
-  /// — the arrangement's own frontier, where the cut surface ends and the
-  /// source mesh's link takes over.
+  /// edge, read on a frontier side.
   template <typename Graph, typename ApplyToForm>
   auto _collect_bridges(const Graph &arrangement,
                         const ApplyToForm &apply_to_form) const
@@ -237,24 +249,7 @@ private:
     auto tris = ga.exposed_tris();
     auto descs = ga.exposed_descriptors();
     auto slots = arrangement.triangle_slots();
-    auto parents = ga.exposed_parent_of();
-    auto dead = arrangement.dead();
-    auto exposed_of_row = arrangement.exposed_of_row();
-    const auto &incidence = arrangement.piece_incidence();
     const auto n_exp = Index(tris.size());
-
-    auto is_frontier = [&](Index e, int s) {
-      const auto piece = parents[std::size_t(e) * 3 + std::size_t(s)];
-      if (piece == Index(-1))
-        return false; // a filler never lies on an original side
-      for (const auto row : incidence.rows_of_piece[std::size_t(piece)]) {
-        const auto peer = exposed_of_row[std::size_t(row / Index(3))];
-        if (peer == Index(-1) || peer == e || dead[peer])
-          continue;
-        return false;
-      }
-      return true;
-    };
 
     tf::generic_generate(
         tf::make_sequence_range(n_exp), bridges,
@@ -269,7 +264,7 @@ private:
             const auto face_size = form.faces()[d.object].size();
             const auto &tv = tris[e];
             for (int s = 0; s < 3; ++s) {
-              if (!is_frontier(e, s))
+              if (!tf::csg::graph::is_arrangement_frontier(arrangement, e, s))
                 continue;
               const auto eidx = tf::csg::graph::resolve_face_edge(
                   tv[std::size_t(s)].sub_id,
@@ -321,8 +316,8 @@ private:
     tg.wait();
   }
 
-  /// Mark every component touching a boundary edge as open. Writes are
-  /// `1`-only, idempotent under data race.
+  /// Mark every component touching a frontier boundary edge as open.
+  /// Writes are `1`-only, idempotent under data race.
   template <typename Graph, typename ApplyToForm>
   auto _compute_open_components(const Graph &arrangement,
                                 const ApplyToForm &apply_to_form) -> void {
@@ -340,7 +335,7 @@ private:
     const auto n_tags = arrangement.n_tags();
 
     tbb::task_group tg;
-    tg.run([this, tris, descs, slots, n_exp, &apply_to_form] {
+    tg.run([this, tris, descs, slots, n_exp, &arrangement, &apply_to_form] {
       tf::parallel_for_each(tf::make_sequence_range(n_exp), [&](Index e) {
         const auto c = _labels[std::size_t(e)];
         if (c == none_label)
@@ -351,6 +346,8 @@ private:
           const auto face_size = form.faces()[d.object].size();
           const auto &tv = tris[e];
           for (int s = 0; s < 3; ++s) {
+            if (!tf::csg::graph::is_arrangement_frontier(arrangement, e, s))
+              continue;
             const auto eidx = tf::csg::graph::resolve_face_edge(
                 tv[std::size_t(s)].sub_id, tv[std::size_t((s + 1) % 3)].sub_id,
                 face_size);

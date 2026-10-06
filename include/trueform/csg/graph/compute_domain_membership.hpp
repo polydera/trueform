@@ -18,7 +18,6 @@
 #include "./union_find.hpp"
 #include <array>
 #include <cstddef>
-#include <cstdint>
 
 namespace tf::csg::graph {
 
@@ -46,22 +45,22 @@ template <typename Index> struct domain_membership {
 /// (contact-free nested shells) are always united; the open components
 /// flagged by `open_mask` union their two sides only under
 /// `ignore_open_fragments` (no-op for already self-merged non-sheet
-/// opens, a real merge for sheet opens). A coarse domain's representative
-/// bits are those of an all-zero fine constituent if one exists (the
-/// universe / outer shell), else its single bounded constituent;
+/// opens, a real merge for sheet opens). The representative bits are the
+/// OR of the constituents' minus the fused sheets' columns;
 /// `keep[coarse] = E(rep) && !(exclude_outer_shell && is_outer)`.
 ///
-/// `universe_fine` >= 0 selects the STRUCTURAL read (one-form graphs):
-/// the inclusion bits of a self arrangement are winding parity, which
-/// misreads double-covered pockets as outside. With the volume-argmin
-/// universe passed in, `is_outer` is that domain alone and every other
-/// coarse domain carries the honest "enclosed by form 0" bit.
+/// `is_outer` is the universe's coarse class: `universe_fine` is the
+/// volume-argmin domain, lifted by the union-find to every contact-free
+/// exterior it absorbs. Bits never decide it — a sheet anchored through
+/// the universe writes its side bit there honestly, and a self
+/// arrangement's winding parity misreads double-covered pockets as
+/// outside.
 template <typename Index, typename OpenMask, typename Expr>
 auto compute_domain_membership(
     const tf::csg::graph::arrangement_descriptor<Index> &desc,
     const tf::csg::graph::domain_inclusions &inc, const OpenMask &open_mask,
     const tf::buffer<std::array<Index, 2>> &nesting_merges,
-    tf::domain_config config, Expr E, Index universe_fine = Index(-1),
+    tf::domain_config config, Expr E, Index universe_fine,
     const tf::buffer<char> &is_sheet_tag = {},
     const tf::buffer<std::array<Index, 3>> &sheet_folds = {})
     -> domain_membership<Index> {
@@ -130,16 +129,12 @@ auto compute_domain_membership(
     w = 0;
   tf::buffer<bool> is_outer;
   is_outer.allocate(static_cast<std::size_t>(n_coarse));
-  for (Index k = 0; k < n_coarse; ++k)
-    is_outer[k] = false;
 
   // Representative = OR of constituent bits, minus the bits of sheets
   // whose open fuse formed the class. Classes are bits-homogeneous
   // outside fused sheet columns (nesting merges unite copies of one
   // physical region; open fuses only flip the fused sheet's own bit),
-  // so this reproduces the constituent bits on volume-only input and
-  // the universe reads all-zero again once its fused sheet halves
-  // stop meaning "behind".
+  // so this reproduces the constituent bits on volume-only input.
   for (Index d = 0; d < n_domains; ++d) {
     const std::size_t base =
         static_cast<std::size_t>(out.coarse_of_fine[d]) * words;
@@ -151,19 +146,9 @@ auto compute_domain_membership(
     rep.clear(static_cast<std::size_t>(out.coarse_of_fine[f[0]]),
               static_cast<std::size_t>(f[1]));
 
-  if (universe_fine >= 0) {
-    const Index uk = out.coarse_of_fine[universe_fine];
-    for (Index k = 0; k < n_coarse; ++k)
-      is_outer[k] = k == uk;
-  } else {
-    for (Index k = 0; k < n_coarse; ++k) {
-      std::uint32_t any = 0;
-      const std::size_t base = static_cast<std::size_t>(k) * words;
-      for (std::size_t w = 0; w < words; ++w)
-        any |= rep.bits[base + w];
-      is_outer[k] = (any == 0);
-    }
-  }
+  const Index uk = out.coarse_of_fine[universe_fine];
+  for (Index k = 0; k < n_coarse; ++k)
+    is_outer[k] = k == uk;
 
   auto rep_blocks = rep.make_range();
   out.keep.allocate(static_cast<std::size_t>(n_coarse));

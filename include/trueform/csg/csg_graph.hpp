@@ -18,12 +18,14 @@
 #include "../core/point.hpp"
 #include "../core/transformed.hpp"
 #include "./graph/anchor_sheet_sides.hpp"
+#include "./graph/assert_nesting_merges_keep_closed_bits.hpp"
 #include "./graph/arrangement_descriptor.hpp"
 #include "./graph/component_crossings.hpp"
 #include "./graph/compute_arrangement_domain_volumes.hpp"
 #include "./graph/domain_depths.hpp"
 #include "./graph/domain_inclusions.hpp"
 #include "./graph/make_arrangement_descriptor.hpp"
+#include "./graph/make_closed_volume_tags.hpp"
 #include "./graph/propagate_inclusion_bits.hpp"
 #include "./graph/seed_inclusion_bits.hpp"
 #include "./graph/triangle_component_labels.hpp"
@@ -137,6 +139,12 @@ public:
       }
     }
     tf::csg::graph::anchor_sheet_sides(_inc, _desc, _is_sheet, _sheet_folds);
+#ifndef NDEBUG
+    tf::csg::graph::assert_nesting_merges_keep_closed_bits(
+        _domain_nesting_merges, _inc,
+        tf::csg::graph::make_closed_volume_tags(_desc, _labels, _arr.n_tags(),
+                                                _is_sheet));
+#endif
   }
 
   /// @brief The arrangement this graph classifies.

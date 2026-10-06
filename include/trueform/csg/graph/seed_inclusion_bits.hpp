@@ -32,9 +32,11 @@
 #include "../../spatial/aabb_from.hpp"
 #include "../../spatial/search.hpp"
 #include "./arrangement_descriptor.hpp"
-#include "./compute_bundle_aabbs.hpp"
+#include "./assert_nesting_merges_are_contained.hpp"
+#include "./compute_keyed_aabbs.hpp"
 #include "./domain_depths.hpp"
 #include "./domain_inclusions.hpp"
+#include "./make_closed_volume_tags.hpp"
 #include "./structural_membership.hpp"
 #include "./triangle_component_labels.hpp"
 #include "./winding_side.hpp"
@@ -49,19 +51,32 @@
 namespace tf::csg::graph {
 
 /// @ingroup csg_graph_internals
-/// @brief One exact segment cast per bundle, reduced two ways: every
-///        form's depth at `outer_env(bi)` — leaves minus enters along
-///        seed -> far, the far corner lying beyond all geometry and
-///        therefore at zero — and nesting merges that repair the false
-///        split between contact-free nested shells (the
+/// @brief One exact segment cast per bundle answering two questions, each
+///        with its own producer: the predicate bits at `outer_env(bi)`, and
+///        the nesting merge that repairs the false split between a
+///        contact-free bundle and the region around it (the
 ///        implicit-arrangement analogue of
 ///        @ref tf::topology::domains::make_nesting_merges).
 ///
+/// The bits: a volume form's depth is leaves minus enters along seed ->
+/// far, the far corner lying beyond all geometry and therefore at zero; a
+/// sheet has no interior, so its bit is the side
+/// @ref tf::csg::graph::winding_side states and it is never crossed for
+/// this question.
+///
+/// The merge cannot be read off the bits: a sheet that cuts a region only
+/// partially leaves one domain wrapping its edge whose points carry both
+/// side bits. It is the census: the first wall along the segment, read on
+/// the seed's side of the hit. A wall is a component with two distinct
+/// sides that the open mask does not name, and every form whose box the
+/// segment meets is cast, sheets included — parity over the domains needs
+/// every wall the segment crosses. A domain on either side of a flap (an
+/// open sheet component with distinct sides) is never elected: the census
+/// does not count its boundary, and its two sides are one region told
+/// apart only by side, which is the winding's answer.
+///
 /// A bundle's outer env is its most-negative-volume incident domain; the
-/// globally most negative is `null_seed`, anchored at zero. Sheet forms
-/// are side-classified by @ref tf::csg::graph::winding_side instead of the
-/// cast and never enclose, so they seed a bit in `inc` rather than a depth
-/// and contribute no nesting merge.
+/// globally most negative is `null_seed`, anchored at zero.
 template <typename Index, typename Int, typename Arrangement,
           typename ApplyToForm, typename Real, std::size_t Dims, typename VolT,
           typename GetMeshPoint>
@@ -145,14 +160,26 @@ auto seed_inclusion_bits(
   if (n_bundles == Index(1))
     return seeds;
 
-  // a bundle's own envelope never contains what sits inside its shell:
-  // the census still records it, but it is no candidate
-  tf::buffer<char> is_shell;
-  is_shell.allocate(static_cast<std::size_t>(n_domains));
-  tf::parallel_fill(is_shell, char(0));
+  // The census records these domains but never elects them: a bundle's
+  // own envelope never contains what sits inside its shell, and a flap's
+  // sides are the winding's question.
+  auto open_mask = labels.open_component_mask();
+  auto is_wall = [&](Index c) -> bool {
+    return desc.domain_of_side[2 * c + 0] != desc.domain_of_side[2 * c + 1] &&
+           !open_mask[c];
+  };
+  tf::buffer<char> barred;
+  barred.allocate(static_cast<std::size_t>(n_domains));
+  tf::parallel_fill(barred, char(0));
   for (Index b = Index(0); b < n_bundles; ++b)
     if (outer_env[b] >= Index(0))
-      is_shell[outer_env[b]] = char(1);
+      barred[outer_env[b]] = char(1);
+  for (Index c = Index(0); c < n_components; ++c)
+    if (open_mask[c] &&
+        desc.domain_of_side[2 * c + 0] != desc.domain_of_side[2 * c + 1]) {
+      barred[desc.domain_of_side[2 * c + 0]] = char(1);
+      barred[desc.domain_of_side[2 * c + 1]] = char(1);
+    }
 
   // SoS id partition: originals, createds, per-bundle seeds, far point —
   // the stream's original ids are already the flat ids
@@ -202,8 +229,9 @@ auto seed_inclusion_bits(
   };
 
   using bbox_t = tf::aabb<Int, 3>;
-  auto bboxes = compute_bundle_aabbs<Index, Int>(
-      desc, arrangement, labels, apply_to_form, get_mesh_point);
+  auto bboxes = tf::csg::graph::compute_keyed_aabbs<Index, Int>(
+      desc.bundle_of_component, desc.n_bundles, arrangement, labels,
+      apply_to_form, get_mesh_point);
 
   tf::buffer<WidePt> seed_sum;
   seed_sum.allocate(static_cast<std::size_t>(n_bundles));
@@ -288,9 +316,17 @@ auto seed_inclusion_bits(
     return t < Index(is_sheet_tag.size()) && is_sheet_tag[t];
   };
 
-  tf::buffer<std::array<Index, 2>> candidates;
+  // A form whose box the segment misses holds no crossing, so it is no
+  // cast. Depth is written only where the bundle's box meets the form's;
+  // a form outside the bundle's box encloses nothing of it.
+  struct cast_t {
+    Index bundle;
+    Index tag;
+    bool writes_depth;
+  };
+  tf::buffer<cast_t> casts;
   tf::buffer<std::array<Index, 2>> sheet_pairs;
-  bool any_own_candidate = false;
+  bool any_own_cast = false;
   for (Index bi = Index(0); bi < n_bundles; ++bi) {
     if (outer_env[bi] == null_seed)
       continue;
@@ -299,13 +335,15 @@ auto seed_inclusion_bits(
     auto own_tags = desc.bundle_to_tags[bi];
     for (Index t = Index(0); t < n_tags; ++t) {
       const bool own = std::binary_search(own_tags.begin(), own_tags.end(), t);
-      if (sheet_tag(t)) {
-        if (!own)
-          sheet_pairs.push_back({bi, t});
-      } else if (aabbs_overlap(bboxes[bi], form_bv[t])) {
-        candidates.push_back({bi, t});
-        any_own_candidate = any_own_candidate || own;
-      }
+      if (sheet_tag(t) && !own)
+        sheet_pairs.push_back({bi, t});
+      if (!tf::exact::segment_hits_aabb_scaled<Int>(
+              seed_sum[bi], far_scaled, scaled(form_bv[t].min),
+              scaled(form_bv[t].max)))
+        continue;
+      casts.push_back(
+          {bi, t, !sheet_tag(t) && aabbs_overlap(bboxes[bi], form_bv[t])});
+      any_own_cast = any_own_cast || own;
     }
   }
 
@@ -322,7 +360,7 @@ auto seed_inclusion_bits(
                                   Index(form.faces().size()));
     });
   tf::buffer<Index> cut_face_bundle;
-  if (any_own_candidate) {
+  if (any_own_cast) {
     cut_face_bundle.allocate(
         static_cast<std::size_t>(face_slot_offsets[std::size_t(n_tags)]));
     tf::parallel_fill(cut_face_bundle, Index(-1));
@@ -400,7 +438,7 @@ auto seed_inclusion_bits(
       };
       const std::array<WideVert, 5> ts{corner(0), corner(1), corner(2), seed_v,
                                        far_v};
-      if (tf::exact::triangle_segment_intersect_point_scaled_sos<Int>(ts))
+      if (tf::exact::triangle_segment_intersect_side_scaled_sos<Int>(ts))
         return c2;
     }
     return labels_t::none_label;
@@ -408,10 +446,10 @@ auto seed_inclusion_bits(
 
   tf::buffer<hit_t> nesting_hits;
   tf::generic_generate(
-      tf::make_range(candidates), nesting_hits,
-      [&](const auto &pair, tf::buffer<hit_t> &out) {
-        const Index bi = pair[0];
-        const Index t = pair[1];
+      tf::make_range(casts), nesting_hits,
+      [&](const cast_t &cast, tf::buffer<hit_t> &out) {
+        const Index bi = cast.bundle;
+        const Index t = cast.tag;
         const WidePt seed_pt_b = seed_sum[bi];
         Index depth = 0;
 
@@ -440,12 +478,7 @@ auto seed_inclusion_bits(
                 const Index c = polygon_labels[face_id];
                 const bool is_cut = c == labels_t::none_label;
                 if (!is_cut) {
-                  if (desc.bundle_of_component[c] == bi)
-                    return false;
-                  // Open patch (Mode-2 self-merged): the two sides are
-                  // one domain, so crossing it is no transition.
-                  if (desc.domain_of_side[2 * c + 0] ==
-                      desc.domain_of_side[2 * c + 1])
+                  if (desc.bundle_of_component[c] == bi || !is_wall(c))
                     return false;
                 } else if (cut_face_bundle.size() > 0 &&
                            cut_face_bundle[static_cast<std::size_t>(
@@ -474,11 +507,9 @@ auto seed_inclusion_bits(
                         is_cut ? crossed_piece_component(t, face_id, seed_v,
                                                          far_v)
                                : c;
-                    const bool states =
-                        c2 != labels_t::none_label &&
-                        desc.bundle_of_component[c2] != bi &&
-                        desc.domain_of_side[2 * c2 + 0] !=
-                            desc.domain_of_side[2 * c2 + 1];
+                    const bool states = c2 != labels_t::none_label &&
+                                        desc.bundle_of_component[c2] != bi &&
+                                        is_wall(c2);
                     if (states) {
                       const Index near_d =
                           desc.domain_of_side[2 * c2 + (seed_on_side1 ? 1 : 0)];
@@ -500,9 +531,10 @@ auto seed_inclusion_bits(
               });
         });
 
-        seed_depth[static_cast<std::size_t>(bi) *
-                       static_cast<std::size_t>(n_tags) +
-                   static_cast<std::size_t>(t)] = depth;
+        if (cast.writes_depth)
+          seed_depth[static_cast<std::size_t>(bi) *
+                         static_cast<std::size_t>(n_tags) +
+                     static_cast<std::size_t>(t)] = depth;
       });
 
   // Bundles sharing an outer-env hit the same row; the first zeros its
@@ -604,7 +636,7 @@ auto seed_inclusion_bits(
       ++cnt;
       ++group_end;
     }
-    if (!is_shell[d] && ((cnt & 1u) == 1u) != (d == far_domain[bi])) {
+    if (!barred[d] && ((cnt & 1u) == 1u) != (d == far_domain[bi])) {
       const landing_t landing{closest, d, near_side};
       if (chosen_target[bi] == Index(-1) || closer(landing, best[bi])) {
         best[bi] = landing;
@@ -614,9 +646,10 @@ auto seed_inclusion_bits(
     it = group_end;
   }
 
-  // A bundle alone in an unbounded region a sheet cuts off crosses
-  // nothing, so its census is empty — but the regions differ only by
-  // sheet side, which the winding pass already asked. Each wall whose
+  // The one producer of which outside region a bundle stands in. The
+  // census elects nothing there — it crosses no wall, or only walls whose
+  // near side is barred — and the outside regions differ only by sheet
+  // side, which the winding pass already asked. Each sheet component whose
   // two sides are both unbounded drops the side the winding puts the
   // seed away from; a single survivor is the landing. Which domains are
   // the outside is structural, not metric — an unbounded region's signed
@@ -706,6 +739,13 @@ auto seed_inclusion_bits(
     out_nesting_merges.push_back(
         {std::min(d_in, d_out), std::max(d_in, d_out)});
   }
+#ifndef NDEBUG
+  tf::csg::graph::assert_nesting_merges_are_contained<Index, Int>(
+      out_nesting_merges, outer_env, bboxes, seed_depth,
+      tf::csg::graph::make_closed_volume_tags(desc, labels, n_tags,
+                                              is_sheet_tag),
+      desc, arrangement, labels, apply_to_form, get_mesh_point);
+#endif
 
   return seeds;
 }

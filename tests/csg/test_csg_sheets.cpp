@@ -23,8 +23,10 @@
 #include "csg_readers.hpp"
 #include "tagged_operand.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <utility>
 #include <vector>
 
@@ -1082,4 +1084,132 @@ TEST_CASE("sheets: inside reads a volume's shell within another",
           tf::test::csg_mesh_of(graph, selection({1}, ~op(0) & op(1))).size());
   REQUIRE(tf::test::csg_mesh_of(graph, inside({1}, ~op(0))).size() == 14);
   REQUIRE(tf::test::csg_mesh_of(graph, selection({1}, op(0))).size() == 0);
+}
+
+// ============================================================================
+// A sheet is open only where its rim meets nothing. The box [-5,5]^3 and a
+// square sheet on z = 0: inside the box it floats and divides nothing,
+// flush with the walls its rim is welded onto them and it severs the box,
+// and overhanging it severs the box as well. A rim crossing the box's
+// interior between the two walls it pierces meets nothing and stays open.
+// ============================================================================
+namespace {
+
+auto sheets_rim_scene(sheets_real_t width, sheets_real_t depth)
+    -> std::vector<sheets_operand_t> {
+  std::vector<sheets_operand_t> operands;
+  operands.push_back(tf::test::make_tagged_operand(
+      tf::make_box_mesh<sheets_index_t>(sheets_real_t(10), sheets_real_t(10),
+                                        sheets_real_t(10)),
+      tf::transformation<sheets_real_t, 3>(
+          sheets_frame_at(0, 0, 0).transformation())));
+  operands.push_back(tf::test::make_tagged_operand(
+      tf::make_plane_mesh<sheets_index_t>(width, depth),
+      tf::transformation<sheets_real_t, 3>(
+          sheets_frame_at(0, 0, 0).transformation())));
+  return operands;
+}
+
+/// Whether every component of `tag` is open.
+template <typename Graph>
+auto sheets_tag_open(const Graph &graph, sheets_index_t tag) -> bool {
+  const auto &desc = graph.descriptor();
+  auto open_mask = graph.labels().open_component_mask();
+  bool any = false;
+  for (std::size_t c = 0; c < open_mask.size(); ++c) {
+    if (desc.tag_of_component[c] != tag)
+      continue;
+    any = true;
+    if (!open_mask[c])
+      return false;
+  }
+  return any;
+}
+
+/// The volumes of the cells that enclose something, ascending; every cell
+/// is a closed manifold. Whether the unbounded outside is among the cells is
+/// the exclusion's question, not the rim's.
+template <typename Cells>
+auto sheets_enclosed_volumes(const Cells &cells) -> std::vector<double> {
+  std::vector<double> volumes;
+  for (const auto &cell : cells) {
+    REQUIRE(tf::is_closed(cell.polygons()));
+    REQUIRE(tf::is_manifold(cell.polygons()));
+    const double volume = sheets_volume_of(cell);
+    if (volume > 0.0)
+      volumes.push_back(volume);
+  }
+  std::sort(volumes.begin(), volumes.end());
+  return volumes;
+}
+
+void sheets_volumes_check(const std::vector<double> &volumes,
+                          const std::vector<double> &expected) {
+  REQUIRE(volumes.size() == expected.size());
+  for (std::size_t i = 0; i < expected.size(); ++i)
+    REQUIRE_THAT(volumes[i], Catch::Matchers::WithinAbs(expected[i], 1e-9));
+}
+
+} // namespace
+
+TEST_CASE("sheets: the exclusion drops the universe the volumes name",
+          "[csg][sheets]") {
+  graph_holder holder(sheets_rim_scene(10, 10), {1});
+  REQUIRE(holder.graph.failed().size() == 0);
+  SECTION("no flags: the universe is a kept cell") {
+    auto [cells, ids] =
+        tf::test::csg_domains_of(holder.graph, tf::domain_config::none);
+    REQUIRE(cells.size() == 3);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {500.0, 500.0});
+  }
+  SECTION("exclude_outer_shell: only the halves remain") {
+    auto [cells, ids] = tf::test::csg_domains_of(
+        holder.graph, tf::domain_config::exclude_outer_shell);
+    REQUIRE(cells.size() == 2);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {500.0, 500.0});
+  }
+  SECTION("both flags: only the halves remain") {
+    auto [cells, ids] = tf::test::csg_domains_of(
+        holder.graph, tf::domain_config::exclude_outer_shell |
+                          tf::domain_config::ignore_open_fragments);
+    REQUIRE(cells.size() == 2);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {500.0, 500.0});
+  }
+}
+
+TEST_CASE("sheets: a rim is open where it meets nothing", "[csg][sheets]") {
+  SECTION("floating inside the box: one domain") {
+    graph_holder holder(sheets_rim_scene(8, 8), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    REQUIRE(sheets_tag_open(holder.graph, 1));
+    auto [cells, ids] = tf::test::csg_domains_of(holder.graph);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {1000.0});
+  }
+  SECTION("flush with the walls: welded, closed, two halves") {
+    graph_holder holder(sheets_rim_scene(10, 10), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    REQUIRE_FALSE(sheets_tag_open(holder.graph, 1));
+    auto [cells, ids] = tf::test::csg_domains_of(holder.graph);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {500.0, 500.0});
+  }
+  SECTION("flush with the walls, open fragments fused: still two halves") {
+    graph_holder holder(sheets_rim_scene(10, 10), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    auto [cells, ids] = tf::test::csg_domains_of(
+        holder.graph, tf::domain_config::ignore_open_fragments);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {500.0, 500.0});
+  }
+  SECTION("overhanging the walls: two halves") {
+    graph_holder holder(sheets_rim_scene(11, 11), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    auto [cells, ids] = tf::test::csg_domains_of(holder.graph);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {500.0, 500.0});
+  }
+  SECTION("a rim across the interior between two created points stays open") {
+    graph_holder holder(sheets_rim_scene(16, 6), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    REQUIRE(sheets_tag_open(holder.graph, 1));
+    auto [cells, ids] = tf::test::csg_domains_of(holder.graph);
+    sheets_volumes_check(sheets_enclosed_volumes(cells), {1000.0});
+  }
 }

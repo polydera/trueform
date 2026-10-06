@@ -23,6 +23,7 @@
 #include <trueform/csg/graph/compute_domain_membership.hpp>
 #include <trueform/csg/graph/compute_domain_partition.hpp>
 #include <trueform/csg/graph/evaluate_per_domain.hpp>
+#include <trueform/csg/graph/structural_membership.hpp>
 #include <trueform/topology/is_closed.hpp>
 #include <trueform/trueform.hpp>
 
@@ -175,7 +176,8 @@ TEST_CASE("triangulation store: WantLabels face provenance on the generic "
         graph.domain_nesting_merges(),
         tf::domain_config::exclude_outer_shell |
             tf::domain_config::ignore_open_fragments,
-        E);
+        E,
+        Index(tf::csg::graph::find_universe_domain(graph.domain_volumes())));
     auto part = tf::csg::graph::compute_domain_partition(
         membership.domain_of_side, membership.n_components, membership.keep);
     auto [cells, ids, tag_blocks, face_blocks] =

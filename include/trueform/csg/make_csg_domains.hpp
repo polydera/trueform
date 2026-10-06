@@ -32,7 +32,6 @@
 #include "./expression.hpp"
 #include <cstddef>
 #include <tuple>
-#include <type_traits>
 #include <utility>
 
 namespace tf {
@@ -83,18 +82,8 @@ auto make_csg_domains_impl(const tf::csg_graph<Policy, Int, Arrangement> &graph,
     }
   }
 
-  // Within-builds take the universe structurally: a self arrangement can
-  // state an interior cell no form winds around — an opposing coincident
-  // stack encloses nothing — and an all-zero row would call that cell the
-  // outside. The volume argmin names the universe; the nesting merges
-  // applied inside the membership's union-find lift it to the full
-  // universe CLASS (all contact-free exteriors — disjoint or nested
-  // components), and every coarse domain outside that class is an
-  // interior cell.
-  Index universe_fine =
-      graph.with_self()
-          ? Index(tf::csg::graph::find_universe_domain(graph.domain_volumes()))
-          : Index(-1);
+  const Index universe_fine =
+      Index(tf::csg::graph::find_universe_domain(graph.domain_volumes()));
   auto membership = tf::csg::graph::compute_domain_membership(
       graph.descriptor(), graph.inclusion(),
       graph.labels().open_component_mask(),
@@ -143,8 +132,9 @@ auto make_csg_domains_impl(const tf::csg_graph<Policy, Int, Arrangement> &graph,
 ///     (boundary-carrying) component — including sheet halves, which the
 ///     arrangement leaves un-merged — into a single domain. The merged
 ///     sheet halves join the universe, so they vanish from the output.
-///   - `exclude_outer_shell` drops the unbounded universe (any domain
-///     with an all-zero inclusion bitvector). With this flag off, the
+///   - `exclude_outer_shell` drops the unbounded universe: the
+///     most-negative-volume domain's coarse class, the same structural
+///     fact @ref tf::make_outer_shell reads. With this flag off, the
 ///     outside is recoverable via an expression such as
 ///     `~tf::csg::op(0) & ~tf::csg::op(1)`.
 ///
