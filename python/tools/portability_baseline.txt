@@ -56,10 +56,6 @@ include/trueform/topology/sidedness/aggregate_votes.hpp:138 10.5: default-captur
 include/trueform/topology/sidedness/emit_votes.hpp:72 10.5: default-capture generic lambda decomposes 'buffers' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/topology/vertex_link.hpp:123 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/examples/laplacian_smoothing.cpp:310 10.5: default-capture generic lambda decomposes 'tup' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-vtk/examples/patches.cpp:235 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-vtk/examples/patches.cpp:279 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-vtk/examples/patches.cpp:662 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-vtk/examples/patches.cpp:698 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:34 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:52 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:74 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
