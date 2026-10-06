@@ -21,6 +21,7 @@
 #include "./base/ray.hpp"
 #include "./base/rss_impl.hpp"
 #include "./base/seg.hpp"
+#include "./base/transformed_tetra.hpp"
 #include "./frame_like.hpp"
 #include "./is_transformable.hpp"
 #include "./linalg/is_identity.hpp"
@@ -42,6 +43,7 @@
 #include "./ray_like.hpp"
 #include "./rss_like.hpp"
 #include "./segment.hpp"
+#include "./tetrahedron.hpp"
 #include "./transformation.hpp"
 #include "./tuple.hpp"
 #include "./unit_vector_like.hpp"
@@ -254,6 +256,28 @@ auto transformed(const segment<Dims, Policy> &_this,
 template <std::size_t Dims, typename Policy, typename U>
 auto transformed(const segment<Dims, Policy> &_this,
                  const frame_like<Dims, U> &transform) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), transform));
+  else
+    return _this;
+}
+
+/// @ingroup core_primitives
+/// @overload
+template <typename Policy, typename U>
+auto transformed(const tetrahedron<Policy> &_this,
+                 const transformation_like<3, U> &transform) {
+  if constexpr (!linalg::is_identity<U>)
+    return wrap_like(_this, transformed(unwrap(_this), transform));
+  else
+    return _this;
+}
+
+/// @ingroup core_primitives
+/// @overload
+template <typename Policy, typename U>
+auto transformed(const tetrahedron<Policy> &_this,
+                 const frame_like<3, U> &transform) {
   if constexpr (!linalg::is_identity<U>)
     return wrap_like(_this, transformed(unwrap(_this), transform));
   else

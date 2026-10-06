@@ -18,6 +18,8 @@
 #include "./polygons_buffer.hpp"
 #include "./segments.hpp"
 #include "./segments_buffer.hpp"
+#include "./tetrahedra.hpp"
+#include "./tetrahedra_buffer.hpp"
 #include "./transform.hpp"
 #include "./transformation_like.hpp"
 
@@ -56,9 +58,27 @@ auto transformed(const tf::segments<Policy> &view,
 
 /// @ingroup core_primitives
 /// @overload
+template <typename Policy, typename U>
+auto transformed(const tf::tetrahedra<Policy> &view,
+                 const tf::transformation_like<3, U> &t) {
+  auto out = tf::make_tetrahedra_buffer(view);
+  tf::transform(out.points(), t);
+  return out;
+}
+
+/// @ingroup core_primitives
+/// @overload
 template <typename Policy, std::size_t Dims, typename U>
 auto transformed(const tf::segments<Policy> &view,
                  const tf::frame_like<Dims, U> &frame) {
+  return tf::transformed(view, frame.transformation());
+}
+
+/// @ingroup core_primitives
+/// @overload
+template <typename Policy, typename U>
+auto transformed(const tf::tetrahedra<Policy> &view,
+                 const tf::frame_like<3, U> &frame) {
   return tf::transformed(view, frame.transformation());
 }
 

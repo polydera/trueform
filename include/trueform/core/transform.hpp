@@ -18,6 +18,7 @@
 #include "./policy/frame.hpp"
 #include "./polygons.hpp"
 #include "./segments.hpp"
+#include "./tetrahedra.hpp"
 #include "./transformation_like.hpp"
 #include "./transformed.hpp"
 
@@ -82,9 +83,29 @@ auto transform(tf::segments<Policy> &view,
 
 /// @ingroup core_primitives
 /// @overload
+template <typename Policy, typename U>
+auto transform(tf::tetrahedra<Policy> &view,
+               const tf::transformation_like<3, U> &t) -> void {
+  static_assert(!tf::has_frame_policy<Policy>,
+                "tf::transform: view must not carry a frame policy.");
+  tf::transform(view.points(), t);
+}
+
+/// @ingroup core_primitives
+/// @overload
 template <typename Policy, std::size_t Dims, typename U>
 auto transform(tf::segments<Policy> &&view,
                const tf::transformation_like<Dims, U> &t) -> void {
+  static_assert(!tf::has_frame_policy<Policy>,
+                "tf::transform: view must not carry a frame policy.");
+  tf::transform(view.points(), t);
+}
+
+/// @ingroup core_primitives
+/// @overload
+template <typename Policy, typename U>
+auto transform(tf::tetrahedra<Policy> &&view,
+               const tf::transformation_like<3, U> &t) -> void {
   static_assert(!tf::has_frame_policy<Policy>,
                 "tf::transform: view must not carry a frame policy.");
   tf::transform(view.points(), t);
@@ -132,9 +153,25 @@ auto transform(tf::segments<Policy> &view,
 
 /// @ingroup core_primitives
 /// @overload
+template <typename Policy, typename U>
+auto transform(tf::tetrahedra<Policy> &view,
+               const tf::frame_like<3, U> &frame) -> void {
+  tf::transform(view, frame.transformation());
+}
+
+/// @ingroup core_primitives
+/// @overload
 template <typename Policy, std::size_t Dims, typename U>
 auto transform(tf::segments<Policy> &&view,
                const tf::frame_like<Dims, U> &frame) -> void {
+  tf::transform(view, frame.transformation());
+}
+
+/// @ingroup core_primitives
+/// @overload
+template <typename Policy, typename U>
+auto transform(tf::tetrahedra<Policy> &&view,
+               const tf::frame_like<3, U> &frame) -> void {
   tf::transform(view, frame.transformation());
 }
 

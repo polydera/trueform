@@ -10,6 +10,7 @@ add_executable(trueform_core_tests
   test_blocked_buffer.cpp
   test_buffer.cpp
   test_ranges.cpp
+  test_tetrahedra.cpp
   test_transformed.cpp
   test_isolated_parallel_for_each.cpp
 )

@@ -17,6 +17,7 @@
 #include "./policy/frame.hpp"
 #include "./polygons.hpp"
 #include "./segments.hpp"
+#include "./tetrahedra.hpp"
 #include "./vector_like.hpp"
 
 namespace tf {
@@ -73,9 +74,29 @@ auto translate(tf::segments<Policy> &view,
 
 /// @ingroup core_primitives
 /// @overload
+template <typename Policy, typename T>
+auto translate(tf::tetrahedra<Policy> &view,
+               const tf::vector_like<3, T> &v) -> void {
+  static_assert(!tf::has_frame_policy<Policy>,
+                "tf::translate: view must not carry a frame policy.");
+  tf::translate(view.points(), v);
+}
+
+/// @ingroup core_primitives
+/// @overload
 template <typename Policy, std::size_t Dims, typename T>
 auto translate(tf::segments<Policy> &&view,
                const tf::vector_like<Dims, T> &v) -> void {
+  tf::translate(view.points(), v);
+}
+
+/// @ingroup core_primitives
+/// @overload
+template <typename Policy, typename T>
+auto translate(tf::tetrahedra<Policy> &&view,
+               const tf::vector_like<3, T> &v) -> void {
+  static_assert(!tf::has_frame_policy<Policy>,
+                "tf::translate: view must not carry a frame policy.");
   tf::translate(view.points(), v);
 }
 

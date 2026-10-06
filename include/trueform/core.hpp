@@ -173,6 +173,10 @@
 #include "./core/stitch_index_map.hpp"            // IWYU pragma: export
 #include "./core/svd_of_symmetric.hpp"            // IWYU pragma: export
 #include "./core/tagged_sidedness.hpp"            // IWYU pragma: export
+#include "./core/tetrahedra.hpp"                  // IWYU pragma: export
+#include "./core/tetrahedra_buffer.hpp"           // IWYU pragma: export
+#include "./core/tetrahedron.hpp"                 // IWYU pragma: export
+#include "./core/tetras.hpp"                      // IWYU pragma: export
 #include "./core/tick_tock.hpp"                   // IWYU pragma: export
 #include "./core/transform.hpp"                   // IWYU pragma: export
 #include "./core/transformation.hpp"              // IWYU pragma: export

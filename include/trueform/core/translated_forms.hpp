@@ -17,6 +17,8 @@
 #include "./polygons_buffer.hpp"
 #include "./segments.hpp"
 #include "./segments_buffer.hpp"
+#include "./tetrahedra.hpp"
+#include "./tetrahedra_buffer.hpp"
 #include "./translate.hpp"
 #include "./vector_like.hpp"
 
@@ -41,6 +43,16 @@ template <typename Policy, std::size_t Dims, typename T>
 auto translated(const tf::segments<Policy> &view,
                 const tf::vector_like<Dims, T> &v) {
   auto out = tf::make_segments_buffer(view);
+  tf::translate(out.points(), v);
+  return out;
+}
+
+/// @ingroup core_primitives
+/// @overload
+template <typename Policy, typename T>
+auto translated(const tf::tetrahedra<Policy> &view,
+                const tf::vector_like<3, T> &v) {
+  auto out = tf::make_tetrahedra_buffer(view);
   tf::translate(out.points(), v);
   return out;
 }

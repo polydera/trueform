@@ -116,21 +116,21 @@ public:
 
   /// @brief Reallocates the buffer to size `n`, filling new elements with value
   /// `t`.
-  auto reallocate_and_initialize(std::size_t n, T t) {
+  auto reallocate_and_initialize(std::size_t n, const T &t) {
     auto _size = size();
     if (n <= capacity())
       _end = _data.get() + n;
     else
       append_at_end(n - _size);
     if (n > _size)
-      std::fill(_data.get() + _size, _end, std::move(t));
+      std::fill(_data.get() + _size, _end, t);
   }
 
   /// @brief Allocates memory for `n` elements and initializes all with value
   /// `t`.
-  auto allocate_and_initialize(std::size_t n, T t) {
+  auto allocate_and_initialize(std::size_t n, const T &t) {
     allocate(n);
-    std::fill(_data.get(), _end, std::move(t));
+    std::fill(_data.get(), _end, t);
   }
 
   /// @brief Erases elements from a given new end pointer to the actual end.
