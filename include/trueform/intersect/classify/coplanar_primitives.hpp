@@ -14,7 +14,6 @@
 
 #include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/small_vector.hpp"
-#include "../../exact/coplanar_edge_edge_point.hpp"
 #include "../../exact/orient2d.hpp"
 #include "../../exact/segments_cross.hpp"
 #include "../../exact/vertex.hpp"
@@ -41,7 +40,6 @@ void coplanar_primitives(
     const face_plane_info &plane0, const face_plane_info &plane1,
     const IsShared0 &is_shared0, const IsShared1 &is_shared1,
     Intersections &intersections, Pts &pts) {
-  using payload_t = typename Pts::value_type;
   auto between = [](Int a, Int b, Int v) {
     return (a <= v && v <= b) || (b <= v && v <= a);
   };
@@ -66,8 +64,7 @@ void coplanar_primitives(
         emit_record(tag0, tag1, face0_id, face1_id,
                     {Index(i), tf::topo_type::vertex},
                     {Index(j), tf::topo_type::vertex},
-                    make_point_payload<payload_t>(face0[i].pt, face0[i].id,
-                                                  face1[j].id),
+                    make_point_payload<Int>(face0[i].id, face1[j].id),
                     intersections, pts);
       }
 
@@ -84,8 +81,8 @@ void coplanar_primitives(
           emit_record(tag0, tag1, face0_id, face1_id,
                       {Index(i), tf::topo_type::vertex},
                       {Index(j), tf::topo_type::edge},
-                      make_vertex_edge_payload<payload_t>(
-                          face1[j], face1[nj], face0[i].pt, face0[i].id),
+                      make_vertex_edge_payload(face1[j], face1[nj], face0[i].pt,
+                                               face0[i].id),
                       intersections, pts);
         }
       }
@@ -103,8 +100,8 @@ void coplanar_primitives(
           emit_record(tag1, tag0, face1_id, face0_id,
                       {Index(j), tf::topo_type::vertex},
                       {Index(i), tf::topo_type::edge},
-                      make_vertex_edge_payload<payload_t>(
-                          face0[i], face0[ni], face1[j].pt, face1[j].id),
+                      make_vertex_edge_payload(face0[i], face0[ni], face1[j].pt,
+                                               face1[j].id),
                       intersections, pts);
         }
       }
@@ -123,12 +120,7 @@ void coplanar_primitives(
           emit_record(
               tag0, tag1, face0_id, face1_id, {Index(i), tf::topo_type::edge},
               {Index(j), tf::topo_type::edge},
-              make_edge_edge_payload<payload_t>(
-                  face0[i], face0[ni], face1[j], face1[nj],
-                  [&] {
-                    return tf::exact::coplanar_edge_edge_point(
-                        face0[i], face0[ni], face1[j], face1[nj], ax0, ax1);
-                  }),
+              make_edge_edge_payload(face0[i], face0[ni], face1[j], face1[nj]),
               intersections, pts);
         }
       }

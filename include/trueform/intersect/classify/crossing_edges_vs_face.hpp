@@ -16,7 +16,6 @@
 #include "../../core/small_vector.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/orient3d.hpp"
-#include "../../exact/segment_plane_intersect.hpp"
 #include "../../exact/vertex.hpp"
 #include "./emit_record.hpp"
 #include "./intersection_payload.hpp"
@@ -32,8 +31,7 @@ namespace tf::exact {
 ///   v3 = orient3d(A[0],   A[t+2], D, E)  — real edge iff t==n-3
 ///
 /// `edge_values` are the face plane's orient3d values behind
-/// `edge_signs`; only a parameter payload reads them, and then they are
-/// exactly the pierce's fraction along its edge.
+/// `edge_signs`, which are exactly the pierce's fraction along its edge.
 template <typename Index, typename Int, typename EdgeIsRep, typename FaceIsRep,
           typename Intersections, typename Pts>
 void crossing_edges_vs_face(
@@ -44,7 +42,6 @@ void crossing_edges_vs_face(
     int edge_tag, int face_tag, Index edge_face_id, Index face_id,
     const EdgeIsRep &edge_is_rep, const FaceIsRep &face_is_rep,
     Intersections &intersections, Pts &pts, bool both_crossing) {
-  using payload_t = typename Pts::value_type;
   for (std::size_t i = 0; i < n_edge; ++i) {
     if (!edge_is_rep(i).second)
       continue;
@@ -70,9 +67,7 @@ void crossing_edges_vs_face(
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
                       {face_id, tf::topo_type::face},
-                      make_edge_plane_payload<payload_t>(
-                          face_verts[0].pt, face_verts[t + 1].pt,
-                          face_verts[t + 2].pt, D, E, edge_values, i, ni),
+                      make_edge_plane_payload(D, E, edge_values, i, ni),
                       intersections, pts);
           found = true;
         }
@@ -90,8 +85,8 @@ void crossing_edges_vs_face(
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
                       {Index(k), tf::topo_type::vertex},
-                      make_vertex_edge_payload<payload_t>(
-                          D, E, face_verts[k].pt, face_verts[k].id),
+                      make_vertex_edge_payload(D, E, face_verts[k].pt,
+                                               face_verts[k].id),
                       intersections, pts);
         found = true;
         continue;
@@ -120,24 +115,17 @@ void crossing_edges_vs_face(
         bool erep = edge_is_rep(i).second;
         bool ferep = face_is_rep(edge_k).second;
         if (erep && ferep && (!both_crossing || edge_tag < face_tag))
-          emit_record(edge_tag, face_tag, edge_face_id, face_id,
-                      {Index(i), tf::topo_type::edge},
-                      {Index(edge_k), tf::topo_type::edge},
-                      make_edge_edge_payload<payload_t>(
-                          D, E, face_verts[edge_k], face_verts[nk],
-                          [&] {
-                            return *segment_plane_intersect(
-                                face_verts[0].pt, face_verts[t + 1].pt,
-                                face_verts[t + 2].pt, D, E);
-                          }),
-                      intersections, pts);
+          emit_record(
+              edge_tag, face_tag, edge_face_id, face_id,
+              {Index(i), tf::topo_type::edge},
+              {Index(edge_k), tf::topo_type::edge},
+              make_edge_edge_payload(D, E, face_verts[edge_k], face_verts[nk]),
+              intersections, pts);
       } else {
         emit_record(edge_tag, face_tag, edge_face_id, face_id,
                     {Index(i), tf::topo_type::edge},
                     {face_id, tf::topo_type::face},
-                    make_edge_plane_payload<payload_t>(
-                        face_verts[0].pt, face_verts[t + 1].pt,
-                        face_verts[t + 2].pt, D, E, edge_values, i, ni),
+                    make_edge_plane_payload(D, E, edge_values, i, ni),
                     intersections, pts);
       }
       found = true;
@@ -157,7 +145,6 @@ void crossing_edges_vs_face_self(
     int edge_tag, int face_tag, Index edge_face_id, Index face_id,
     const EdgeIsRep &edge_is_rep, const FaceIsRep &face_is_rep,
     Intersections &intersections, Pts &pts, bool both_crossing) {
-  using payload_t = typename Pts::value_type;
   for (std::size_t i = 0; i < n_edge; ++i) {
     if (!edge_is_rep(i).second)
       continue;
@@ -183,9 +170,7 @@ void crossing_edges_vs_face_self(
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
                       {face_id, tf::topo_type::face},
-                      make_edge_plane_payload<payload_t>(
-                          face_verts[0].pt, face_verts[t + 1].pt,
-                          face_verts[t + 2].pt, D, E, edge_values, i, ni),
+                      make_edge_plane_payload(D, E, edge_values, i, ni),
                       intersections, pts);
           found = true;
         }
@@ -203,8 +188,8 @@ void crossing_edges_vs_face_self(
           emit_record(edge_tag, face_tag, edge_face_id, face_id,
                       {Index(i), tf::topo_type::edge},
                       {Index(k), tf::topo_type::vertex},
-                      make_vertex_edge_payload<payload_t>(
-                          D, E, face_verts[k].pt, face_verts[k].id),
+                      make_vertex_edge_payload(D, E, face_verts[k].pt,
+                                               face_verts[k].id),
                       intersections, pts);
         found = true;
         continue;
@@ -232,24 +217,17 @@ void crossing_edges_vs_face_self(
         bool erep = edge_is_rep(i).second;
         bool ferep = face_is_rep(edge_k).second;
         if (erep && ferep && (!both_crossing || edge_face_id < face_id))
-          emit_record(edge_tag, face_tag, edge_face_id, face_id,
-                      {Index(i), tf::topo_type::edge},
-                      {Index(edge_k), tf::topo_type::edge},
-                      make_edge_edge_payload<payload_t>(
-                          D, E, face_verts[edge_k], face_verts[nk],
-                          [&] {
-                            return *segment_plane_intersect(
-                                face_verts[0].pt, face_verts[t + 1].pt,
-                                face_verts[t + 2].pt, D, E);
-                          }),
-                      intersections, pts);
+          emit_record(
+              edge_tag, face_tag, edge_face_id, face_id,
+              {Index(i), tf::topo_type::edge},
+              {Index(edge_k), tf::topo_type::edge},
+              make_edge_edge_payload(D, E, face_verts[edge_k], face_verts[nk]),
+              intersections, pts);
       } else {
         emit_record(edge_tag, face_tag, edge_face_id, face_id,
                     {Index(i), tf::topo_type::edge},
                     {face_id, tf::topo_type::face},
-                    make_edge_plane_payload<payload_t>(
-                        face_verts[0].pt, face_verts[t + 1].pt,
-                        face_verts[t + 2].pt, D, E, edge_values, i, ni),
+                    make_edge_plane_payload(D, E, edge_values, i, ni),
                     intersections, pts);
       }
       found = true;

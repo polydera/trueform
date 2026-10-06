@@ -49,7 +49,7 @@ auto edges_vs_face_sos(tf::exact::vertex_range<Index, Int> edge_verts,
                        Index face_id, int tag, const EdgeIsRep &edge_is_rep,
                        const tf::buffer<bool> &shared, Ints &ints, Pts &pts) {
   auto n = edge_verts.size();
-  auto fp = sos_edge_plane<typename Pts::value_type>(face_verts);
+  auto fp = tf::exact::make_face_plane(face_verts);
   for (std::size_t j = 0; j < n; ++j) {
     auto next_j = tf::circular_increment(j, n);
     if (shared[j] || shared[next_j])
@@ -68,10 +68,9 @@ auto edges_vs_face_sos(tf::exact::vertex_range<Index, Int> edge_verts,
 
 /// Self SoS over a workspace leaf pair; on the diagonal leaf (`is_self`)
 /// the inner loop skips the self-pair and each unordered pair's mirror.
-template <typename Index, typename Int, typename Payload, typename Form,
-          typename MEL>
-void self_sos_process(face_pair_workspace<Index, Int, Payload> &ws,
-                      bool is_self, const Form &form, int tag, const MEL &mel) {
+template <typename Index, typename Int, typename Form, typename MEL>
+void self_sos_process(face_pair_workspace<Index, Int> &ws, bool is_self,
+                      const Form &form, int tag, const MEL &mel) {
   auto n0 = ws.n0();
   auto n1 = ws.n1();
   for (std::size_t i = 0; i < n0; ++i)
@@ -100,9 +99,9 @@ void self_sos_process(face_pair_workspace<Index, Int, Payload> &ws,
 
 /// Self pair test over two prepped faces (ranges + cached planes + shared
 /// masks). Shared-aware masks, `_self` crossing dedup, both-sided reject.
-template <typename Index, typename Int, typename Payload, typename Poly0,
-          typename Poly1, typename MEL, typename FM>
-auto within_polygon_pair_prepped(face_pair_workspace<Index, Int, Payload> &ws,
+template <typename Index, typename Int, typename Poly0, typename Poly1,
+          typename MEL, typename FM>
+auto within_polygon_pair_prepped(face_pair_workspace<Index, Int> &ws,
                                  const Poly0 &poly0, const Poly1 &poly1,
                                  int tag, const MEL &mel, const FM &fm,
                                  tf::exact::vertex_range<Index, Int> face_buf0,
@@ -181,16 +180,14 @@ auto within_polygon_pair_prepped(face_pair_workspace<Index, Int, Payload> &ws,
   bool both_crossing = (mask0 & has_crossing) == has_crossing &&
                        (mask1 & has_crossing) == has_crossing;
   if ((mask0 & has_crossing) == has_crossing) {
-    if constexpr (tf::exact::stores_edge_fractions<Payload, Int, Index>)
-      compute_plane_values(fp1.plane, face_buf0, ws.values0);
+    compute_plane_values(fp1.plane, face_buf0, ws.values0);
     tf::exact::crossing_edges_vs_face_self(
         face_buf0, n0, face_buf1, n1, signs0, ws.values0, tag, tag, face0_id,
         face1_id, is_rep0, is_rep1, ws.intersections, ws.payloads,
         both_crossing);
   }
   if ((mask1 & has_crossing) == has_crossing) {
-    if constexpr (tf::exact::stores_edge_fractions<Payload, Int, Index>)
-      compute_plane_values(fp0.plane, face_buf1, ws.values1);
+    compute_plane_values(fp0.plane, face_buf1, ws.values1);
     tf::exact::crossing_edges_vs_face_self(
         face_buf1, n1, face_buf0, n0, signs1, ws.values1, tag, tag, face1_id,
         face0_id, is_rep1, is_rep0, ws.intersections, ws.payloads,
@@ -228,9 +225,9 @@ auto within_polygon_pair_prepped(face_pair_workspace<Index, Int, Payload> &ws,
 
 /// Per-leaf-pair self primitives logic; on the diagonal leaf (`is_self`)
 /// the inner loop skips the self-pair and each unordered pair's mirror.
-template <typename Index, typename Int, typename Payload, typename Form,
-          typename MEL, typename FM>
-void self_process(face_pair_workspace<Index, Int, Payload> &ws, bool is_self,
+template <typename Index, typename Int, typename Form, typename MEL,
+          typename FM>
+void self_process(face_pair_workspace<Index, Int> &ws, bool is_self,
                   const Form &form, int tag, const MEL &mel, const FM &fm) {
   auto n0 = ws.n0();
   auto n1 = ws.n1();

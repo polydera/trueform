@@ -80,8 +80,7 @@ template <typename Index, typename RealType,
 class polygon_intersections {
   using intersection_t = tf::intersect::tagged_intersection<Index>;
   using parameters_t = tf::exact::edge_fractions<Int, Index>;
-  using workspace_t =
-      tf::intersect::face_pair_workspace<Index, Int, parameters_t>;
+  using workspace_t = tf::intersect::face_pair_workspace<Index, Int>;
   using gate_t = tf::intersect::pair_group_gate<Index>;
   /// One scratch serves both currencies' walks: they share the feature
   /// expansion, and a self record's delivery walk runs the duplication.

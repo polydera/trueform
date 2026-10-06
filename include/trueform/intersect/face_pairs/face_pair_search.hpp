@@ -30,6 +30,7 @@
 #include "../../spatial/tree/dual_search.hpp"
 #include "../../spatial/tree/self_search.hpp"
 #include "../classify/face_plane_info.hpp"
+#include "../classify/intersection_payload.hpp"
 #include "../records/tagged_intersection.hpp"
 
 namespace tf::intersect {
@@ -39,22 +40,11 @@ namespace tf::intersect {
 /// the leaf; verts go in a flat arena keyed by per-face offsets (buffer<T>
 /// can't nest), read back as `vertex_range`s. Also accumulates this thread's
 /// output intersections + payloads.
-///
-/// `Payload` is what one emission stores about its point: its lattice
-/// position, or — for a caller that wants identity and no rounding —
-/// @ref tf::exact::edge_fractions, the point's exact parameter on the
-/// original edges it lies on. The kernels emit one slot per record
-/// either way, so a record id, the sentinel base derived from the slot
-/// count, and every id the emission order assigns are the same numbers
-/// under both payloads.
-template <typename Index, typename Int,
-          typename Payload = tf::exact::pt3<Int>>
-struct face_pair_workspace {
+template <typename Index, typename Int> struct face_pair_workspace {
   using vertex_t = tf::exact::vertex<Index, Int>;
-  using payload_t = Payload;
 
   tf::buffer<tagged_intersection<Index>> intersections;
-  tf::buffer<Payload> payloads;
+  tf::buffer<tf::exact::edge_fractions<Int, Index>> payloads;
   // pair-level coplanarity facts: {tag0, obj0, tag1, obj1} appended by
   // the kernels when the banded masks read all-zero both ways —
   // independent of record emission (representative gating must not be
@@ -138,12 +128,11 @@ auto placed_face_box(const tf::buffer<tf::exact::vertex<Index, Int>> &verts,
 /// Below the descent the corners themselves are in hand and the filter
 /// is exact.
 template <typename Form0, typename Form1, typename Lattice, typename Index,
-          typename Int, typename Payload, typename Process>
-void search_face_pairs(
-    const Form0 &form0, const Form1 &form1, int tag0, int tag1,
-    const Lattice &lattice,
-    tf::local_value<face_pair_workspace<Index, Int, Payload>> &ws_lv,
-    const Process &process) {
+          typename Int, typename Process>
+void search_face_pairs(const Form0 &form0, const Form1 &form1, int tag0,
+                       int tag1, const Lattice &lattice,
+                       tf::local_value<face_pair_workspace<Index, Int>> &ws_lv,
+                       const Process &process) {
   const auto &conv = lattice.converter();
   const Int pad = Int(2) * lattice.tolerance_int();
   auto check_bvs = [&](const auto &bv0, const auto &bv1) {
@@ -206,10 +195,10 @@ void search_face_pairs(
 /// again after each leaf, so a caller whose process states its verdict
 /// there stops the walk at the pair that proved it.
 template <typename Form, typename Lattice, typename Index, typename Int,
-          typename Payload, typename Process, typename Abort>
+          typename Process, typename Abort>
 void search_face_pairs_self(
     const Form &form, int tag, const Lattice &lattice,
-    tf::local_value<face_pair_workspace<Index, Int, Payload>> &ws_lv,
+    tf::local_value<face_pair_workspace<Index, Int>> &ws_lv,
     const Process &process, const Abort &abort) {
   const auto &conv = lattice.converter();
   const Int pad = Int(2) * lattice.tolerance_int();
@@ -264,11 +253,11 @@ void search_face_pairs_self(
 
 /// Concatenate the per-thread workspaces; each intersection's payload id is
 /// rebased by its thread's payload offset. Copies run per-thread in parallel.
-template <typename Index, typename Int, typename Payload>
+template <typename Index, typename Int>
 void merge_face_pair_workspaces(
-    tf::local_value<face_pair_workspace<Index, Int, Payload>> &ws_lv,
+    tf::local_value<face_pair_workspace<Index, Int>> &ws_lv,
     tf::buffer<tagged_intersection<Index>> &out_ints,
-    tf::buffer<Payload> &out_payloads,
+    tf::buffer<tf::exact::edge_fractions<Int, Index>> &out_payloads,
     tf::buffer<std::array<Index, 4>> &out_coplanar_pairs) {
   std::size_t n_pts = 0, n_ints = 0, n_cps = 0;
   for (const auto &ws : ws_lv.values()) {

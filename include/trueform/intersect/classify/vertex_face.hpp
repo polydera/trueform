@@ -38,7 +38,6 @@ void vertex_face(tf::exact::vertex_range<Index, Int> source_verts,
                  const SourceShared &source_shared,
                  const face_plane_info &target_plane,
                  Intersections &intersections, Pts &pts) {
-  using payload_t = typename Pts::value_type;
   if (!target_plane.valid)
     return;
   int ax0 = target_plane.ax0, ax1 = target_plane.ax1;
@@ -63,13 +62,12 @@ void vertex_face(tf::exact::vertex_range<Index, Int> source_verts,
         inside = false;
     }
     if (inside && first_sign != 0)
-      emit_record(source_tag, target_tag, source_face_id, target_face_id,
-                  {Index(i), tf::topo_type::vertex},
-                  {target_face_id, tf::topo_type::face},
-                  make_point_payload<payload_t>(source_verts[i].pt,
-                                                source_verts[i].id,
-                                                source_verts[i].id),
-                  intersections, pts);
+      emit_record(
+          source_tag, target_tag, source_face_id, target_face_id,
+          {Index(i), tf::topo_type::vertex},
+          {target_face_id, tf::topo_type::face},
+          make_point_payload<Int>(source_verts[i].id, source_verts[i].id),
+          intersections, pts);
   }
 }
 

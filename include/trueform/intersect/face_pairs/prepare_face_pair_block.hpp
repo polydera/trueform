@@ -32,8 +32,8 @@ namespace tf::intersect {
 ///
 /// `skip_mirror` is the diagonal block's own rule: it visits each unordered
 /// pair once, so the reach is counted the same way.
-template <typename Index, typename Int, typename Payload>
-void prepare_face_pair_block(face_pair_workspace<Index, Int, Payload> &ws,
+template <typename Index, typename Int>
+void prepare_face_pair_block(face_pair_workspace<Index, Int> &ws,
                              bool skip_mirror) {
   const auto n0 = ws.n0();
   const auto n1 = ws.n1();

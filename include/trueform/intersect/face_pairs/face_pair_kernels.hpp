@@ -27,26 +27,23 @@
 #include "./prepare_face_pair_block.hpp"
 
 #include <array>
-#include <optional>
 #include <utility>
 
 namespace tf::intersect {
 
-/// First-hit SoS intersection of a segment against a convex face's
-/// triangle fan.
+/// Whether a segment crosses a convex face's triangle fan under SoS.
 template <typename Index, typename Int>
 auto edge_vs_convex_face_sos(tf::exact::vertex_range<Index, Int> face,
                              const tf::exact::vertex<Index, Int> &v0,
-                             const tf::exact::vertex<Index, Int> &v1)
-    -> std::optional<tf::exact::pt3<Int>> {
+                             const tf::exact::vertex<Index, Int> &v1) -> bool {
   auto n = face.size();
   for (std::size_t t = 0; t + 2 < n; ++t) {
-    if (auto crossing = tf::exact::triangle_segment_intersect_point_sos(
-            std::array<tf::exact::vertex<Index, Int>, 5>{
-                face[0], face[t + 1], face[t + 2], v0, v1}))
-      return crossing->point;
+    if (tf::exact::triangle_segment_intersect_side_sos(
+            std::array<tf::exact::vertex<Index, Int>, 5>{face[0], face[t + 1],
+                                                         face[t + 2], v0, v1}))
+      return true;
   }
-  return std::nullopt;
+  return false;
 }
 
 /// The payload of an edge's SoS pierce through a convex face: the id of
@@ -59,26 +56,13 @@ auto push_sos_edge_plane_hit(tf::exact::vertex_range<Index, Int> face_verts,
                              const tf::exact::vertex<Index, Int> &v0,
                              const tf::exact::vertex<Index, Int> &v1, Pts &pts)
     -> Index {
-  auto pt = edge_vs_convex_face_sos(face_verts, v0, v1);
-  if (!pt)
+  if (!edge_vs_convex_face_sos(face_verts, v0, v1))
     return Index(-1);
   Index id = pts.size();
-  pts.push_back(
-      tf::exact::make_sos_edge_plane_payload<typename Pts::value_type>(
-          *pt, face_verts[fp.info.i0].pt, face_verts[fp.info.i1].pt,
-          face_verts[fp.info.i2].pt, v0, v1));
+  pts.push_back(tf::exact::make_sos_edge_plane_payload(
+      face_verts[fp.info.i0].pt, face_verts[fp.info.i1].pt,
+      face_verts[fp.info.i2].pt, v0, v1));
   return id;
-}
-
-/// The supporting plane an SoS payload needs as its second generator, or
-/// a null plane when the payload states no parameter.
-template <typename Payload, typename Index, typename Int>
-auto sos_edge_plane(tf::exact::vertex_range<Index, Int> face_verts)
-    -> tf::exact::face_plane<Int> {
-  if constexpr (tf::exact::stores_edge_fractions<Payload, Int, Index>)
-    return tf::exact::make_face_plane(face_verts);
-  else
-    return {};
 }
 
 /// Cross-pair SoS: representative edges of one face vs the other face.
@@ -90,7 +74,7 @@ auto edges_vs_face_sos(tf::exact::vertex_range<Index, Int> edge_verts,
                        Index face_id, int edge_tag, int face_tag,
                        const EdgeIsRep &edge_is_rep, Ints &ints, Pts &pts) {
   auto n = edge_verts.size();
-  auto fp = sos_edge_plane<typename Pts::value_type>(face_verts);
+  auto fp = tf::exact::make_face_plane(face_verts);
   for (std::size_t j = 0; j < n; ++j) {
     if (!edge_is_rep(j))
       continue;
@@ -107,10 +91,9 @@ auto edges_vs_face_sos(tf::exact::vertex_range<Index, Int> edge_verts,
 }
 
 /// Cross-pair SoS over a prepped workspace leaf pair.
-template <typename Index, typename Int, typename Payload, typename MEL0,
-          typename MEL1>
-void sos_process(face_pair_workspace<Index, Int, Payload> &ws, int tag0,
-                 int tag1, const MEL0 &mel0, const MEL1 &mel1) {
+template <typename Index, typename Int, typename MEL0, typename MEL1>
+void sos_process(face_pair_workspace<Index, Int> &ws, int tag0, int tag1,
+                 const MEL0 &mel0, const MEL1 &mel1) {
   auto n0 = ws.n0();
   auto n1 = ws.n1();
   for (std::size_t i = 0; i < n0; ++i)
@@ -134,8 +117,8 @@ void sos_process(face_pair_workspace<Index, Int, Payload> &ws, int tag0,
 
 /// A plane's exact orient3d values at another face's vertices. They are
 /// the numerator and denominator of a pierce's parameter along its edge,
-/// so only the payload that states a pierce as a parameter asks for them,
-/// and only once its edge's sign pair has already proved the crossing.
+/// asked for only once its edge's sign pair has already proved the
+/// crossing.
 template <typename Index, typename Int>
 void compute_plane_values(
     const tf::exact::orient3d_plane<Int> &plane,
@@ -149,14 +132,12 @@ void compute_plane_values(
 /// Cross-pair primitives classification of two prepped faces (ranges +
 /// cached planes). EF / crossing-EE / crossing-VE, then the coplanar
 /// family and VF when a zero sign appears.
-template <typename Index, typename Int, typename Payload, typename Poly0,
-          typename Poly1, typename MEL0, typename MEL1, typename FM0,
-          typename FM1>
+template <typename Index, typename Int, typename Poly0, typename Poly1,
+          typename MEL0, typename MEL1, typename FM0, typename FM1>
 auto primitives_polygon_pair_prepped(
-    face_pair_workspace<Index, Int, Payload> &ws, const Poly0 &poly0,
-    const Poly1 &poly1, int tag0, int tag1, const MEL0 &mel0, const MEL1 &mel1,
-    const FM0 &fm0, const FM1 &fm1,
-    tf::exact::vertex_range<Index, Int> face_buf0,
+    face_pair_workspace<Index, Int> &ws, const Poly0 &poly0, const Poly1 &poly1,
+    int tag0, int tag1, const MEL0 &mel0, const MEL1 &mel1, const FM0 &fm0,
+    const FM1 &fm1, tf::exact::vertex_range<Index, Int> face_buf0,
     const tf::exact::face_plane<Int> &fp0,
     tf::exact::vertex_range<Index, Int> face_buf1,
     const tf::exact::face_plane<Int> &fp1) {
@@ -226,16 +207,14 @@ auto primitives_polygon_pair_prepped(
   bool both_crossing = (mask0 & has_crossing) == has_crossing &&
                        (mask1 & has_crossing) == has_crossing;
   if ((mask0 & has_crossing) == has_crossing) {
-    if constexpr (tf::exact::stores_edge_fractions<Payload, Int, Index>)
-      compute_plane_values(fp1.plane, face_buf0, ws.values0);
+    compute_plane_values(fp1.plane, face_buf0, ws.values0);
     tf::exact::crossing_edges_vs_face(
         face_buf0, n0, face_buf1, n1, signs0, ws.values0, tag0, tag1, face0_id,
         face1_id, is_rep0, is_rep1, ws.intersections, ws.payloads,
         both_crossing);
   }
   if ((mask1 & has_crossing) == has_crossing) {
-    if constexpr (tf::exact::stores_edge_fractions<Payload, Int, Index>)
-      compute_plane_values(fp0.plane, face_buf1, ws.values1);
+    compute_plane_values(fp0.plane, face_buf1, ws.values1);
     tf::exact::crossing_edges_vs_face(
         face_buf1, n1, face_buf0, n0, signs1, ws.values1, tag1, tag0, face1_id,
         face0_id, is_rep1, is_rep0, ws.intersections, ws.payloads,
@@ -295,13 +274,12 @@ auto primitives_polygon_pair_prepped(
 }
 
 /// Prepares the block's kept pairs and their planes, then tests pairs.
-template <typename Index, typename Int, typename Payload, typename Form0,
-          typename Form1, typename MEL0, typename MEL1, typename FM0,
-          typename FM1>
-void primitives_process(face_pair_workspace<Index, Int, Payload> &ws,
-                        const Form0 &form0, const Form1 &form1, int tag0,
-                        int tag1, const MEL0 &mel0, const MEL1 &mel1,
-                        const FM0 &fm0, const FM1 &fm1) {
+template <typename Index, typename Int, typename Form0, typename Form1,
+          typename MEL0, typename MEL1, typename FM0, typename FM1>
+void primitives_process(face_pair_workspace<Index, Int> &ws, const Form0 &form0,
+                        const Form1 &form1, int tag0, int tag1,
+                        const MEL0 &mel0, const MEL1 &mel1, const FM0 &fm0,
+                        const FM1 &fm1) {
   auto n0 = ws.n0();
   auto n1 = ws.n1();
   prepare_face_pair_block(ws, false);

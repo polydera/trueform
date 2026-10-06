@@ -18,17 +18,14 @@
 #include "../../exact/edge_point_parameter.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/projection_axes.hpp"
-#include "../../exact/segment_plane_intersect.hpp"
 #include "../../exact/vertex.hpp"
 
 #include <array>
 #include <cstddef>
-#include <type_traits>
 
 namespace tf::exact {
 
-/// What a face-pair workspace stores per emitted record when the caller
-/// wants the point's identity rather than its position: the exact
+/// What a face-pair workspace stores per emitted record: the exact
 /// parameter of the point on every original edge it lies on.
 ///
 /// The two slots are ordered by carrier — the unordered pair of the
@@ -50,12 +47,6 @@ template <typename Int, typename Index> struct edge_fractions {
   std::array<Index, 2> to{Index(-1), Index(-1)};
 };
 
-/// The workspace payload that describes points by carrier rather than by
-/// position.
-template <typename Payload, typename Int, typename Index>
-inline constexpr bool stores_edge_fractions =
-    std::is_same_v<Payload, edge_fractions<Int, Index>>;
-
 /// Ascending order of two carriers named by their endpoints' flat vertex
 /// ids. One producer for both the kernel that writes the two fractions
 /// and the stage that picks one of them.
@@ -76,142 +67,97 @@ auto carrier_oriented_parameter(const edge_parameter<Int> &t, Index from,
 
 /// A point on no carrier: a shared vertex, or a pierce through a face's
 /// interior.
-template <typename Payload, typename Index, typename Int>
-auto make_point_payload(const pt3<Int> &point, Index va, Index vb) -> Payload {
-  if constexpr (stores_edge_fractions<Payload, Int, Index>) {
-    static_cast<void>(point);
-    Payload out{};
-    out.from[0] = va;
-    out.to[0] = vb;
-    return out;
-  } else {
-    static_cast<void>(va);
-    static_cast<void>(vb);
-    return point;
-  }
+template <typename Int, typename Index>
+auto make_point_payload(Index va, Index vb) -> edge_fractions<Int, Index> {
+  edge_fractions<Int, Index> out{};
+  out.from[0] = va;
+  out.to[0] = vb;
+  return out;
 }
 
 /// An edge crossing a face's supporting plane. `values[i0]`, `values[i1]`
 /// are that plane's orient3d values at the edge's endpoints — the
 /// classifier's own output, so the fraction is not a second derivation
-/// of a fact the sign mask already proved. The point, which only the
-/// positional payload wants, is built on the fan triangle (a, b, c) the
-/// crossing was located in.
-template <typename Payload, typename Index, typename Int, typename Values>
-auto make_edge_plane_payload(const pt3<Int> &a, const pt3<Int> &b,
-                             const pt3<Int> &c, const vertex<Index, Int> &v0,
+/// of a fact the sign mask already proved.
+template <typename Index, typename Int, typename Values>
+auto make_edge_plane_payload(const vertex<Index, Int> &v0,
                              const vertex<Index, Int> &v1, const Values &values,
-                             std::size_t i0, std::size_t i1) -> Payload {
-  if constexpr (stores_edge_fractions<Payload, Int, Index>) {
-    static_cast<void>(a);
-    static_cast<void>(b);
-    static_cast<void>(c);
-    using T2 = typename meta<Int>::T2;
-    auto num = values[i0];
-    auto den = values[i0] - values[i1];
-    if (den < T2(0)) {
-      num = -num;
-      den = -den;
-    }
-    Payload out{};
-    out.t[0] = carrier_oriented_parameter<Int>({num, den}, v0.id, v1.id);
-    out.from[0] = v0.id;
-    out.to[0] = v1.id;
-    return out;
-  } else {
-    static_cast<void>(values);
-    static_cast<void>(i0);
-    static_cast<void>(i1);
-    return *segment_plane_intersect(a, b, c, v0, v1);
+                             std::size_t i0, std::size_t i1)
+    -> edge_fractions<Int, Index> {
+  using T2 = typename meta<Int>::T2;
+  auto num = values[i0];
+  auto den = values[i0] - values[i1];
+  if (den < T2(0)) {
+    num = -num;
+    den = -den;
   }
+  edge_fractions<Int, Index> out{};
+  out.t[0] = carrier_oriented_parameter<Int>({num, den}, v0.id, v1.id);
+  out.from[0] = v0.id;
+  out.to[0] = v1.id;
+  return out;
 }
 
-/// The SoS flavour of the same fact: the perturbed point is already
-/// constructed, and the fraction is the exact crossing of (v0, v1) with
-/// the plane of (a, b, c) — the face's own supporting plane, which is
-/// what the identity tier names, not the fan triangle the perturbation
-/// happened to hit.
-template <typename Payload, typename Index, typename Int>
-auto make_sos_edge_plane_payload(const pt3<Int> &point, const pt3<Int> &a,
-                                 const pt3<Int> &b, const pt3<Int> &c,
+/// The SoS flavour of the same fact: the fraction is the exact crossing
+/// of (v0, v1) with the plane of (a, b, c) — the face's own supporting
+/// plane, which is what the identity tier names, not the fan triangle the
+/// perturbation happened to hit.
+template <typename Index, typename Int>
+auto make_sos_edge_plane_payload(const pt3<Int> &a, const pt3<Int> &b,
+                                 const pt3<Int> &c,
                                  const vertex<Index, Int> &v0,
-                                 const vertex<Index, Int> &v1) -> Payload {
-  if constexpr (stores_edge_fractions<Payload, Int, Index>) {
-    static_cast<void>(point);
-    Payload out{};
-    out.t[0] = carrier_oriented_parameter<Int>(
-        make_edge_plane_parameter<Int>(a, b, c, v0.pt, v1.pt), v0.id, v1.id);
-    out.from[0] = v0.id;
-    out.to[0] = v1.id;
-    return out;
-  } else {
-    static_cast<void>(a);
-    static_cast<void>(b);
-    static_cast<void>(c);
-    static_cast<void>(v0);
-    static_cast<void>(v1);
-    return point;
-  }
+                                 const vertex<Index, Int> &v1)
+    -> edge_fractions<Int, Index> {
+  edge_fractions<Int, Index> out{};
+  out.t[0] = carrier_oriented_parameter<Int>(
+      make_edge_plane_parameter<Int>(a, b, c, v0.pt, v1.pt), v0.id, v1.id);
+  out.from[0] = v0.id;
+  out.to[0] = v1.id;
+  return out;
 }
 
 /// A vertex `q` lying on the edge (v0, v1). The incidence is the
 /// caller's statement; the fraction is then exactly q's position.
-template <typename Payload, typename Index, typename Int>
+template <typename Index, typename Int>
 auto make_vertex_edge_payload(const vertex<Index, Int> &v0,
                               const vertex<Index, Int> &v1, const pt3<Int> &q,
-                              Index q_id) -> Payload {
-  if constexpr (stores_edge_fractions<Payload, Int, Index>) {
-    Payload out{};
-    out.t[0] = carrier_oriented_parameter<Int>(
-        make_edge_point_parameter<Int>(v0.pt, v1.pt, q), v0.id, v1.id);
-    out.from[0] = v0.id;
-    out.to[0] = v1.id;
-    out.from[1] = q_id;
-    out.to[1] = q_id;
-    return out;
-  } else {
-    static_cast<void>(v0);
-    static_cast<void>(v1);
-    return q;
-  }
+                              Index q_id) -> edge_fractions<Int, Index> {
+  edge_fractions<Int, Index> out{};
+  out.t[0] = carrier_oriented_parameter<Int>(
+      make_edge_point_parameter<Int>(v0.pt, v1.pt, q), v0.id, v1.id);
+  out.from[0] = v0.id;
+  out.to[0] = v1.id;
+  out.from[1] = q_id;
+  out.to[1] = q_id;
+  return out;
 }
 
 /// Two edges meeting. Both fractions describe one point, so the
 /// projection the crossing is solved in is shared; reversing either edge
 /// leaves the resulting parameter pair unchanged, which is why the
-/// axes may be taken once. `make_point` is called only by the positional
-/// payload — the point is the expensive half of this fact.
-template <typename Payload, typename Index, typename Int, typename MakePoint>
+/// axes may be taken once.
+template <typename Index, typename Int>
 auto make_edge_edge_payload(const vertex<Index, Int> &a0,
                             const vertex<Index, Int> &a1,
                             const vertex<Index, Int> &b0,
-                            const vertex<Index, Int> &b1,
-                            const MakePoint &make_point) -> Payload {
-  if constexpr (stores_edge_fractions<Payload, Int, Index>) {
-    static_cast<void>(make_point);
-    const auto axes = projection_axes_edges<Int>(a0.pt, a1.pt, b0.pt, b1.pt);
-    const auto ta = carrier_oriented_parameter<Int>(
-        make_edge_edge_parameter<Int>(a0.pt, a1.pt, b0.pt, b1.pt, axes), a0.id,
-        a1.id);
-    const auto tb = carrier_oriented_parameter<Int>(
-        make_edge_edge_parameter<Int>(b0.pt, b1.pt, a0.pt, a1.pt, axes), b0.id,
-        b1.id);
-    Payload out{};
-    const bool a_first = carrier_key_less(a0.id, a1.id, b0.id, b1.id);
-    out.t[0] = a_first ? ta : tb;
-    out.t[1] = a_first ? tb : ta;
-    out.from[0] = a_first ? a0.id : b0.id;
-    out.to[0] = a_first ? a1.id : b1.id;
-    out.from[1] = a_first ? b0.id : a0.id;
-    out.to[1] = a_first ? b1.id : a1.id;
-    return out;
-  } else {
-    static_cast<void>(a0);
-    static_cast<void>(a1);
-    static_cast<void>(b0);
-    static_cast<void>(b1);
-    return make_point();
-  }
+                            const vertex<Index, Int> &b1)
+    -> edge_fractions<Int, Index> {
+  const auto axes = projection_axes_edges<Int>(a0.pt, a1.pt, b0.pt, b1.pt);
+  const auto ta = carrier_oriented_parameter<Int>(
+      make_edge_edge_parameter<Int>(a0.pt, a1.pt, b0.pt, b1.pt, axes), a0.id,
+      a1.id);
+  const auto tb = carrier_oriented_parameter<Int>(
+      make_edge_edge_parameter<Int>(b0.pt, b1.pt, a0.pt, a1.pt, axes), b0.id,
+      b1.id);
+  edge_fractions<Int, Index> out{};
+  const bool a_first = carrier_key_less(a0.id, a1.id, b0.id, b1.id);
+  out.t[0] = a_first ? ta : tb;
+  out.t[1] = a_first ? tb : ta;
+  out.from[0] = a_first ? a0.id : b0.id;
+  out.to[0] = a_first ? a1.id : b1.id;
+  out.from[1] = a_first ? b0.id : a0.id;
+  out.to[1] = a_first ? b1.id : a1.id;
+  return out;
 }
 
 } // namespace tf::exact

@@ -12,7 +12,6 @@
  */
 #pragma once
 #include "../../core/local_value.hpp"
-#include "../classify/intersection_payload.hpp"
 #include "./face_pair_search.hpp"
 #include "./face_self_kernels.hpp"
 
@@ -29,8 +28,7 @@ namespace tf::intersect {
 /// has been seen, whatever order the threads walked in.
 template <typename Index, typename Int, typename Form, typename Lattice>
 auto find_self_intersection(const Form &form, const Lattice &lattice) -> bool {
-  using workspace_t =
-      face_pair_workspace<Index, Int, tf::exact::edge_fractions<Int, Index>>;
+  using workspace_t = face_pair_workspace<Index, Int>;
   auto &&mel = form.manifold_edge_link();
   auto &&fm = form.face_membership();
 
