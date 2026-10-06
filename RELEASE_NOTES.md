@@ -1,3 +1,70 @@
+## trueform v0.10.6
+
+A mesh fills its own holes. `tf::fill_holes` fills a mesh's boundary rims
+with patches of its own kind: one rim is one group, its cycle validated
+and rooted, then handed down a ladder of tiers — exhaustive enumeration
+for a rim of at most five vertices, the constrained Delaunay refiner in
+the rim's own plane where it has one, and otherwise a Delaunay
+tetrahedralization of its sites, over which a two-stage table states the
+patch of least bottleneck angle and, under that, least area. Every tier
+works on the exact lattice the input converts to; a tier that needs a
+dyadic split of an original edge publishes it into one canonical table,
+and `tf::make_filled_mesh` replays those plans into the output.
+`tf::hole_fill_config` states the request, and the result names every
+rim's status — filled, or refused with its reason. Rims run in parallel
+against each other, and the compiled facade carries the family sync and
+async.
+
+The lattice gains its tetrahedralization. `tf::delaunay_tetrahedralizer`
+builds the exact incremental 3D Delaunay of integer lattice sites,
+parallel by default and the same bytes at any worker count: the finite
+cells come back in one canonical order — ascending by sorted corner
+slots, each cell from its smallest corner, positively oriented.
+Coincident sites weld to the lowest name, cospherical ties break
+symbolically by name, and `append_sites` inserts fresh sites after a
+build. `insphere` joins the exact predicate family, filtered by a sound
+float stage and decided exactly where the filter abstains; `neighbors`,
+`stats` and a stated `refusal` complete the surface.
+
+A domain decomposition places every floating solid. The nesting census —
+the cast answering which region surrounds a solid that touches nothing —
+now sees every wall on its segment: sheets, forms whose boxes miss the
+solid's own, and the welded rim, which severs its volume like any wall
+(a rim is open only where it meets nothing). A box floating under a
+severing sheet is the lower region's cavity, not the upper's; a sheet
+laid exactly flush across a box splits it into its two true halves
+under every flag combination.
+
+The exact tier gains its construction rung. `meta<Int>::T3` — int256 at
+the int32 lattice, int512 at int64 — carries the value that is itself
+the product: the crossing point's barycentric interpolation, which
+overflowed the quadruple width on far-reaching casts and could invert
+the census's distance ordering, and the insphere determinant, whose
+private rung it absorbs. Verdicts stay on the quadruple width — a sign,
+a side, a comparison folds before it needs the rung — and the boolean
+corpus measures flat.
+
+The intersection tier emits fractions alone. The positional payload the
+identity rewrite obsoleted is deleted, and with it the crossing point
+the hot path computed and discarded; a crossing asked only for its
+verdict now answers without constructing the point, and
+`exact/segment_plane_intersect.hpp` is gone with its last caller.
+
+The quadric toggle left the shared collapse base. `use_quadric` lives
+only on `tf::isotropic_remesh_config` and `tf::length_collapse_config`,
+the configs whose score never reads the quadric table, and
+`tf::make_collapse_handler` takes it as its own argument. `tf::decimate`
+and `tf::simplify` score by the quadric error, so they state quadrics to
+the handler unconditionally and their configs no longer carry the flag:
+turning it off used to index an empty buffer and crash, and is now a
+compile error.
+
+`exclude_outer_shell` drops the universe the volumes name: the
+most-negative-volume domain's class, the same structural fact
+`tf::make_outer_shell` reads, on every build rather than only one-form
+graphs. A sheet anchored through the universe writes its side bit there
+honestly, so inclusion bits never decide the matter again.
+
 ## trueform v0.10.5
 
 The intersection request is two facts. `tf::intersect_mode` carries the
