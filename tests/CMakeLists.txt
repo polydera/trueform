@@ -29,6 +29,7 @@ add_subdirectory(intersect)
 add_subdirectory(arrangement)
 add_subdirectory(iso)
 add_subdirectory(csg)
+add_subdirectory(fill)
 add_subdirectory(exact)
 add_subdirectory(clean)
 add_subdirectory(reindex)
@@ -46,6 +47,7 @@ set(TF_TEST_TARGETS
   trueform_arrangement_planes_tests
   trueform_iso_tests
   trueform_csg_tests
+  trueform_fill_tests
   trueform_exact_tests
   trueform_clean_tests
   trueform_reindex_tests
