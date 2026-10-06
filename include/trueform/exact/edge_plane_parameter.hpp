@@ -18,9 +18,8 @@
 namespace tf::exact {
 
 /// The exact parameter of segment (p0, p1)'s crossing with the plane
-/// of (a, b, c): the same orient3d volumes
-/// @ref tf::exact::segment_plane_intersect snaps, kept as a fraction.
-/// An endpoint on the plane yields the exact 0 or 1; a crossing beyond
+/// of (a, b, c), kept as the fraction of the orient3d volumes at its two
+/// ends. An endpoint on the plane yields the exact 0 or 1; a crossing beyond
 /// the endpoints yields its exact line position. Caller ensures the
 /// segment is not parallel to the plane (equal volumes at both ends).
 template <typename Int>

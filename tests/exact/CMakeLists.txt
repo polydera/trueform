@@ -2,6 +2,7 @@ add_executable(trueform_exact_tests
   test_det2_sign.cpp
   test_dot_sign.cpp
   test_edge_parameter.cpp
+  test_edge_lattice.cpp
   test_classify_wedge.cpp
   test_dyadic_blend.cpp
   test_dyadic_ratio.cpp
@@ -9,6 +10,7 @@ add_executable(trueform_exact_tests
   test_is_between_on_segment.cpp
   test_rebase_parameter.cpp
   test_canonical_plane.cpp
+  test_insphere.cpp
   test_snap_parameter_to_edge.cpp
   test_int128_msvc.cpp
   test_int128_fallback.cpp

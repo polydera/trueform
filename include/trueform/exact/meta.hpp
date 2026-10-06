@@ -16,10 +16,14 @@
 #include "./int64.hpp"
 #include "./int128.hpp"
 #include "./int256.hpp"
+#include "./int512.hpp"
 #include <limits>
 
 namespace tf::exact {
 
+/// `T3` is the construction rung: the home of a value that is itself the
+/// product — an interpolated coordinate, a determinant past `T2`. A verdict —
+/// a sign, a side, a comparison — usually folds on `T2` before it needs it.
 template <typename T> struct meta;
 
 template <> struct meta<int32> {
@@ -27,11 +31,13 @@ template <> struct meta<int32> {
   using T1 = int64;
   using unsigned_T1 = std::uint64_t;
   using T2 = int128;
-  /// Value bits of a lattice coordinate and of the two rungs above it.
-  /// The ladder doubles at every step, so both follow from the lattice.
+  using T3 = int256;
+  /// Value bits of a lattice coordinate and of the rungs above it.
+  /// The ladder doubles at every step, so each follows from the lattice.
   static constexpr int coordinate_bits = std::numeric_limits<T0>::digits;
   static constexpr int t1_bits = 2 * (coordinate_bits + 1) - 1;
   static constexpr int t2_bits = 4 * (coordinate_bits + 1) - 1;
+  static constexpr int t3_bits = 8 * (coordinate_bits + 1) - 1;
 
   /// Dyadic parameter along an edge, as fine as the exact arithmetic
   /// permits rather than a chosen width: it is carried in T1, and
@@ -73,11 +79,13 @@ template <> struct meta<int64> {
   using T1 = int128;
   using unsigned_T1 = uint128;
   using T2 = int256;
-  /// Value bits of a lattice coordinate and of the two rungs above it.
-  /// The ladder doubles at every step, so both follow from the lattice.
+  using T3 = int512;
+  /// Value bits of a lattice coordinate and of the rungs above it.
+  /// The ladder doubles at every step, so each follows from the lattice.
   static constexpr int coordinate_bits = std::numeric_limits<T0>::digits;
   static constexpr int t1_bits = 2 * (coordinate_bits + 1) - 1;
   static constexpr int t2_bits = 4 * (coordinate_bits + 1) - 1;
+  static constexpr int t3_bits = 8 * (coordinate_bits + 1) - 1;
 
   /// Dyadic parameter along an edge, as fine as the exact arithmetic
   /// permits rather than a chosen width: it is carried in T1, and

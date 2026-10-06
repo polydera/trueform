@@ -12,9 +12,7 @@
  */
 #pragma once
 
-#include "../../int256.hpp"
 #include "../../int32.hpp"
-#include "../../int512.hpp"
 #include "../../int64.hpp"
 #include "../../meta.hpp"
 
@@ -36,7 +34,7 @@ template <typename Int> struct exact_lane;
 
 template <> struct exact_lane<tf::exact::int32> {
   using coefficient_type = typename tf::exact::meta<tf::exact::int32>::T2;
-  using product_type = tf::exact::int256;
+  using product_type = typename tf::exact::meta<tf::exact::int32>::T3;
   /// A workspace component is narrowed to `R` only inside `2^bound_bits`,
   /// so three of their products still stand inside `I`.
   static constexpr int bound_bits = 126;
@@ -45,7 +43,7 @@ template <> struct exact_lane<tf::exact::int32> {
 
 template <> struct exact_lane<tf::exact::int64> {
   using coefficient_type = typename tf::exact::meta<tf::exact::int64>::T2;
-  using product_type = tf::exact::int512;
+  using product_type = typename tf::exact::meta<tf::exact::int64>::T3;
   static constexpr int bound_bits = 254;
   static constexpr int product_bits = 511;
 };

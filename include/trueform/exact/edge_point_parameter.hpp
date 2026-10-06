@@ -13,7 +13,7 @@
 #pragma once
 
 #include "./edge_parameter.hpp"
-#include "./meta.hpp"
+#include "./edge_projection_parameter.hpp"
 #include "./vertex.hpp"
 
 namespace tf::exact {
@@ -30,14 +30,7 @@ namespace tf::exact {
 template <typename Int>
 auto make_edge_point_parameter(const pt3<Int> &p0, const pt3<Int> &p1,
                                const pt3<Int> &q) -> edge_parameter<Int> {
-  using T1 = typename meta<Int>::T1;
-  using T2 = typename meta<Int>::T2;
-  const T1 dx = T1(p1[0]) - p0[0], dy = T1(p1[1]) - p0[1],
-           dz = T1(p1[2]) - p0[2];
-  const T1 wx = T1(q[0]) - p0[0], wy = T1(q[1]) - p0[1], wz = T1(q[2]) - p0[2];
-  const T2 num = T2(wx) * dx + T2(wy) * dy + T2(wz) * dz;
-  const T2 den = T2(dx) * dx + T2(dy) * dy + T2(dz) * dz;
-  return {num, den};
+  return make_edge_projection_parameter<Int>(p0, p1, q);
 }
 
 } // namespace tf::exact

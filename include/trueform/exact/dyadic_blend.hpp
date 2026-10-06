@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "./dyadic_blend_scaled.hpp"
 #include "./meta.hpp"
 
 namespace tf::exact {
@@ -31,14 +32,7 @@ template <typename Int>
 auto dyadic_blend(Int a, Int b,
                   typename tf::exact::meta<Int>::param_type parameter,
                   int bits = tf::exact::meta<Int>::param_bits) -> Int {
-  using param_t = typename tf::exact::meta<Int>::param_type;
-  using T2 = typename tf::exact::meta<Int>::T2;
-  const T2 a_weight = T2((param_t(1) << bits) - parameter);
-  const T2 b_weight = T2(parameter);
-  const T2 value = T2(a) * a_weight + T2(b) * b_weight;
-  const T2 half = T2(param_t(1) << (bits - 1));
-  return value < T2(0) ? -static_cast<Int>((-value + half) >> bits)
-                       : static_cast<Int>((value + half) >> bits);
+  return dyadic_blend_scaled<Int>(a, b, parameter, bits);
 }
 
 } // namespace tf::exact

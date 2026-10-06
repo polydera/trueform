@@ -12,8 +12,10 @@
  */
 #pragma once
 
+#include "./float_filter_sound.hpp"
 #include "./meta.hpp"
 #include "./vertex.hpp"
+#include <type_traits>
 
 namespace tf::exact {
 
@@ -55,10 +57,10 @@ auto incircle(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
 /// 2^30 evaluate lifts and minors in T1 with three T2 products -- one
 /// exact evaluation, no filter; otherwise the exact determinant runs
 /// directly (measured faster than a floating-point filter). int64
-/// coordinates run a Shewchuk semi-static double filter first -- T2 is
-/// int256 there and the filter wins decisively on local operands --
-/// falling back to the exact determinant only when it cannot decide.
-/// The sign is exact in every path.
+/// coordinates run a Shewchuk semi-static double filter first, wherever
+/// @ref tf::exact::float_filter_sound holds -- T2 is int256 there and the
+/// filter wins decisively on local operands -- falling back to the exact
+/// determinant only when it cannot decide. The sign is exact in every path.
 template <typename Int>
 auto incircle_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
                    const pt2<Int> &d) -> int {
@@ -89,8 +91,9 @@ auto incircle_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
 
   const T1 lim = T1(1) << 52;
   auto small = [&](T1 v) { return v > -lim && v < lim; };
-  if (!std::is_same_v<Int, int32> && small(adxi) && small(adyi) &&
-      small(bdxi) && small(bdyi) && small(cdxi) && small(cdyi)) {
+  if (float_filter_sound && !std::is_same_v<Int, int32> && small(adxi) &&
+      small(adyi) && small(bdxi) && small(bdyi) && small(cdxi) &&
+      small(cdyi)) {
     double adx = double(adxi), ady = double(adyi);
     double bdx = double(bdxi), bdy = double(bdyi);
     double cdx = double(cdxi), cdy = double(cdyi);
