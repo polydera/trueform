@@ -12,6 +12,8 @@
  */
 #pragma once
 #include "../../core/point.hpp"
+#include "../cdt_refine_status.hpp"
+#include "./constrained_delaunay_refinement_target_met.hpp"
 #include "./drain_constrained_delaunay_refinement_generation.hpp"
 #include "./locate_constrained_delaunay_refinement_point.hpp"
 #include "./queue_constrained_delaunay_refinement_encroachments.hpp"
@@ -25,13 +27,17 @@
 
 namespace tf::topology::cdt {
 
+/// The terminal reason is derived where the refinement returns: the target
+/// it ran against wins wherever it holds, and only then does the exit that
+/// was taken decide between the budget and a queue that ran dry.
 template <typename Owner>
-auto refine_constrained_delaunay(Owner &owner, double min_quality) -> void {
+auto refine_constrained_delaunay(Owner &owner, double min_quality)
+    -> tf::cdt_refine_status {
   using Index = typename Owner::index_type;
   using Int = typename Owner::int_type;
 
   if (min_quality <= 0.0 && !owner._split_encroached)
-    return;
+    return tf::cdt_refine_status::floor_met;
   const std::int64_t point_budget =
       std::int64_t(64) * std::int64_t(owner._ip.size()) + 4096;
   owner._min_quality = min_quality;
@@ -42,7 +48,9 @@ auto refine_constrained_delaunay(Owner &owner, double min_quality) -> void {
   std::size_t head = 0;
   while (head < owner._queue.size()) {
     if (std::int64_t(owner._ip.size()) >= point_budget)
-      return;
+      return constrained_delaunay_refinement_target_met(owner)
+                 ? tf::cdt_refine_status::floor_met
+                 : tf::cdt_refine_status::budget_exhausted;
     auto [face, stamp] = owner._queue[head++];
     if (head > (std::size_t(1) << 16) && head * 2 > owner._queue.size()) {
       owner._queue.erase(owner._queue.begin(), owner._queue.begin() + head);
@@ -188,6 +196,9 @@ auto refine_constrained_delaunay(Owner &owner, double min_quality) -> void {
 
     drain_constrained_delaunay_refinement_generation(owner);
   }
+  return constrained_delaunay_refinement_target_met(owner)
+             ? tf::cdt_refine_status::floor_met
+             : tf::cdt_refine_status::stalled;
 }
 
 } // namespace tf::topology::cdt

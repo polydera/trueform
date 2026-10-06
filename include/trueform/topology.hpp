@@ -64,11 +64,15 @@
 #include "./topology/domain_labels.hpp"              // IWYU pragma: export
 #include "./topology/cdt_config.hpp"                  // IWYU pragma: export
 #include "./topology/cdt_refine_config.hpp"           // IWYU pragma: export
+#include "./topology/cdt_refine_status.hpp"           // IWYU pragma: export
 #include "./topology/cdt_refiner.hpp"                 // IWYU pragma: export
 #include "./topology/cdt_region_mode.hpp"             // IWYU pragma: export
 #include "./topology/return_region_labels.hpp"        // IWYU pragma: export
 #include "./topology/constrained_delaunay_triangulator.hpp" // IWYU pragma: export
 #include "./topology/unconstrained_delaunay_triangulator.hpp" // IWYU pragma: export
+#include "./topology/delaunay_tetrahedralizer.hpp"   // IWYU pragma: export
+#include "./topology/tetrahedralization_refusal.hpp" // IWYU pragma: export
+#include "./topology/tetrahedralization_stats.hpp"   // IWYU pragma: export
 #include "./topology/make_cdt.hpp"                   // IWYU pragma: export
 #include "./topology/triangulation_type.hpp"        // IWYU pragma: export
 #include "./topology/connectivity_type.hpp"          // IWYU pragma: export

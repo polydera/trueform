@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../cdt_refine_status.hpp"
 
 namespace tf::topology::cdt {
 
@@ -37,6 +38,7 @@ auto clear_constrained_delaunay_refinement(Owner &owner) -> void {
   owner._constraint_aliases.clear();
   owner._constraint_alias_blocks.clear();
   owner._min_quality = 0.0;
+  owner._refine_status = tf::cdt_refine_status::floor_met;
   owner._scale = 1;
   owner._offx = 0;
   owner._offy = 0;

@@ -12,6 +12,7 @@ add_executable(trueform_topology_tests
   test_face_split_by_edges.cpp
   test_hole_patcher.cpp
   test_constrained_delaunay_triangulator.cpp
+  test_delaunay_tetrahedralizer.cpp
   test_cdt_constraint_owner_api.cpp
   test_cdt_half_edge_carrier_lifecycle.cpp
   test_cdt_parallel_topology_equivalence.cpp

@@ -28,6 +28,7 @@
 #include "./cdt/materialize_constrained_delaunay_refinement_faces.hpp"
 #include "./cdt_constraint_split.hpp"
 #include "./cdt_refine_config.hpp"
+#include "./cdt_refine_status.hpp"
 #include "./cdt_region_mode.hpp"
 #include <array>
 #include <cstddef>
@@ -137,6 +138,14 @@ public:
   }
 
   auto ok() const -> bool { return _producer.ok(); }
+
+  /// @brief Why the last successful build's refinement stopped. It speaks of
+  /// the state that build ended in, never of a candidate skipped on the way,
+  /// and says nothing about a build that refused.
+  auto refine_status() const -> tf::cdt_refine_status {
+    return _producer.refine_status();
+  }
+
   auto n_input_points() const -> Index { return _producer.n_input_points(); }
 
   /// @brief Whether exact input preparation published the authoritative input

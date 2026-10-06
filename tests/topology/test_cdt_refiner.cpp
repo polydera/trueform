@@ -325,3 +325,38 @@ TEST_CASE("cdt_refiner clamps min_quality to the termination bound",
   REQUIRE(run(in, r, config));
   REQUIRE(interior(r).min_quality >= 0.4);
 }
+
+TEST_CASE("cdt_refiner states why its refinement stopped", "[cdt_refiner]") {
+  planar_input in;
+  in.ring(48, 0, 0, 10, 0.25, 7);
+  Refiner r;
+  REQUIRE(run(in, r));
+  REQUIRE(r.refine_status() == tf::cdt_refine_status::floor_met);
+  REQUIRE(interior(r).min_quality >= 0.3);
+}
+
+TEST_CASE("cdt_refiner asked for nothing has met its target",
+          "[cdt_refiner]") {
+  planar_input in;
+  in.loop({in.add(0, 0), in.add(40, 0), in.add(40, 2), in.add(0, 2)});
+  Refiner r;
+  tf::cdt_refine_config config;
+  config.min_quality = 0.0f;
+  config.split_encroached = false;
+  REQUIRE(run(in, r, config));
+  REQUIRE(r.refine_status() == tf::cdt_refine_status::floor_met);
+  REQUIRE(r.n_constraint_splits() == 0);
+}
+
+TEST_CASE("cdt_refiner pinned against its own boundary stalls",
+          "[cdt_refiner]") {
+  planar_input in;
+  in.loop({in.add(0, 0), in.add(40, 0), in.add(40, 1), in.add(0, 1)});
+  Refiner r;
+  tf::cdt_refine_config config;
+  config.min_quality = 0.45f;
+  config.split_encroached = false;
+  REQUIRE(run(in, r, config));
+  REQUIRE(r.refine_status() == tf::cdt_refine_status::stalled);
+  REQUIRE(interior(r).min_quality < 0.45);
+}

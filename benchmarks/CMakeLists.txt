@@ -44,6 +44,24 @@ foreach(_volume_target ${VOLUME_BENCHMARK_TARGETS})
 endforeach()
 
 # ==============================================================================
+# Delaunay targets
+#
+# Registered beside the volume targets, for the same reason.
+# ==============================================================================
+set(DELAUNAY_BENCHMARK_TARGETS
+    bench_tetrahedralization
+)
+
+foreach(_delaunay_target ${DELAUNAY_BENCHMARK_TARGETS})
+    add_executable(${_delaunay_target} topology/${_delaunay_target}.cpp)
+    target_include_directories(${_delaunay_target} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+    target_link_libraries(${_delaunay_target} PRIVATE TBB::tbb)
+    target_compile_options(${_delaunay_target} PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>)
+endforeach()
+
+# ==============================================================================
 # External Libraries
 # ==============================================================================
 include(FetchContent)
@@ -530,6 +548,7 @@ if(HAVE_VTK)
 endif()
 
 list(APPEND BENCHMARK_TARGETS ${VOLUME_BENCHMARK_TARGETS})
+list(APPEND BENCHMARK_TARGETS ${DELAUNAY_BENCHMARK_TARGETS})
 
 list(LENGTH BENCHMARK_TARGETS NUM_BENCHMARKS)
 message(STATUS "Creating 'benchmarks' target with ${NUM_BENCHMARKS} executables")

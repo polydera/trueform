@@ -52,7 +52,7 @@ auto build_constrained_delaunay_refinement(
                                                     is_splittable);
   adopt_constrained_delaunay_refinement_faces(owner);
   // Circumcenter refinement is not guaranteed to terminate above 0.45.
-  refine_constrained_delaunay(
+  owner._refine_status = refine_constrained_delaunay(
       owner, std::clamp(double(config.min_quality), 0.0, 0.45));
   finalize_constrained_delaunay_refinement_splits(owner);
   return owner._ok = true;

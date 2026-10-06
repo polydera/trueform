@@ -20,6 +20,7 @@
 #include "../../core/views/offset_block_range.hpp"
 #include "../../exact/resolve_int_type.hpp"
 #include "../cdt_refine_config.hpp"
+#include "../cdt_refine_status.hpp"
 #include "../cdt_region_mode.hpp"
 #include "./build_constrained_delaunay_refinement.hpp"
 #include "./clear_constrained_delaunay_refinement.hpp"
@@ -80,6 +81,12 @@ public:
   }
 
   auto ok() const -> bool { return owner()._ok; }
+
+  /// Why the last successful build's refinement stopped.
+  auto refine_status() const -> tf::cdt_refine_status {
+    return owner()._refine_status;
+  }
+
   auto n_input_points() const -> Index { return owner()._n_input_points; }
   auto n_input_constraints() const -> Index { return owner()._n_input_edges; }
 

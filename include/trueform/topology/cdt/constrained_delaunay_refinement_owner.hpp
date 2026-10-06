@@ -17,6 +17,7 @@
 #include "../../exact/incircle.hpp"
 #include "../../exact/orient2d.hpp"
 #include "../cdt_constraint_split.hpp"
+#include "../cdt_refine_status.hpp"
 #include "../constrained_delaunay_triangulator.hpp"
 #include "./constrained_delaunay_full_span_alias.hpp"
 #include <algorithm>
@@ -155,6 +156,7 @@ struct constrained_delaunay_refinement_owner {
   Index _n_input_edges = 0;
   bool _split_encroached = true;
   double _min_quality = 0.0;
+  tf::cdt_refine_status _refine_status = tf::cdt_refine_status::floor_met;
   bool _ok = false;
 };
 
