@@ -21,6 +21,7 @@
 #include "./cpp/clean.hpp"       // IWYU pragma: export
 #include "./cpp/core.hpp"        // IWYU pragma: export
 #include "./cpp/csg.hpp"         // IWYU pragma: export
+#include "./cpp/fill.hpp"        // IWYU pragma: export
 #include "./cpp/geometry.hpp"    // IWYU pragma: export
 #include "./cpp/intersect.hpp"   // IWYU pragma: export
 #include "./cpp/io.hpp"          // IWYU pragma: export

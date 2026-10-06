@@ -18,6 +18,7 @@ add_subdirectory(arrangement)
 add_subdirectory(core)
 add_subdirectory(clean)
 add_subdirectory(csg)
+add_subdirectory(fill)
 add_subdirectory(geometry)
 add_subdirectory(intersect)
 add_subdirectory(io)
@@ -49,6 +50,7 @@ add_custom_target(trueform_cpp_tests DEPENDS
   trueform_cpp_clean_tests
   trueform_cpp_core_tests
   trueform_cpp_csg_tests
+  trueform_cpp_fill_tests
   trueform_cpp_geometry_tests
   trueform_cpp_intersect_tests
   trueform_cpp_io_tests

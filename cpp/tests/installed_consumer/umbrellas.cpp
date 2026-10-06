@@ -7,6 +7,7 @@
 #include <trueform/cpp/clean.hpp>
 #include <trueform/cpp/core.hpp>
 #include <trueform/cpp/csg.hpp>
+#include <trueform/cpp/fill.hpp>
 #include <trueform/cpp/geometry.hpp>
 #include <trueform/cpp/intersect.hpp>
 #include <trueform/cpp/io.hpp>
