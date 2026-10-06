@@ -63,11 +63,16 @@ the class has nothing to resolve the lattice from and the caller states it.
 |--------|---------|
 | `cdt_region_mode` | What a constrained build's `region_labels()` state: `nesting` (parity of the walls crossed from outside) or `components` (id of the wall-cut component, `0` the hull exterior). Trailing argument of `constrained_delaunay_triangulator::build` / `build_regions` / `build_from_constraints` and `cdt_refiner::build`; `make_cdt` always builds `nesting` |
 | `unconstrained_delaunay_triangulator<Index, Coord, Int, VertexPolicy, ExecutionPolicy>` | Point-only divide-and-conquer Delaunay retaining no constraints, region labels, or editable adjacency; backs `make_cdt(points)`. `build(points)` returns `bool`; `faces()`, `n_unique_points()`, `unique_input_id()`, `converted_unique_point()`, `take_index_map()` |
+| `delaunay_tetrahedralizer<Index, Coord, Int, ExecutionPolicy>` | Exact incremental 3D Delaunay of integer lattice sites, parallel by default (`serial_delaunay_execution_policy` selects serial). `build(points)` names each site by its input slot, `build(range of site_type)` keeps the caller's names; coincident sites weld to the lowest name and cospherical ties break symbolically by name. `append_sites(sites)` inserts distinct sites carrying fresh names, the first being `next_name()`, after a successful build. `tets()` are the finite cells in one canonical order — ascending by sorted corner slots, each from its smallest corner, positively oriented — the same bytes at any worker count; `neighbors()` (`k_none` across the hull), `sites()`, `index_map()`, `refusal()` (`tetrahedralization_refusal`), `stats()` (`tetrahedralization_stats`), `is_valid()` |
 
 `constrained_delaunay_triangulator<Index, Coord, Int, ExecutionPolicy>`,
 `unconstrained_delaunay_triangulator` and `cdt_refiner<Index, Coord, Int>`
 default `Int` from `Coord` via `tf::exact::resolve_int_type` — int32 for float,
-int64 for double, identity for an integral `Coord`.
+int64 for double, identity for an integral `Coord`. `delaunay_tetrahedralizer`
+takes the same order and default, its `Coord` being the integer a site is
+stored in: the lattice itself, or a wider integer holding a scaled lattice,
+in which case the caller states `Int`. A `Coord` narrower than `Int` does not
+compile.
 
 ### Half-Edge Sentinel Values
 - `-1`: boundary
@@ -342,11 +347,8 @@ field crossings rather than by polygon intersections. Umbrella
 `int32` (std), `int64` (std), `int128` (compiler-specific), `int256` (custom),
 `int512` (custom)
 
-`meta<Int>`: `T0` = self, `T1` = double width, `T2` = quadruple width
-
-`int512` is past the `meta` ladder and has one consumer: the product rung the
-door's plane pooling stands on at the int64 lattice
-(`tf::exact::door::pool::exact_lane`), as `int256` is at int32.
+`meta<Int>`: `T0` = self, `T1` = double width, `T2` = quadruple width, `T3` =
+the construction rung
 
 ### Predicates
 
