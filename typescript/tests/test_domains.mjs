@@ -182,7 +182,7 @@ describe("Domain extraction (cross-runtime correctness)", () => {
     return vols;
   }
 
-  test("tolerance >> gap: the fin is still a fin, the cube still whole", () => {
+  test("tolerance >> gap: the fin welds to the walls and halves the cube", () => {
     const tf = getTf();
     const gap = 1e-4;
     const planeSize = 2 * (0.5 - gap);
@@ -190,10 +190,10 @@ describe("Domain extraction (cross-runtime correctness)", () => {
     const plane = tf.planeMesh(planeSize, planeSize, 1, 1, F64);
     const got = tolDomainVolumes([cube, plane], 1e-3);
     cube.delete(); plane.delete();
-    // A tolerance moves each vertex at most the band onto a lattice point
-    // of the planes its OWN faces state; nothing draws the plane's rim
-    // onto the cube's wall, so the fin stays a fin at every band.
-    assertVolumesMatch(got, [-1.0, 1.0], "tol >> gap");
+    // A vertex within the band of another form's plane is dropped exactly
+    // onto it: the plane's corners land on the cube's walls, so the fin
+    // becomes a wall and halves the cube.
+    assertVolumesMatch(got, [-1.0, 0.5, 0.5], "tol >> gap");
   });
 
   test("tolerance = 0: plane stays detached, cube remains whole", () => {

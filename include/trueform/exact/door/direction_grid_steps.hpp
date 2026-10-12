@@ -36,14 +36,8 @@ namespace tf::exact::door {
 /// coarsest grid the door already runs at a small band, so the floor keeps
 /// the existing regime.
 ///
-/// THE DOOR'S OWN NAME IS QUANTIZED AT THE RAW BAND and not here (@ref
-/// tf::exact::door::quantize_face_plane). That grid is POSITIONAL — the
-/// finer it is the closer the named plane stands to the face, and its
-/// offset is a lattice distance on the same grid — so it keeps the band
-/// whole, exactly as an offset step does (@ref
-/// tf::exact::door::plane_step). The two pitches coincide at int32, where
-/// the shift is zero, and stand `2^32` apart at int64; nothing requires
-/// them to agree, because a name is an identity and a class is a grouping.
+/// A class is a grouping and never an identity: what a vertex lands on is
+/// an exact plane, so the pitch decides only which names may pool.
 template <typename Int>
 auto direction_grid_steps(typename tf::exact::meta<Int>::T1 band) ->
     typename tf::exact::meta<Int>::T1 {

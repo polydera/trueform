@@ -13,7 +13,6 @@
 #pragma once
 
 #include "../../../core/algorithm/generate_offset_blocks.hpp"
-#include "../../../core/blocked_buffer.hpp"
 #include "../../../core/buffer.hpp"
 #include "../../../core/checked.hpp"
 #include "../../../core/offset_block_buffer.hpp"
@@ -37,7 +36,6 @@ namespace tf::exact::door::pool {
 /// costs one append and no allocation of its own.
 template <typename Index, typename Int, typename RealType>
 auto gather_name_supports(const placement_tables<Index, Int, RealType> &tables,
-                          const tf::blocked_buffer<Index, 3> &corners,
                           const tf::offset_block_buffer<int, Index> &name_faces,
                           const tf::buffer<char> &feature,
                           tf::buffer<int> &support_offsets,
@@ -47,11 +45,11 @@ auto gather_name_supports(const placement_tables<Index, Int, RealType> &tables,
   support_offsets[0] = 0;
   tf::generate_offset_blocks(
       tf::make_sequence_range(name_faces.size()), support_offsets, support,
-      [&tables, &corners, &name_faces,
-       &feature](std::size_t n, tf::buffer<tf::point<Int, 3>> &into) {
+      [&tables, &name_faces, &feature](std::size_t n,
+                                       tf::buffer<tf::point<Int, 3>> &into) {
         const auto base = into.size();
         for (const auto face : name_faces[n])
-          for (const auto v : corners[std::size_t(face)])
+          for (const auto v : tables.face_corners(std::size_t(face)))
             if (!feature[std::size_t(v)])
               into.push_back(tables.points[std::size_t(v)]);
         std::sort(into.begin() + base, into.end());

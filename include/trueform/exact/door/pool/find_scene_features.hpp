@@ -37,15 +37,12 @@ namespace tf::exact::door::pool {
 /// A vertex is flat while its incident faces round onto ONE direction at the
 /// pooling pitch, so two faces differing by less than that resolution leave
 /// it flat and a wall whose halves are not exactly coplanar can still be
-/// pooled. A feature keeps the rank-3/2 cascade.
+/// pooled. A feature is not part of any name's support.
 ///
-/// THE PITCH IS THE PARTITION'S, NOT THE DOOR'S. A door name is quantized at
-/// the band itself, because the reach that admits it is the band against the
-/// name's own length and both scale with the lattice. A direction class is
-/// dimensionless (@ref tf::exact::door::direction_grid_steps), so reading
-/// flatness off the door's grid would make the same physical tolerance a
-/// different question at each width — every sub-band wobble a crease on the
-/// wider lattice, and no vertex left to pool.
+/// THE PITCH IS DIMENSIONLESS (@ref tf::exact::door::direction_grid_steps):
+/// reading flatness off the raw band would make the same physical tolerance
+/// a different question at each width — every sub-band wobble a crease on
+/// the wider lattice, and no vertex left to pool.
 ///
 /// The target source is a plane the vertex already stands on, which an
 /// incident-normal sum is not, and it is what puts the vertex's own target

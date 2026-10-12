@@ -18,8 +18,8 @@ namespace tf::exact::door::pool {
 
 /// The bound every exact workspace component is held inside before it is
 /// stated on the coefficient rung. It is not
-/// @ref tf::exact::door::wide_placement_bound, which bounds the door's
-/// quantized lane a rung below; a coefficient outside this one has no
+/// @ref tf::exact::door::wide_placement_bound, which bounds the narrow
+/// lane a rung below; a coefficient outside this one has no
 /// frame and its vertex has no certificate.
 template <typename Int>
 auto exact_placement_bound() -> typename exact_lane<Int>::coefficient_type {

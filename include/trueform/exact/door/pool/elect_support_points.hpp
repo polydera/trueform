@@ -13,7 +13,6 @@
 #pragma once
 
 #include "../../../core/algorithm/parallel_for_each.hpp"
-#include "../../../core/blocked_buffer.hpp"
 #include "../../../core/buffer.hpp"
 #include "../../../core/checked.hpp"
 #include "../../../core/offset_block_buffer.hpp"
@@ -36,7 +35,6 @@ namespace tf::exact::door::pool {
 /// actually stood on.
 template <typename Index, typename Int, typename RealType>
 auto elect_support_points(const placement_tables<Index, Int, RealType> &tables,
-                          const tf::blocked_buffer<Index, 3> &corners,
                           const tf::offset_block_buffer<int, Index> &name_faces,
                           tf::buffer<tf::point<Int, 3>> &support_point)
     -> void {
@@ -48,12 +46,11 @@ auto elect_support_points(const placement_tables<Index, Int, RealType> &tables,
   support_point.allocate(name_faces.size());
   tf::parallel_for_each(
       tf::make_sequence_range(name_faces.size()),
-      [&tables, &corners, &name_faces, &support_point,
-       square_norm](std::size_t n) {
+      [&tables, &name_faces, &support_point, square_norm](std::size_t n) {
         bool elected = false;
         T2 held(0);
         for (const auto face : name_faces[n])
-          for (const auto v : corners[std::size_t(face)]) {
+          for (const auto v : tables.face_corners(std::size_t(face))) {
             const auto &corner = tables.points[std::size_t(v)];
             const auto offered = square_norm(corner);
             if (!elected || offered < held ||

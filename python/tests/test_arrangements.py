@@ -398,12 +398,12 @@ def test_mesh_arrangements_tolerance_box_plane():
     """Cube [-0.5,0.5]^3 with a plane at z=0 whose corners sit `gap`
     INSIDE the cube walls.
 
-    A tolerance is a statement about the INPUT: every vertex moves at
-    most the band onto a lattice point of the planes its own faces
-    state, and the arrangement of that moved mesh is exact. Nothing
-    draws the plane's rim onto the cube's wall, so the fin stays a fin
-    at every band (2 domains: outer + cube) and the cube's volume moves
-    by less than the band.
+    A tolerance is a statement about the INPUT: a vertex within the band
+    of another form's plane is dropped exactly onto it, and the
+    arrangement of that moved mesh is exact. A band wider than the gap
+    drops the plane's corners onto the cube's walls, so the fin becomes a
+    wall and halves the cube (3 domains: outer + two halves); at zero the
+    fin stays a fin.
     """
     gap = 1e-4
     half_extent = 0.5 - gap
@@ -420,7 +420,7 @@ def test_mesh_arrangements_tolerance_box_plane():
     plane_faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=cube_faces.dtype)
     plane = prepare_mesh(tf.Mesh(plane_faces, plane_points))
 
-    # --- Case 1: tolerance >> gap → the fin is still a fin
+    # --- Case 1: tolerance >> gap → the fin welds to the walls
     tol = 1e-3
     (faces, points), _, _ = tf.mesh_arrangements([cube, plane], tolerance=tol)
 
@@ -429,15 +429,17 @@ def test_mesh_arrangements_tolerance_box_plane():
 
     dl = tf.domain_labels(oriented, ignore_open_fragments=True)
     n_domains = dl[1]
-    assert n_domains == 2, (
-        f"tol >> gap: expected 2 domains (outer + cube), got {n_domains}")
+    assert n_domains == 3, (
+        f"tol >> gap: expected 3 domains (outer + two halves), got {n_domains}")
 
     comps, _ = tf.split_into_domains(oriented, dl)
     volumes = sorted(tf.signed_volume(c) for c in comps)
     assert abs(volumes[0] - (-1.0)) < 0.01, \
         f"outer shell volume: expected -1.0, got {volumes[0]}"
-    assert abs(volumes[1] - 1.0) < 0.01, \
-        f"cube volume: expected 1.0, got {volumes[1]}"
+    assert abs(volumes[1] - 0.5) < 0.01, \
+        f"lower half volume: expected 0.5, got {volumes[1]}"
+    assert abs(volumes[2] - 0.5) < 0.01, \
+        f"upper half volume: expected 0.5, got {volumes[2]}"
 
     # --- Case 2: tolerance = 0 → 2 domains, single cube interior of volume 1
     (faces, points), _, _ = tf.mesh_arrangements([cube, plane], tolerance=0.0)

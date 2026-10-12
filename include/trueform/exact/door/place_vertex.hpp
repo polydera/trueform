@@ -13,147 +13,207 @@
 #pragma once
 
 #include "../../core/point.hpp"
-#include "../../core/vector.hpp"
+#include "../canonical_plane.hpp"
 #include "../meta.hpp"
 #include "./admits_placement.hpp"
-#include "./place_at_meet.hpp"
-#include "./place_on_line.hpp"
-#include "./place_on_plane.hpp"
-#include "./plane_frame.hpp"
-#include "./plane_step.hpp"
-#include "./quantize_direction.hpp"
-#include "./round_div.hpp"
-#include "./round_to_wide.hpp"
-#include "./wide_cross_magnitude.hpp"
-#include "./wide_det3.hpp"
-#include "./wide_dot.hpp"
+#include "./place_at_exact_meet.hpp"
+#include "./place_on_exact_line.hpp"
+#include "./pool/certificate_census.hpp"
+#include "./pool/certificate_lane.hpp"
+#include "./pool/certify_exact.hpp"
+#include "./pool/exact_lane.hpp"
+#include "./pool/wide_to_double.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 
 namespace tf::exact::door {
 
-/// Where a vertex stands after the door, and by which rank it got
-/// there. Rank 0 is the vertex the door left alone.
-template <typename Int> struct vertex_placement {
-  tf::point<Int, 3> point{};
-  int rank = 0;
+/// The one-plane solve a block carries from vertex to vertex: the frames
+/// of the last plane it landed on and the step its last residual bought.
+/// A pooled wall's vertices are consecutive in their own mesh, so one
+/// reduction answers a whole wall; a different plane resets it.
+template <typename Int> struct plane_landing {
+  tf::exact::canonical_plane<Int> plane{};
+  pool::certificate_lane<Int> lane{};
+  pool::solved_step<Int> step{};
+  pool::certificate_census census{};
+  bool held = false;
 };
 
-/// Where one vertex stands after the door. The candidates are the plane
-/// names its incident faces state, deduplicated and in name order — the
-/// caller states them, so the answer is a pure function of that list,
-/// of the vertex and of the tolerance. The ranks are tried in order:
-/// the meet of the most independent triple, then the most independent
-/// pair of that triple, then the vertex's own tangent plane. Each is
-/// admitted only by @ref tf::exact::door::admits_placement; the last
-/// one failing leaves the vertex where it was.
+/// Where one pulled vertex stands, and whether it stands on every plane it
+/// owes. `placed` with the input point is a vertex already on all of them;
+/// not `placed` is a refusal, and the point is the input's.
+template <typename Int> struct vertex_placement {
+  tf::point<Int, 3> point{};
+  bool placed = false;
+};
+
+/// Where one pulled vertex stands: a lattice point within the band ON
+/// every committed plane, or the vertex where the input put it.
 ///
-/// Rank 3 is a corner whose three directions survive the grid, and two
-/// forms meeting at such a corner land on one integer because rank 3
-/// reads names and nothing else. Rank 1 is the smooth case: the vertex
-/// lands exactly on its own quantized tangent plane, which is what
-/// keeps a coplanar group coplanar.
-template <typename Int, typename Candidates>
-auto place_vertex(const tf::point<Int, 3> &original,
-                  const Candidates &candidates,
-                  const tf::vector<double, 3> &normal, Int tolerance)
-    -> vertex_placement<Int> {
+/// `committed` are the planes the vertex must satisfy exactly, sorted and
+/// unique; `helpers` are the vertex's own uncommitted faces' planes, which
+/// may choose WHERE on the committed planes it lands but are never owed.
+/// A vertex already on every committed plane does not move. Otherwise the
+/// meet of the widest triple holding a committed plane, then the line of
+/// the widest such pair, then the committed planes alone — every triple,
+/// every pair, each plane — and the first answer on all of them within the
+/// band stands. When none does the vertex stays: the band never invents a
+/// position.
+template <typename Int, typename Committed, typename Helpers>
+auto place_vertex(const tf::point<Int, 3> &original, const Committed &committed,
+                  const Helpers &helpers, Int tolerance,
+                  plane_landing<Int> &landing) -> vertex_placement<Int> {
   using T1 = typename tf::exact::meta<Int>::T1;
-  using T2 = typename tf::exact::meta<Int>::T2;
+  using product_type = typename pool::exact_lane<Int>::product_type;
 
-  vertex_placement<Int> placement{original, 0};
-  if (tolerance <= Int(0))
-    return placement;
-
-  const auto accept = [&placement](const std::array<T1, 3> &at, int rank) {
-    placement.point = tf::point<Int, 3>{static_cast<Int>(at[0]),
-                                        static_cast<Int>(at[1]),
-                                        static_cast<Int>(at[2])};
-    placement.rank = rank;
+  const auto on_all = [&committed](const tf::point<Int, 3> &at) {
+    for (const auto &plane : committed)
+      if (tf::exact::orient3d_plane_sign<Int>(plane, at) != 0)
+        return false;
+    return true;
   };
+  const auto stands = [&](const tf::point<Int, 3> &at) {
+    return on_all(at) &&
+           admits_placement<Int>(
+               original, std::array<T1, 3>{T1(at[0]), T1(at[1]), T1(at[2])},
+               tolerance);
+  };
+  if (on_all(original))
+    return {original, true};
 
-  const std::size_t n = candidates.size();
-  std::size_t i0 = 0, i1 = 0, i2 = 0;
-  bool triple = false;
-  if (n >= 3) {
-    T2 widest(0);
-    for (std::size_t a = 0; a < n; ++a)
+  const std::size_t n_owed = committed.size();
+  const std::size_t n = n_owed + helpers.size();
+  const auto plane_at = [&](std::size_t i) -> const auto & {
+    return i < n_owed ? committed[i] : helpers[i - n_owed];
+  };
+  const auto normal_of = [&](std::size_t i) {
+    const auto &plane = plane_at(i);
+    return std::array<typename pool::exact_lane<Int>::coefficient_type, 3>{
+        plane[0], plane[1], plane[2]};
+  };
+  // A plane or a line farther than the band from the vertex holds no point
+  // the band admits, so no solve on it can stand. The distances are taken in
+  // double and judged with a margin above their error, and a line of planes
+  // too near parallel for that is left to the exact solve.
+  const double band = double(tolerance);
+  const auto residual = [&](std::size_t i) {
+    const auto &plane = plane_at(i);
+    const double n0 = pool::wide_to_double(plane[0]),
+                 n1 = pool::wide_to_double(plane[1]),
+                 n2 = pool::wide_to_double(plane[2]);
+    return pool::wide_to_double(
+               tf::exact::orient3d_plane_value<Int>(plane, original)) /
+           std::sqrt(n0 * n0 + n1 * n1 + n2 * n2);
+  };
+  const auto line_beyond_band = [&](std::size_t a, std::size_t b) {
+    const auto u = normal_of(a), v = normal_of(b);
+    double cross2 = 0.0, uu = 0.0, vv = 0.0;
+    for (std::size_t k = 0; k < 3; ++k) {
+      const std::size_t k1 = (k + 1) % 3, k2 = (k + 2) % 3;
+      const double c =
+          pool::wide_to_double(product_type(u[k1]) * product_type(v[k2]) -
+                               product_type(u[k2]) * product_type(v[k1]));
+      cross2 += c * c;
+      uu += pool::wide_to_double(u[k]) * pool::wide_to_double(u[k]);
+      vv += pool::wide_to_double(v[k]) * pool::wide_to_double(v[k]);
+    }
+    const double sine2 = cross2 / (uu * vv);
+    if (!(sine2 > 1e-6))
+      return false;
+    const double ra = residual(a), rb = residual(b);
+    double cosine = 0.0;
+    for (std::size_t k = 0; k < 3; ++k)
+      cosine += pool::wide_to_double(u[k]) * pool::wide_to_double(v[k]);
+    cosine /= std::sqrt(uu * vv);
+    const double distance2 =
+        ((ra - rb) * (ra - rb) + 2.0 * (1.0 - cosine) * ra * rb) / sine2;
+    return distance2 > band * band * (1.0 + 1e-6);
+  };
+  for (std::size_t a = 0; a < n_owed; ++a)
+    if (std::fabs(residual(a)) > band * (1.0 + 1e-9))
+      return {original, false};
+  for (std::size_t a = 0; a < n_owed; ++a)
+    for (std::size_t b = a + 1; b < n_owed; ++b)
+      if (line_beyond_band(a, b))
+        return {original, false};
+  tf::point<Int, 3> at{};
+
+  {
+    product_type widest(0);
+    std::size_t i0 = 0, i1 = 0, i2 = 0;
+    for (std::size_t a = 0; a < n_owed; ++a)
       for (std::size_t b = a + 1; b < n; ++b)
         for (std::size_t c = b + 1; c < n; ++c) {
-          T2 measure = wide_det3<Int>(candidates[a].normal, candidates[b].normal,
-                                      candidates[c].normal);
-          if (measure < T2(0))
+          product_type measure =
+              exact_det3<Int>(normal_of(a), normal_of(b), normal_of(c));
+          if (measure < product_type(0))
             measure = -measure;
           if (measure > widest) {
             widest = measure;
             i0 = a;
             i1 = b;
             i2 = c;
-            triple = true;
           }
         }
+    if (widest > product_type(0) &&
+        place_at_exact_meet<Int>(plane_at(i0), plane_at(i1), plane_at(i2),
+                                 at) &&
+        stands(at))
+      return {at, true};
   }
-
-  std::array<T1, 3> at{};
-  if (triple &&
-      place_at_meet(candidates[i0], candidates[i1], candidates[i2], at) &&
-      admits_placement(original, at, tolerance)) {
-    accept(at, 3);
-    return placement;
-  }
-
-  if (n >= 2) {
+  {
+    double widest = 0.0;
     std::size_t j0 = 0, j1 = 0;
-    T2 widest(0);
-    bool pair = false;
-    const auto consider = [&](std::size_t a, std::size_t b) {
-      const T2 measure =
-          wide_cross_magnitude<Int>(candidates[a].normal, candidates[b].normal);
-      if (measure > widest) {
-        widest = measure;
-        j0 = a;
-        j1 = b;
-        pair = true;
+    for (std::size_t a = 0; a < n_owed; ++a)
+      for (std::size_t b = a + 1; b < n; ++b) {
+        const auto u = normal_of(a), v = normal_of(b);
+        double measure = 0.0;
+        for (std::size_t k = 0; k < 3; ++k) {
+          const std::size_t k1 = (k + 1) % 3, k2 = (k + 2) % 3;
+          const double c =
+              pool::wide_to_double(product_type(u[k1]) * product_type(v[k2]) -
+                                   product_type(u[k2]) * product_type(v[k1]));
+          measure += c * c;
+        }
+        if (measure > widest) {
+          widest = measure;
+          j0 = a;
+          j1 = b;
+        }
       }
-    };
-    if (triple) {
-      consider(i0, i1);
-      consider(i0, i2);
-      consider(i1, i2);
-    } else {
-      for (std::size_t a = 0; a < n; ++a)
-        for (std::size_t b = a + 1; b < n; ++b)
-          consider(a, b);
-    }
-    if (pair && place_on_line(candidates[j0], candidates[j1], original, at) &&
-        admits_placement(original, at, tolerance)) {
-      accept(at, 2);
-      return placement;
-    }
+    if (widest > 0.0 && !line_beyond_band(j0, j1) &&
+        place_on_exact_line<Int>(plane_at(j0), plane_at(j1), original, at) &&
+        stands(at))
+      return {at, true};
   }
-
-  std::array<T1, 3> tangent{};
-  if (quantize_direction<Int>(normal[0], normal[1], normal[2],
-                              T1(tolerance), tangent)) {
-    const T1 step = plane_step<Int>(tangent, T1(tolerance));
-    const T2 height = wide_dot<Int>(tangent, original);
-    const T2 offset = round_div(height, T2(step)) * T2(step);
-    const T2 residual = offset - height;
-    const T2 bound = T2(wide_placement_bound<Int>());
-    std::array<T1, 3> shift{};
-    if (residual <= bound && residual >= -bound &&
-        place_on_plane<Int>(make_plane_frame<Int>(tangent),
-                            static_cast<T1>(residual), shift)) {
-      at = {T1(original[0]) + shift[0], T1(original[1]) + shift[1],
-            T1(original[2]) + shift[2]};
-      if (admits_placement(original, at, tolerance)) {
-        accept(at, 1);
-        return placement;
-      }
+  for (std::size_t a = 0; a < n_owed; ++a)
+    for (std::size_t b = a + 1; b < n_owed; ++b)
+      for (std::size_t c = b + 1; c < n_owed; ++c)
+        if (place_at_exact_meet<Int>(committed[a], committed[b], committed[c],
+                                     at) &&
+            stands(at))
+          return {at, true};
+  for (std::size_t a = 0; a < n_owed; ++a)
+    for (std::size_t b = a + 1; b < n_owed; ++b)
+      if (place_on_exact_line<Int>(committed[a], committed[b], original, at) &&
+          stands(at))
+        return {at, true};
+  for (const auto &plane : committed) {
+    if (!landing.held || landing.plane != plane) {
+      landing.plane = plane;
+      landing.lane = pool::certificate_lane<Int>{};
+      landing.step = pool::solved_step<Int>{};
+      landing.held = true;
     }
+    const auto certificate = pool::certify_exact<Int>(
+        plane, original, tolerance, landing.lane, landing.step, landing.census);
+    if (certificate.certified && on_all(certificate.point))
+      return {certificate.point, true};
   }
-  return placement;
+  return {original, false};
 }
 
 } // namespace tf::exact::door

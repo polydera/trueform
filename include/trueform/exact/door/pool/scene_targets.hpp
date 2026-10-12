@@ -19,9 +19,9 @@ namespace tf::exact::door::pool {
 /// What each ORIGINAL VERTEX of a scene aims at: the name whose committed
 /// plane its placement reads, and whether it is a feature.
 ///
-/// A feature has a target source like any other; what retires it is that the
-/// rank-3/2 cascade owns its position, and this tier's placement leaves it
-/// where it stands.
+/// A feature has a target source like any other; what retires it is that a
+/// feature is no name's support, so the election never certifies a pool
+/// on it.
 struct scene_targets {
   tf::buffer<int> source;
   tf::buffer<char> feature;

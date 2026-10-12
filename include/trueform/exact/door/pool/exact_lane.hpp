@@ -21,8 +21,8 @@ namespace tf::exact::door::pool {
 /// The two rungs an exact representative's arithmetic stands on.
 ///
 /// A support normal is a cross of coordinate DIFFERENCES, so it occupies
-/// twice a difference and not twice a coordinate — a rung above the one the
-/// door's quantized names live on. The coefficient rung `R` holds it and the
+/// twice a difference and not twice a coordinate — a rung above the one a
+/// coordinate's own products live on. The coefficient rung `R` holds it and the
 /// offset it carries; the product rung `I` holds `R` against `R`, which is
 /// where `N . N`, a squared residual and every frame product land.
 ///
@@ -47,13 +47,5 @@ template <> struct exact_lane<tf::exact::int64> {
   static constexpr int bound_bits = 254;
   static constexpr int product_bits = 511;
 };
-
-/// Whether the partition's arithmetic stands at this lattice. A lattice
-/// with no lane has no certificate, so its door is the cascade alone —
-/// and this is the one place that answers it, for the naming pass and the
-/// placement alike.
-template <typename Int> inline constexpr bool has_exact_lane = false;
-template <> inline constexpr bool has_exact_lane<tf::exact::int32> = true;
-template <> inline constexpr bool has_exact_lane<tf::exact::int64> = true;
 
 } // namespace tf::exact::door::pool

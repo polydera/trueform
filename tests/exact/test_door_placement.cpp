@@ -2,24 +2,18 @@
  * @file test_door_placement.cpp
  * @brief The door: where an input vertex stands once a tolerance is given.
  *
- * The door moves every original vertex onto a lattice point of the planes it
- * lies on, and the arrangement is then the EXACT arrangement of the moved
- * mesh. Two properties carry that contract and both are asserted here rather
- * than measured: a rank-1 placement lies ON its plane, and every placement —
- * whatever rank stated it, however adversarial the names — stands within the
- * tolerance of the vertex it replaced. The second is what the pair search's
- * `2 T` descent rests on, so it is proven against names built to break it.
+ * THE BAND IS A SPARSE SET OF PULLS; everywhere it does not act it is
+ * tolerance zero. A vertex moves only when a contact or a pool pulled it,
+ * and then only onto a lattice point that lies EXACTLY on every plane it
+ * owes, within the band of where it stood. Both halves are asserted here
+ * rather than measured: the exact solves land on their planes, and every
+ * placement, however adversarial the planes, either stands within the band
+ * on all of them or leaves the vertex where it was.
  *
- * Every lattice the library resolves is driven: a float input names int32 and
- * a double input int64, and the scenes run on both. The generic-direction
- * scene is what separates them — an axis triple survives any bound, so a door
- * inert on the wider lattice still answers a cube, and only a face whose
- * offset needs the wider rung reports it.
- *
- * The scenes are an axis-aligned cube whose corners meet three representable
- * planes and stay an exact cube, a doubled wall whose two sheets become one,
- * and two forms whose corner names agree and therefore land on ONE integer —
- * the weld the contract promises is identity and not proximity.
+ * Every lattice the library resolves is driven: a float input names int32
+ * and a double input int64. The generic-direction scene separates them — an
+ * axis plane is solved on any rung, and only a face whose exact normal
+ * needs the product rung reports the width.
  *
  * The POOLED scene is two walls of two triangles each, standing at different
  * heights with a further corner pushed off, so the operands arrive as four
@@ -41,18 +35,20 @@
 #include <trueform/core/small_vector.hpp>
 #include <trueform/core/transformed.hpp>
 #include <trueform/core/vector.hpp>
+#include <trueform/exact/canonical_plane.hpp>
 #include <trueform/exact/door/admits_placement.hpp>
-#include <trueform/exact/door/gather_vertex_candidates.hpp>
+#include <trueform/exact/door/make_support_plane.hpp>
+#include <trueform/exact/door/place_at_exact_meet.hpp>
+#include <trueform/exact/door/place_on_exact_line.hpp>
 #include <trueform/exact/door/place_on_plane.hpp>
-#include <trueform/exact/door/plane_frame.hpp>
 #include <trueform/exact/door/place_vertex.hpp>
-#include <trueform/exact/door/placement_tables.hpp>
-#include <trueform/exact/door/plane_step.hpp>
-#include <trueform/exact/door/quantized_plane.hpp>
+#include <trueform/exact/door/plane_frame.hpp>
+#include <trueform/exact/door/point_on_face.hpp>
 #include <trueform/exact/door/round_div.hpp>
 #include <trueform/exact/door/round_to_wide.hpp>
+#include <trueform/exact/door/segments_cross.hpp>
+#include <trueform/exact/door/segments_touch.hpp>
 #include <trueform/exact/door/wide_dot.hpp>
-#include <trueform/exact/canonical_plane.hpp>
 #include <trueform/exact/input_lattice.hpp>
 #include <trueform/exact/meta.hpp>
 #include <trueform/exact/orient3d.hpp>
@@ -63,11 +59,14 @@
 
 #include "tagged_operand.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -76,7 +75,8 @@ using index_t = int;
 using real_t = float;
 using int_t = tf::exact::resolve_int_type<tf::none_t, real_t>;
 using wide_t = tf::exact::meta<int_t>::T1;
-using plane_t = tf::exact::door::quantized_plane<int_t>;
+using wider_t = tf::exact::meta<int_t>::T2;
+using plane_t = tf::exact::canonical_plane<int_t>;
 
 /// The operands, the lattice view over their union, and the reader every
 /// consumer of the pipeline programs against.
@@ -106,50 +106,31 @@ template <typename RealType> struct scene_t {
     std::vector<form_t> forms;
     for (auto &operand : operands)
       forms.push_back(operand->form());
-    lattice.build(tf::exact::make_vertex_converter<lattice_int_t, RealType>(
-                      tf::make_range(forms.data(), forms.data() + forms.size())),
-                  apply_to_form(), index_t(operands.size()), tolerance);
+    lattice.build(
+        tf::exact::make_vertex_converter<lattice_int_t, RealType>(
+            tf::make_range(forms.data(), forms.data() + forms.size())),
+        apply_to_form(), index_t(operands.size()), tolerance);
   }
 
   auto placed(index_t tag, index_t id) const -> tf::point<lattice_int_t, 3> {
     return lattice.reader(apply_to_form())(int(tag), id);
   }
 
-  /// The tables the door builds for itself, so a fixture can ask by which
-  /// RANK a vertex was placed and on which names it stands.
-  auto build_tables(tables_t &tables) const -> void {
-    const auto n_tags = index_t(operands.size());
-    tf::buffer<index_t> face_offsets;
-    face_offsets.allocate(std::size_t(n_tags) + 1);
-    face_offsets[0] = index_t(0);
-    for (index_t tag = 0; tag < n_tags; ++tag)
-      apply_to_form()(tag, [&, tag](const auto &form) {
-        face_offsets[std::size_t(tag) + 1] =
-            face_offsets[std::size_t(tag)] + index_t(form.faces().size());
-      });
-    tables.build(lattice.converter(), apply_to_form(), n_tags,
-                 lattice.vertex_offsets(), face_offsets,
-                 lattice.tolerance_int());
+  /// Every vertex where the pipeline reads it, in flat order.
+  auto placed_all() const -> std::vector<tf::point<lattice_int_t, 3>> {
+    std::vector<tf::point<lattice_int_t, 3>> out;
+    for (index_t tag = 0; tag < index_t(operands.size()); ++tag)
+      for (index_t id = 0;
+           id < index_t(operands[std::size_t(tag)]->mesh.points().size()); ++id)
+        out.push_back(placed(tag, id));
+    return out;
   }
 };
 
-/// One vertex through the door exactly as `place_vertices` runs it, with the
-/// candidate list left for the caller to read.
-template <typename Tables, typename Int, typename Candidates>
-auto placement_of(const Tables &tables, index_t flat, Int tolerance,
-                  Candidates &candidates)
-    -> tf::exact::door::vertex_placement<Int> {
-  const auto direction = tf::exact::door::gather_vertex_candidates(
-      tables, flat, tolerance, candidates);
-  return tf::exact::door::place_vertex(
-      tables.points[std::size_t(flat)],
-      tf::make_range(candidates.begin(), candidates.end()), direction,
-      tolerance);
-}
-
 /// A quad in the plane `z = height`, as two triangles.
 template <typename RealType>
-auto wall_mesh(RealType height) -> tf::polygons_buffer<index_t, RealType, 3, 3> {
+auto wall_mesh(RealType height)
+    -> tf::polygons_buffer<index_t, RealType, 3, 3> {
   tf::polygons_buffer<index_t, RealType, 3, 3> mesh;
   mesh.points_buffer().emplace_back(RealType(-0.5), RealType(-0.5), height);
   mesh.points_buffer().emplace_back(RealType(0.5), RealType(-0.5), height);
@@ -263,45 +244,69 @@ auto pooled_plane_of(const Placed &placed, std::size_t from)
   return support;
 }
 
-/// The band the generic-direction scene is driven at, per lattice. A band is
-/// a fraction of the model, but the rank-1 solve states its residual against
-/// a Bezout vector on the rung above the lattice, so the finer lattice — the
-/// one a double resolves — carries the same fraction as a much larger number
-/// and admits a smaller one.
-template <typename RealType> auto generic_scene_band() -> double {
-  return std::is_same<RealType, float>::value ? 1e-4 : 1e-7;
+/// The exact planes of every face of a form on the lattice its converter
+/// states, and the corners as lattice points.
+template <typename RealType, typename Scene>
+auto lattice_faces(const Scene &scene, index_t tag)
+    -> std::pair<std::vector<tf::point<
+                     tf::exact::resolve_int_type<tf::none_t, RealType>, 3>>,
+                 std::vector<tf::exact::canonical_plane<
+                     tf::exact::resolve_int_type<tf::none_t, RealType>>>> {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, RealType>;
+  std::vector<tf::point<lattice_int_t, 3>> corners;
+  std::vector<tf::exact::canonical_plane<lattice_int_t>> planes;
+  const auto form = scene.operands[std::size_t(tag)]->form();
+  const auto frame = tf::frame_of(form);
+  for (const auto &point : form.points())
+    corners.push_back(
+        scene.lattice.converter().convert(tf::transformed(point, frame)));
+  for (const auto &face : form.faces()) {
+    std::array<tf::point<lattice_int_t, 3>, 3> at{
+        corners[std::size_t(face[0])], corners[std::size_t(face[1])],
+        corners[std::size_t(face[2])]};
+    tf::exact::canonical_plane<lattice_int_t> plane{};
+    tf::exact::door::make_support_plane<lattice_int_t>(at, plane);
+    planes.push_back(plane);
+  }
+  return {corners, planes};
 }
 
-auto plane_of(wide_t nx, wide_t ny, wide_t nz, wide_t offset) -> plane_t {
-  plane_t plane;
-  plane.normal = {nx, ny, nz};
-  plane.offset = offset;
+auto axis_plane(int axis, wider_t offset) -> plane_t {
+  plane_t plane{};
+  plane[std::size_t(axis)] = wider_t(1);
+  plane[3] = offset;
   return plane;
 }
 
-/// A deterministic spread of adversarial names: axis triples pushed far off
+/// A deterministic spread of adversarial planes: axis planes pushed far off
 /// the vertex, near-parallel pairs, and directions at the lattice's own
 /// magnitude, where every product the solvers take is at its widest.
-auto adversarial_candidates(std::uint32_t seed) -> std::vector<plane_t> {
+auto adversarial_planes(std::uint32_t seed) -> std::vector<plane_t> {
   const auto next = [&seed]() -> std::uint32_t {
     seed = seed * 1664525u + 1013904223u;
     return seed;
   };
-  const auto span = [&next](wide_t magnitude) -> wide_t {
-    return wide_t(std::int64_t(next() % 2000001u) - 1000000) * magnitude;
+  const auto span = [&next](wider_t magnitude) -> wider_t {
+    return wider_t(std::int64_t(next() % 2000001u) - 1000000) * magnitude;
   };
-  std::vector<plane_t> candidates;
-  candidates.push_back(plane_of(1, 0, 0, span(1000)));
-  candidates.push_back(plane_of(0, 1, 0, span(1000)));
-  candidates.push_back(plane_of(0, 0, 1, span(1000)));
-  candidates.push_back(plane_of(1000000, 1, 0, span(1000000)));
-  candidates.push_back(plane_of(1000000, 2, 0, span(1000000)));
-  candidates.push_back(plane_of(wide_t(next() % 100000u) + 1,
-                                wide_t(next() % 100000u) + 1,
-                                wide_t(next() % 100000u) + 1, span(100000)));
-  candidates.push_back(plane_of(2147483647, 2147483646, 2147483645,
-                                span(1000000000)));
-  return candidates;
+  const auto plane_of = [](wider_t nx, wider_t ny, wider_t nz, wider_t offset) {
+    return tf::exact::canonicalize_plane<int_t>(plane_t{nx, ny, nz, offset});
+  };
+  std::vector<plane_t> planes;
+  // planes a few units off the vertex the solves reach, then the far ones
+  planes.push_back(plane_of(1, 0, 0, wider_t(1000 + int(next() % 7) - 3)));
+  planes.push_back(plane_of(0, 0, 1, wider_t(3000 + int(next() % 7) - 3)));
+  planes.push_back(plane_of(1, 0, 0, span(1000)));
+  planes.push_back(plane_of(0, 1, 0, span(1000)));
+  planes.push_back(plane_of(0, 0, 1, span(1000)));
+  planes.push_back(plane_of(1000000, 1, 0, span(1000000)));
+  planes.push_back(plane_of(1000000, 2, 0, span(1000000)));
+  planes.push_back(plane_of(wider_t(next() % 100000u) + 1,
+                            wider_t(next() % 100000u) + 1,
+                            wider_t(next() % 100000u) + 1, span(100000)));
+  planes.push_back(
+      plane_of(2147483647, 2147483646, 2147483645, span(1000000000)));
+  return planes;
 }
 
 } // namespace
@@ -309,8 +314,8 @@ auto adversarial_candidates(std::uint32_t seed) -> std::vector<plane_t> {
 TEST_CASE("door: the rounding divide answers every numerator its type holds",
           "[exact][door]") {
   using wider_t = tf::exact::meta<int_t>::T2;
-  const wider_t top =
-      wider_t(1) << unsigned(tf::exact::meta<int_t>::t2_bits - 1);
+  const wider_t top = wider_t(1)
+                      << unsigned(tf::exact::meta<int_t>::t2_bits - 1);
   const wider_t largest = (top - wider_t(1)) + top;
   const wider_t half = top >> 1u;
 
@@ -340,7 +345,7 @@ TEST_CASE("door: the rounding divide answers every numerator its type holds",
     }
 }
 
-TEST_CASE("door: a rank-1 placement lies exactly on its plane",
+TEST_CASE("door: a narrow one-plane landing lies exactly on its plane",
           "[exact][door]") {
   const std::array<std::array<wide_t, 3>, 5> directions{
       {{{1, 0, 0}}, {{0, 0, 1}}, {{3, 4, 12}}, {{1, 1, 1}}, {{7, -5, 11}}}};
@@ -349,109 +354,174 @@ TEST_CASE("door: a rank-1 placement lies exactly on its plane",
                             wide_t(-12345), wide_t(1000003)}) {
       std::array<wide_t, 3> step{};
       REQUIRE(tf::exact::door::place_on_plane<int_t>(
-          tf::exact::door::make_plane_frame<int_t>(normal), residual,
-          step));
+          tf::exact::door::make_plane_frame<int_t>(normal), residual, step));
       REQUIRE(tf::exact::door::wide_dot<int_t>(normal, step) ==
-              tf::exact::meta<int_t>::T2(residual));
+              wider_t(residual));
     }
 }
 
-TEST_CASE("door: the rank-1 solve refuses the step it cannot state, and the "
-          "pair still certifies",
+TEST_CASE("door: the narrow solve refuses the step it cannot state",
           "[exact][door]") {
-  using wider_t = tf::exact::meta<int_t>::T2;
   const std::array<wide_t, 3> normal{1073741827, 2147483647, 999999937};
-  const tf::point<int_t, 3> original{1000, -2000, 3000};
-  const auto height = tf::exact::door::wide_dot<int_t>(normal, original);
   const wide_t residual = 1000000000000000;
 
   // The premise: the Bezout vector of a direction at the lattice's own
-  // magnitude, times a residual of the size a pair hands it, leaves the rung
-  // the rank-1 solve is stated on.
+  // magnitude, times a residual this large, leaves the rung the narrow
+  // solve is stated on — so it refuses rather than wraps, and the
+  // certificate's wide lane carries the direction instead.
   const auto frame = tf::exact::door::make_plane_frame<int_t>(normal);
-  const auto bound =
-      wider_t(tf::exact::door::wide_placement_bound<int_t>());
+  const auto bound = wider_t(tf::exact::door::wide_placement_bound<int_t>());
   const auto onto = wider_t(residual) * wider_t(frame.s[0]);
   REQUIRE((onto > bound || onto < -bound));
 
   std::array<wide_t, 3> step{};
-  REQUIRE_FALSE(
-      tf::exact::door::place_on_plane<int_t>(frame, residual, step));
+  REQUIRE_FALSE(tf::exact::door::place_on_plane<int_t>(frame, residual, step));
+}
 
-  // And the rank the refusal falls to still answers inside the band: the
-  // pair's own line carries the vertex when no lattice point of the first
-  // plane can be stated.
-  const std::vector<plane_t> candidates{
-      plane_of(normal[0], normal[1], normal[2],
-               static_cast<wide_t>(height) + residual),
-      plane_of(0, 0, 1, 3100)};
-  const int_t tolerance = 1000003;
-  const auto placement = tf::exact::door::place_vertex(
-      original,
-      tf::make_range(candidates.data(), candidates.data() + candidates.size()),
-      tf::vector<double, 3>{0.0, 0.0, 1.0}, tolerance);
-  const std::array<wide_t, 3> at{wide_t(placement.point[0]),
-                                 wide_t(placement.point[1]),
-                                 wide_t(placement.point[2])};
-  REQUIRE(placement.rank == 2);
-  REQUIRE(tf::exact::door::admits_placement(original, at, tolerance));
+TEMPLATE_TEST_CASE("door: the exact meet of a generic corner is the corner, "
+                   "on every lattice",
+                   "[exact][door]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  scene_t<TestType> scene;
+  scene.add(rotated_box<TestType>());
+  scene.build(0.0);
+  const auto [corners, planes] = lattice_faces<TestType>(scene, 0);
+  const auto form = scene.operands[0]->form();
+  int meets = 0, lines = 0;
+  for (index_t v = 0; v < index_t(corners.size()); ++v) {
+    std::vector<tf::exact::canonical_plane<lattice_int_t>> incident;
+    for (std::size_t f = 0; f < planes.size(); ++f)
+      for (const auto corner : form.faces()[index_t(f)])
+        if (corner == v)
+          incident.push_back(planes[f]);
+    // THE MEET: every incident plane passes through the corner, so any
+    // independent triple of them meets exactly there, on the product rung
+    for (std::size_t a = 0; a < incident.size(); ++a)
+      for (std::size_t b = a + 1; b < incident.size(); ++b)
+        for (std::size_t c = b + 1; c < incident.size(); ++c) {
+          tf::point<lattice_int_t, 3> at{};
+          if (!tf::exact::door::place_at_exact_meet<lattice_int_t>(
+                  incident[a], incident[b], incident[c], at))
+            continue;
+          REQUIRE(at == corners[std::size_t(v)]);
+          ++meets;
+        }
+    // THE LINE: from a point off the corner, two independent incident
+    // planes give a lattice point ON both, no farther than the corner is
+    const tf::point<lattice_int_t, 3> from{
+        lattice_int_t(corners[std::size_t(v)][0] + 3),
+        lattice_int_t(corners[std::size_t(v)][1] - 2),
+        lattice_int_t(corners[std::size_t(v)][2] + 1)};
+    for (std::size_t a = 0; a < incident.size(); ++a)
+      for (std::size_t b = a + 1; b < incident.size(); ++b) {
+        if (incident[a][0] == incident[b][0] &&
+            incident[a][1] == incident[b][1] &&
+            incident[a][2] == incident[b][2])
+          continue;
+        tf::point<lattice_int_t, 3> at{};
+        REQUIRE(tf::exact::door::place_on_exact_line<lattice_int_t>(
+            incident[a], incident[b], from, at));
+        REQUIRE(tf::exact::orient3d_plane_sign<lattice_int_t>(incident[a],
+                                                              at) == 0);
+        REQUIRE(tf::exact::orient3d_plane_sign<lattice_int_t>(incident[b],
+                                                              at) == 0);
+        const auto d_at = (at - from).length2();
+        const auto d_corner = (corners[std::size_t(v)] - from).length2();
+        REQUIRE(d_at <= d_corner);
+        ++lines;
+      }
+  }
+  REQUIRE(meets > 0);
+  REQUIRE(lines > 0);
 }
 
 TEST_CASE("door: the motion bound is a theorem, not a measurement",
           "[exact][door]") {
   const tf::point<int_t, 3> original{1000, -2000, 3000};
-  const tf::vector<double, 3> direction{0.3, -0.5, 0.81};
-  std::array<int, 4> census{};
+  int moved = 0;
   for (std::uint32_t seed = 1; seed <= 64; ++seed) {
-    const auto candidates = adversarial_candidates(seed);
-    for (int_t tolerance : {int_t(1), int_t(17), int_t(4096), int_t(1000003)}) {
-      const auto placement = tf::exact::door::place_vertex(
-          original, tf::make_range(candidates.data(),
-                                   candidates.data() + candidates.size()),
-          direction, tolerance);
-      const std::array<wide_t, 3> at{wide_t(placement.point[0]),
-                                     wide_t(placement.point[1]),
-                                     wide_t(placement.point[2])};
-      REQUIRE(tf::exact::door::admits_placement(original, at, tolerance));
-      if (placement.rank == 0)
-        REQUIRE(placement.point == original);
-      ++census[std::size_t(placement.rank)];
+    const auto all = adversarial_planes(seed);
+    for (std::size_t owed = 1; owed <= 3; ++owed) {
+      std::vector<plane_t> committed(all.begin(), all.begin() + owed);
+      std::vector<plane_t> helpers(all.begin() + owed, all.end());
+      std::sort(committed.begin(), committed.end());
+      committed.erase(std::unique(committed.begin(), committed.end()),
+                      committed.end());
+      for (int_t tolerance :
+           {int_t(1), int_t(17), int_t(4096), int_t(1000003)}) {
+        tf::exact::door::plane_landing<int_t> landing;
+        const auto placement = tf::exact::door::place_vertex(
+            original, committed, helpers, tolerance, landing);
+        const auto at = placement.point;
+        if (!placement.placed)
+          REQUIRE(at == original);
+        if (at == original)
+          continue;
+        ++moved;
+        REQUIRE(tf::exact::door::admits_placement(
+            original,
+            std::array<wide_t, 3>{wide_t(at[0]), wide_t(at[1]), wide_t(at[2])},
+            tolerance));
+        for (const auto &plane : committed)
+          REQUIRE(tf::exact::orient3d_plane_sign<int_t>(plane, at) == 0);
+      }
     }
   }
-  // The names carry offsets far enough off the vertex that the rank-1 solve
-  // inside the pair is asked for a product past its rung, so the spread does
-  // reach the rank whose refusal path this proves.
-  REQUIRE(census[2] > 0);
+  // the spread reaches placements that move, so the bound is proven on
+  // answers and not only on refusals
+  REQUIRE(moved > 0);
 }
 
-TEST_CASE("door: a placement is a pure function of the names and the band",
+TEST_CASE("door: a placement is a pure function of the planes and the band",
           "[exact][door]") {
-  const std::vector<plane_t> candidates{
-      plane_of(1, 0, 0, 4000), plane_of(0, 1, 0, -8000),
-      plane_of(0, 0, 1, 12000)};
-  const auto names =
-      tf::make_range(candidates.data(), candidates.data() + candidates.size());
-  const tf::vector<double, 3> direction{0.0, 0.0, 1.0};
+  std::vector<plane_t> committed{axis_plane(0, 4000), axis_plane(1, -8000),
+                                 axis_plane(2, 12000)};
+  std::sort(committed.begin(), committed.end());
+  const std::vector<plane_t> helpers;
   const int_t tolerance = 1000;
-  const auto first = tf::exact::door::place_vertex(
-      tf::point<int_t, 3>{4300, -8200, 11700}, names, direction, tolerance);
-  const auto second = tf::exact::door::place_vertex(
-      tf::point<int_t, 3>{3800, -7900, 12400}, names, direction, tolerance);
-  REQUIRE(first.rank == 3);
-  REQUIRE(second.rank == 3);
-  REQUIRE(first.point == second.point);
-  REQUIRE(first.point == (tf::point<int_t, 3>{4000, -8000, 12000}));
+  tf::exact::door::plane_landing<int_t> landing;
+  const auto first =
+      tf::exact::door::place_vertex(tf::point<int_t, 3>{4300, -8200, 11700},
+                                    committed, helpers, tolerance, landing)
+          .point;
+  const auto second =
+      tf::exact::door::place_vertex(tf::point<int_t, 3>{3800, -7900, 12400},
+                                    committed, helpers, tolerance, landing)
+          .point;
+  REQUIRE(first == second);
+  REQUIRE(first == (tf::point<int_t, 3>{4000, -8000, 12000}));
 }
 
-TEMPLATE_TEST_CASE("door: a tolerance of zero is the identity",
-                   "[exact][door]", float, double) {
+TEST_CASE("door: a vertex already on every plane it owes does not move",
+          "[exact][door]") {
+  std::vector<plane_t> committed{axis_plane(0, 4000), axis_plane(2, 12000)};
+  std::sort(committed.begin(), committed.end());
+  const std::vector<plane_t> helpers{axis_plane(1, -7000)};
+  tf::exact::door::plane_landing<int_t> landing;
+  const tf::point<int_t, 3> on{4000, -8000, 12000};
+  const auto stays = tf::exact::door::place_vertex(on, committed, helpers,
+                                                   int_t(5000), landing);
+  REQUIRE(stays.placed);
+  REQUIRE(stays.point == on);
+  // and one with no lattice point on its planes within the band keeps its
+  // input point, and says it refused
+  const tf::point<int_t, 3> distant{4000, -8000, 30000};
+  const auto refused = tf::exact::door::place_vertex(
+      distant, committed, helpers, int_t(5000), landing);
+  REQUIRE_FALSE(refused.placed);
+  REQUIRE(refused.point == distant);
+}
+
+TEMPLATE_TEST_CASE("door: a tolerance of zero is the identity", "[exact][door]",
+                   float, double) {
   using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
   scene_t<TestType> scene;
   scene.add(tf::make_box_mesh<index_t>(TestType(1), TestType(1), TestType(1)));
   scene.build(0.0);
 
   REQUIRE(scene.lattice.tolerance_int() == lattice_int_t(0));
-  REQUIRE(scene.lattice.placed_points().size() == 0);
+  REQUIRE(scene.lattice.moved_points().size() == 0);
+  REQUIRE(scene.lattice.moved_tickets().size() == 0);
 
   const auto reader = scene.lattice.reader(scene.apply_to_form());
   const auto &converter = scene.lattice.converter();
@@ -476,118 +546,47 @@ TEST_CASE("door: a band below one lattice unit is still the identity",
   scene.add(tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)));
   scene.build(1e-12);
   REQUIRE(scene.lattice.tolerance_int() == int_t(0));
-  REQUIRE(scene.lattice.placed_points().size() == 0);
+  REQUIRE(scene.lattice.moved_points().size() == 0);
 }
 
-TEMPLATE_TEST_CASE("door: an axis-aligned cube stays an exact cube",
+TEMPLATE_TEST_CASE("door: a form nothing pulls is read and exported as at "
+                   "zero",
                    "[exact][door]", float, double) {
   using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
-  scene_t<TestType> scene;
-  scene.add(tf::make_box_mesh<index_t>(TestType(1), TestType(1), TestType(1)));
-  scene.build(1e-4);
-
-  const auto tolerance = scene.lattice.tolerance_int();
-  REQUIRE(tolerance > lattice_int_t(0));
-  const auto placed = scene.lattice.placed_points();
-  REQUIRE(placed.size() == 8);
-  auto extent = placed[0][0] < lattice_int_t(0) ? -placed[0][0] : placed[0][0];
-  for (std::size_t i = 0; i < placed.size(); ++i)
-    for (std::size_t k = 0; k < 3; ++k) {
-      const auto value = placed[i][k];
-      REQUIRE(value % tolerance == lattice_int_t(0));
-      REQUIRE((value < lattice_int_t(0) ? -value : value) == extent);
-    }
-}
-
-TEMPLATE_TEST_CASE("door: a generic direction is placed on every lattice",
-                   "[exact][door]", float, double) {
-  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
-  using lattice_wide_t = typename tf::exact::meta<lattice_int_t>::T1;
-  using lattice_wider_t = typename tf::exact::meta<lattice_int_t>::T2;
-
   scene_t<TestType> scene;
   scene.add(rotated_box<TestType>());
-  scene.add(tilted_wall_mesh<TestType>());
-  scene.build(generic_scene_band<TestType>());
+  scene.add(translated_box(TestType(3), TestType(0), TestType(0)));
+  scene.build(1e-4);
 
-  const auto tolerance = scene.lattice.tolerance_int();
-  REQUIRE(tolerance > lattice_int_t(0));
-  const auto placed = scene.lattice.placed_points();
-  REQUIRE(placed.size() == 12);
-
-  typename scene_t<TestType>::tables_t tables;
-  scene.build_tables(tables);
-  tf::small_vector<tf::exact::door::quantized_plane<lattice_int_t>, 16>
-      candidates;
-
-  // The cube's eight corners: three names meet at each, so rank 3 answers,
-  // and it answers with a lattice point the vertex did not already occupy.
-  for (index_t flat = 0; flat < index_t(8); ++flat) {
-    const auto placement = placement_of(tables, flat, tolerance, candidates);
-    const auto &original = tables.points[std::size_t(flat)];
-    const std::array<lattice_wide_t, 3> at{lattice_wide_t(placement.point[0]),
-                                           lattice_wide_t(placement.point[1]),
-                                           lattice_wide_t(placement.point[2])};
-    REQUIRE(placement.point == placed[std::size_t(flat)]);
-    REQUIRE(tf::exact::door::admits_placement(original, at, tolerance));
-    REQUIRE(placement.rank == 3);
-    REQUIRE(candidates.size() >= 3);
-    REQUIRE(placement.point != original);
-  }
-
-  // The tilted quad's four: one name each, so rank 1 states the answer, and
-  // the four land on ONE plane of the direction's own grid — which is what
-  // keeps a coplanar group coplanar.
-  //
-  // The PUBLISHED point is not asserted against the cascade's here, because
-  // rank 1 reads the partition: a flat vertex whose name committed to a
-  // pooled exact plane is placed on THAT plane. What the table owes such a
-  // vertex is the one-T law and the coplanarity, and both are asserted
-  // below, on the table itself.
-  lattice_wider_t height(0);
-  std::array<lattice_wide_t, 3> name{};
-  for (index_t flat = index_t(8); flat < index_t(12); ++flat) {
-    const auto placement = placement_of(tables, flat, tolerance, candidates);
-    const auto &original = tables.points[std::size_t(flat)];
-    const std::array<lattice_wide_t, 3> at{lattice_wide_t(placement.point[0]),
-                                           lattice_wide_t(placement.point[1]),
-                                           lattice_wide_t(placement.point[2])};
-    const auto &published = placed[std::size_t(flat)];
-    const std::array<lattice_wide_t, 3> stands{lattice_wide_t(published[0]),
-                                               lattice_wide_t(published[1]),
-                                               lattice_wide_t(published[2])};
-    REQUIRE(tf::exact::door::admits_placement(original, stands, tolerance));
-    REQUIRE(tf::exact::door::admits_placement(original, at, tolerance));
-    REQUIRE(placement.rank == 1);
-    REQUIRE(candidates.size() == 1);
-    const auto on_plane =
-        tf::exact::door::wide_dot<lattice_int_t>(candidates[0].normal, at);
-    if (flat == index_t(8)) {
-      name = candidates[0].normal;
-      height = on_plane;
-    } else {
-      REQUIRE(candidates[0].normal == name);
-      REQUIRE(on_plane == height);
+  REQUIRE(scene.lattice.tolerance_int() > lattice_int_t(0));
+  REQUIRE(scene.lattice.moved_points().size() == 0);
+  const auto reader = scene.lattice.reader(scene.apply_to_form());
+  const auto &converter = scene.lattice.converter();
+  for (index_t tag = 0; tag < index_t(2); ++tag) {
+    const auto form = scene.operands[std::size_t(tag)]->form();
+    const auto frame = tf::frame_of(form);
+    const auto points = form.points();
+    const auto base = scene.lattice.vertex_offsets()[std::size_t(tag)];
+    for (index_t id = 0; id < index_t(points.size()); ++id) {
+      REQUIRE(reader(int(tag), id) ==
+              converter.convert(tf::transformed(points[id], frame)));
+      const auto exported = reader.real_point_in(points, frame, base, id);
+      const auto input =
+          tf::point<TestType, 3>(tf::transformed(points[id], frame));
+      REQUIRE(exported[0] == input[0]);
+      REQUIRE(exported[1] == input[1]);
+      REQUIRE(exported[2] == input[2]);
     }
   }
-  const auto step =
-      tf::exact::door::plane_step<lattice_int_t>(name,
-                                                    lattice_wide_t(tolerance));
-  REQUIRE(height % lattice_wider_t(step) == lattice_wider_t(0));
-
-  // and the four the table published are coplanar exactly, whichever plane
-  // they were placed on
-  REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(placed[8], placed[9],
-                                                  placed[10], placed[11]) == 0);
 }
 
 TEMPLATE_TEST_CASE("door: a doubled wall becomes one, and the door says so",
-                   "[exact][door]", float, double) {
+                   "[exact][door][pool]", float, double) {
   scene_t<TestType> scene;
   scene.add(doubled_wall_mesh(TestType(1e-5)));
   scene.build(5e-5);
 
-  const auto placed = scene.lattice.placed_points();
+  const auto placed = scene.placed_all();
   REQUIRE(placed.size() == 8);
   for (std::size_t i = 0; i < 4; ++i)
     REQUIRE(placed[i] == placed[i + 4]);
@@ -596,15 +595,10 @@ TEMPLATE_TEST_CASE("door: a doubled wall becomes one, and the door says so",
 TEMPLATE_TEST_CASE("door: a wall vertex stands on its own plane and does "
                    "not move",
                    "[exact][door]", float, double) {
-  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
   scene_t<TestType> scene;
   scene.add(wall_mesh(TestType(0)));
   scene.build(1e-4);
-
-  const auto placed = scene.lattice.placed_points();
-  REQUIRE(placed.size() == 4);
-  for (std::size_t i = 0; i < placed.size(); ++i)
-    REQUIRE(placed[i][2] == lattice_int_t(0));
+  REQUIRE(scene.lattice.moved_points().size() == 0);
 }
 
 TEMPLATE_TEST_CASE("door: two banded walls of four planes become one plane",
@@ -615,15 +609,14 @@ TEMPLATE_TEST_CASE("door: two banded walls of four planes become one plane",
   const double tolerance = 1e-4;
 
   scene_t<TestType> scene;
-  scene.add(pooled_wall_mesh<TestType>(TestType(0), TestType(0.4),
-                                       TestType(0), tilt));
+  scene.add(pooled_wall_mesh<TestType>(TestType(0), TestType(0.4), TestType(0),
+                                       tilt));
   scene.add(pooled_wall_mesh<TestType>(TestType(0.6), TestType(1), lift, tilt));
   scene.build(tolerance);
 
   REQUIRE(scene.lattice.tolerance_int() > lattice_int_t(0));
-  const auto placed = scene.lattice.placed_points();
+  const auto placed = scene.placed_all();
   REQUIRE(placed.size() == 8);
-
   const auto &converter = scene.lattice.converter();
   tf::buffer<tf::point<lattice_int_t, 3>> input;
   for (index_t tag = 0; tag < index_t(2); ++tag) {
@@ -640,9 +633,8 @@ TEMPLATE_TEST_CASE("door: two banded walls of four planes become one plane",
   // the door moves anything.
   int off_plane = 0;
   for (std::size_t k = 3; k < input.size(); ++k)
-    off_plane += tf::exact::orient3d_sign<lattice_int_t>(input[0], input[1],
-                                                         input[2], input[k]) !=
-                         0
+    off_plane += tf::exact::orient3d_sign<lattice_int_t>(
+                     input[0], input[1], input[2], input[k]) != 0
                      ? 1
                      : 0;
   REQUIRE(off_plane > 0);
@@ -655,11 +647,11 @@ TEMPLATE_TEST_CASE("door: two banded walls of four planes become one plane",
   REQUIRE(second.size == 3);
   for (std::size_t k = 0; k < placed.size(); ++k) {
     REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(
-                first.point[0], first.point[1], first.point[2], placed[k]) == 0);
-    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(second.point[0],
-                                                    second.point[1],
-                                                    second.point[2],
-                                                    placed[k]) == 0);
+                first.point[0], first.point[1], first.point[2], placed[k]) ==
+            0);
+    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(
+                second.point[0], second.point[1], second.point[2], placed[k]) ==
+            0);
   }
 
   // and the two walls carry ONE plane NAME, which is the fact the arrangement
@@ -688,7 +680,7 @@ TEMPLATE_TEST_CASE("door: the pooled scene is byte-inert at a zero band",
   scene.build(0.0);
 
   REQUIRE(scene.lattice.tolerance_int() == lattice_int_t(0));
-  REQUIRE(scene.lattice.placed_points().size() == 0);
+  REQUIRE(scene.lattice.moved_points().size() == 0);
 
   const auto reader = scene.lattice.reader(scene.apply_to_form());
   const auto &converter = scene.lattice.converter();
@@ -702,7 +694,7 @@ TEMPLATE_TEST_CASE("door: the pooled scene is byte-inert at a zero band",
   }
 }
 
-TEST_CASE("door: two forms whose corner names agree land on one integer",
+TEST_CASE("door: two forms whose corners nearly coincide land on one integer",
           "[exact][door]") {
   const real_t scatter = real_t(1e-5);
   scene_t<real_t> scene;
@@ -712,7 +704,7 @@ TEST_CASE("door: two forms whose corner names agree land on one integer",
                            real_t(1) + scatter * real_t(0.4)));
   scene.build(double(scatter));
 
-  const auto placed = scene.lattice.placed_points();
+  const auto placed = scene.placed_all();
   REQUIRE(placed.size() == 16);
   index_t welds = 0;
   for (index_t a = 0; a < index_t(8); ++a)
@@ -722,3 +714,164 @@ TEST_CASE("door: two forms whose corner names agree land on one integer",
   REQUIRE(welds == index_t(1));
 }
 
+TEMPLATE_TEST_CASE("door: a tilted near-miss drops onto the plane its face "
+                   "commits, or the census says the plane could not commit",
+                   "[exact][door]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  // a box turned generically, and a triangle whose first corner stands a
+  // third of the band off the centre of the box's first face
+  const double band = 1e-6;
+  auto box =
+      tf::make_box_mesh<index_t>(TestType(10), TestType(10), TestType(10));
+  for (std::size_t i = 0; i < box.points_buffer().size(); ++i) {
+    auto p = box.points_buffer()[i];
+    const double x = 0.6 * double(p[0]) - 0.8 * double(p[1]);
+    const double y = 0.8 * double(p[0]) + 0.6 * double(p[1]);
+    const double z = double(p[2]);
+    p[0] = TestType((5 * x - 12 * z) / 13 + 0.123);
+    p[1] = TestType(y - 0.077);
+    p[2] = TestType((12 * x + 5 * z) / 13 + 0.031);
+  }
+  const auto face = box.faces()[0];
+  std::array<double, 3> centre{0, 0, 0}, e1{}, e2{}, normal{};
+  for (int d = 0; d < 3; ++d) {
+    for (int k = 0; k < 3; ++k)
+      centre[std::size_t(d)] += double(box.points()[face[k]][d]) / 3;
+    e1[std::size_t(d)] =
+        double(box.points()[face[1]][d]) - double(box.points()[face[0]][d]);
+    e2[std::size_t(d)] =
+        double(box.points()[face[2]][d]) - double(box.points()[face[0]][d]);
+  }
+  normal = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
+            e1[0] * e2[1] - e1[1] * e2[0]};
+  const double length = std::sqrt(
+      normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+  tf::polygons_buffer<index_t, TestType, 3, 3> visitor;
+  for (const double lift : {0.3 * band, 3.0, 3.0})
+    visitor.points_buffer().emplace_back(
+        TestType(centre[0] + normal[0] / length * lift +
+                 (lift > 1 ? e1[0] * 0.1 * (visitor.points().size()) : 0.0)),
+        TestType(centre[1] + normal[1] / length * lift +
+                 (lift > 1 ? e2[1] * 0.1 * (visitor.points().size()) : 0.0)),
+        TestType(centre[2] + normal[2] / length * lift));
+  visitor.faces_buffer().emplace_back(0, 1, 2);
+
+  scene_t<TestType> scene;
+  scene.add(box);
+  scene.add(visitor);
+  scene.build(band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.contacts == 1);
+  const auto placed = scene.placed_all();
+  if (std::is_same<TestType, double>::value) {
+    // the face commits a small-normal plane its corners and its visitor all
+    // reach within the band, and the visitor drops onto it exactly
+    REQUIRE(census.moved_commits == 1);
+    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(
+                placed[std::size_t(face[0])], placed[std::size_t(face[1])],
+                placed[std::size_t(face[2])], placed[8]) == 0);
+  } else {
+    // the face is far larger than the band at this width: no small-normal
+    // plane keeps its corners within the band, so it stays its exact self,
+    // the visitor keeps its input point, and the census says so
+    REQUIRE(census.uncommittable == 1);
+    REQUIRE(census.unheld_contacts == 1);
+    REQUIRE(scene.lattice.moved_points().size() == 0);
+  }
+}
+
+TEMPLATE_TEST_CASE("door: a wall beside a pooled one does not fold",
+                   "[exact][door][pool]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  // two walls a hair apart, the first carrying a perpendicular flange. A
+  // face commits to a plane only when every corner of it lands, so no face
+  // is ever left half on its plane: the second wall pools and comes out
+  // flat, and the flanged one — whose faces carry feature corners and
+  // speak for no pool — keeps every vertex where the input put it.
+  const double tilt = 5e-7, lift = 6e-5;
+  tf::polygons_buffer<index_t, TestType, 3, 3> flanged;
+  for (const auto &q :
+       {std::array<double, 3>{0, 0, 0}, std::array<double, 3>{0.4, 0, 0},
+        std::array<double, 3>{0.4, 1, tilt}, std::array<double, 3>{0, 1, 0},
+        std::array<double, 3>{0.4, 0, -0.5},
+        std::array<double, 3>{0.4, 1, -0.5}})
+    flanged.points_buffer().emplace_back(TestType(q[0]), TestType(q[1]),
+                                         TestType(q[2]));
+  flanged.faces_buffer().emplace_back(0, 1, 2);
+  flanged.faces_buffer().emplace_back(0, 2, 3);
+  flanged.faces_buffer().emplace_back(1, 4, 5);
+  flanged.faces_buffer().emplace_back(1, 5, 2);
+
+  scene_t<TestType> scene;
+  scene.add(std::move(flanged));
+  scene.add(pooled_wall_mesh<TestType>(TestType(0.6), TestType(1),
+                                       TestType(lift), TestType(tilt)));
+  scene.build(1e-4);
+  REQUIRE(scene.lattice.moved_points().size() > 0);
+  const auto placed = scene.placed_all();
+  const auto &converter = scene.lattice.converter();
+  const auto first = scene.operands[0]->form();
+  for (index_t id = 0; id < index_t(6); ++id)
+    REQUIRE(placed[std::size_t(id)] ==
+            converter.convert(
+                tf::transformed(first.points()[id], tf::frame_of(first))));
+  REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(placed[6], placed[7],
+                                                  placed[8], placed[9]) == 0);
+}
+
+TEST_CASE("door: two segments touch exactly when they share a point",
+          "[exact][door]") {
+  using p_t = tf::point<int_t, 3>;
+  const auto touch = [](p_t a0, p_t a1, p_t b0, p_t b1) {
+    return tf::exact::door::segments_touch<int_t>(a0, a1, b0, b1);
+  };
+  // a crossing, an end on the other's interior, a shared end
+  REQUIRE(touch({-5, 0, 7}, {5, 0, 7}, {0, -5, 7}, {0, 5, 7}));
+  REQUIRE(touch({-5, 0, 7}, {5, 0, 7}, {0, 0, 7}, {0, 5, 7}));
+  REQUIRE(touch({-5, 0, 7}, {5, 0, 7}, {5, 0, 7}, {9, 9, 9}));
+  // a crossing of the lines beyond one segment's end
+  REQUIRE_FALSE(touch({-5, 0, 7}, {5, 0, 7}, {0, 1, 7}, {0, 5, 7}));
+  // skew lines
+  REQUIRE_FALSE(touch({-5, 0, 7}, {5, 0, 7}, {0, -5, 8}, {0, 5, 8}));
+  // parallel lines in one plane that are not one line never meet
+  REQUIRE_FALSE(touch({-5, -5, -5}, {5, -5, -5}, {-5, -5, 0}, {5, -5, 0}));
+  // one line: overlapping spans touch, disjoint ones do not
+  REQUIRE(touch({0, 0, 0}, {4, 0, 0}, {3, 0, 0}, {9, 0, 0}));
+  REQUIRE_FALSE(touch({0, 0, 0}, {4, 0, 0}, {5, 0, 0}, {9, 0, 0}));
+  // a segment of no length touches only where its point lies on the other
+  REQUIRE(touch({2, 0, 0}, {2, 0, 0}, {0, 0, 0}, {4, 0, 0}));
+  REQUIRE_FALSE(touch({2, 1, 0}, {2, 1, 0}, {0, 0, 0}, {4, 0, 0}));
+}
+
+TEST_CASE("door: two segments cross exactly when they meet inside both",
+          "[exact][door]") {
+  using p_t = tf::point<int_t, 3>;
+  const auto cross = [](p_t a0, p_t a1, p_t b0, p_t b1) {
+    return tf::exact::door::segments_cross<int_t>(a0, a1, b0, b1);
+  };
+  REQUIRE(cross({-5, 0, 7}, {5, 0, 7}, {0, -5, 7}, {0, 5, 7}));
+  // an end on the other's interior, a shared end: an end on the other
+  REQUIRE_FALSE(cross({-5, 0, 7}, {5, 0, 7}, {0, 0, 7}, {0, 5, 7}));
+  REQUIRE_FALSE(cross({-5, 0, 7}, {5, 0, 7}, {5, 0, 7}, {9, 9, 9}));
+  REQUIRE_FALSE(cross({-5, 0, 7}, {5, 0, 7}, {0, 1, 7}, {0, 5, 7}));
+  REQUIRE_FALSE(cross({-5, 0, 7}, {5, 0, 7}, {0, -5, 8}, {0, 5, 8}));
+  REQUIRE_FALSE(cross({-5, -5, -5}, {5, -5, -5}, {-5, -5, 0}, {5, -5, 0}));
+  // one line overlapping is ends on the other, not a crossing
+  REQUIRE_FALSE(cross({0, 0, 0}, {4, 0, 0}, {3, 0, 0}, {9, 0, 0}));
+  REQUIRE_FALSE(cross({2, 0, 0}, {2, 0, 0}, {0, 0, 0}, {4, 0, 0}));
+}
+
+TEST_CASE("door: a point stands on a closed face exactly or not at all",
+          "[exact][door]") {
+  using p_t = tf::point<int_t, 3>;
+  const std::array<p_t, 3> face{p_t{0, 0, 3}, p_t{8, 0, 3}, p_t{0, 8, 3}};
+  REQUIRE(tf::exact::door::point_on_face(p_t{2, 2, 3}, face));
+  REQUIRE(tf::exact::door::point_on_face(p_t{4, 0, 3}, face));
+  REQUIRE(tf::exact::door::point_on_face(p_t{0, 0, 3}, face));
+  REQUIRE(tf::exact::door::point_on_face(p_t{4, 4, 3}, face));
+  REQUIRE_FALSE(tf::exact::door::point_on_face(p_t{5, 5, 3}, face));
+  REQUIRE_FALSE(tf::exact::door::point_on_face(p_t{2, 2, 4}, face));
+  // a face bounding no area holds nothing
+  const std::array<p_t, 3> sliver{p_t{0, 0, 0}, p_t{4, 0, 0}, p_t{8, 0, 0}};
+  REQUIRE_FALSE(tf::exact::door::point_on_face(p_t{2, 0, 0}, sliver));
+}

@@ -48,10 +48,10 @@ template <typename Int> struct exact_certificate {
 /// asked for: an original vertex of the plane's own support moves NOWHERE
 /// and pays one dot product for the fact. A residual beyond the continuous
 /// reach is refused by the same one dot product squared. Only what survives
-/// both reaches the bounded rank-1 solve.
+/// both reaches the bounded one-plane solve.
 ///
-/// THE SOLVE HAS TWO LANES. The NARROW lane runs the door's own quantized
-/// rung when this direction's whole frame workspace and this vertex's own
+/// THE SOLVE HAS TWO LANES. The NARROW lane runs the rung a lattice
+/// coordinate's own products stand on when this direction's whole frame workspace and this vertex's own
 /// step onto the plane stand inside it — which a gcd-reduced simple normal
 /// does at any face size. The WIDE lane is the product rung and carries
 /// every direction the narrow one refuses. Both run the same algorithm from

@@ -16,7 +16,6 @@
 #include "./scene_targets.hpp"
 
 #include "../../../core/algorithm/generic_generate.hpp"
-#include "../../../core/blocked_buffer.hpp"
 #include "../../../core/buffer.hpp"
 #include "../../../core/views/sequence_range.hpp"
 #include "../placement_tables.hpp"
@@ -34,26 +33,25 @@ namespace tf::exact::door::pool {
 /// on it, and the corners themselves.
 ///
 /// A face whose every corner is flat and has a target source is a witness; a
-/// face carrying a feature corner speaks for nothing, because the rank-3/2
-/// cascade owns that corner's position.
+/// face carrying a feature corner speaks for nothing, because a feature is
+/// no name's support and the certificate is taken over supports alone.
 ///
 /// The support triple is sorted, so a face names one witness whatever its
 /// winding, and the array is sorted so that a name's block comes out in
 /// canonical witness order.
 template <typename Index, typename Int, typename RealType>
 auto state_name_witnesses(const placement_tables<Index, Int, RealType> &tables,
-                          const tf::blocked_buffer<Index, 3> &corners,
                           const tf::buffer<int> &face_name,
                           const scene_targets &targets,
                           tf::buffer<pool_witness<Int>> &witness) -> void {
   witness.clear();
   tf::generic_generate(
-      tf::make_sequence_range(corners.size()), witness,
-      [&tables, &corners, &face_name,
-       &targets](std::size_t f, tf::buffer<pool_witness<Int>> &into) {
+      tf::make_sequence_range(tables.planes.size()), witness,
+      [&tables, &face_name, &targets](std::size_t f,
+                                      tf::buffer<pool_witness<Int>> &into) {
         if (face_name[f] < 0)
           return;
-        const auto block = corners[f];
+        const auto block = tables.face_corners(f);
         for (const auto v : block)
           if (targets.feature[std::size_t(v)] ||
               targets.source[std::size_t(v)] < 0)
@@ -65,10 +63,10 @@ auto state_name_witnesses(const placement_tables<Index, Int, RealType> &tables,
           made.support[k] = tables.points[std::size_t(block[k])];
         std::sort(made.support.begin(), made.support.end());
 
-        std::array<int, 4> stated{
-            face_name[f], targets.source[std::size_t(block[0])],
-            targets.source[std::size_t(block[1])],
-            targets.source[std::size_t(block[2])]};
+        std::array<int, 4> stated{face_name[f],
+                                  targets.source[std::size_t(block[0])],
+                                  targets.source[std::size_t(block[1])],
+                                  targets.source[std::size_t(block[2])]};
         std::sort(stated.begin(), stated.end());
         std::size_t kept = 0;
         for (std::size_t k = 0; k < stated.size(); ++k)
@@ -77,14 +75,15 @@ auto state_name_witnesses(const placement_tables<Index, Int, RealType> &tables,
         into.push_back(made);
       });
 
-  tbb::parallel_sort(witness.begin(), witness.end(),
-                     [](const pool_witness<Int> &a, const pool_witness<Int> &b) {
-                       if (a.plane_name != b.plane_name)
-                         return a.plane_name < b.plane_name;
-                       if (a.support != b.support)
-                         return a.support < b.support;
-                       return a.name < b.name;
-                     });
+  tbb::parallel_sort(
+      witness.begin(), witness.end(),
+      [](const pool_witness<Int> &a, const pool_witness<Int> &b) {
+        if (a.plane_name != b.plane_name)
+          return a.plane_name < b.plane_name;
+        if (a.support != b.support)
+          return a.support < b.support;
+        return a.name < b.name;
+      });
 }
 
 } // namespace tf::exact::door::pool

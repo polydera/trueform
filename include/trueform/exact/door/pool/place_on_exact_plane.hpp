@@ -26,7 +26,7 @@
 
 namespace tf::exact::door::pool {
 
-/// The rank-1 placement against an EXACT plane: the displacement from `p`
+/// The one-plane landing against an EXACT plane: the displacement from `p`
 /// to a nearest lattice point of `N . x = N . p + r`, stated in the frame
 /// of that direction. The Bezout vector reaches the plane, the reduced
 /// kernel basis walks it, and the residual is driven to zero exactly, so

@@ -23,7 +23,7 @@
 
 namespace tf::exact::door {
 
-/// The rank-1 placement: the displacement from `p` to a nearest lattice
+/// The narrow one-plane landing: the displacement from `p` to a nearest lattice
 /// point of the plane `N . x = N . p + r`, stated in the frame of that
 /// direction. The Bezout vector reaches the plane, the reduced kernel
 /// basis walks it, and the residual is driven to zero exactly, so the
@@ -31,17 +31,13 @@ namespace tf::exact::door {
 /// sweep after it only choose which lattice point; the plane membership
 /// is integral throughout.
 ///
-/// The frame is the caller's, because the rank above solves inside the
-/// same one and a Lagrange reduction is not run twice on one direction.
+/// The frame is the caller's, because a lane holds one per direction and a
+/// Lagrange reduction is not run twice on one direction.
 ///
-/// False when the step onto the plane leaves the rung the solve is
-/// stated on: the residual grows with the square of the band and the
-/// Bezout vector with the band, so a wide enough band asks for a product
-/// no rung holds. It refuses rather than wraps, and the caller states
-/// the vertex by the rank below — @ref tf::exact::door::place_on_line
-/// by its own line, @ref tf::exact::door::place_vertex by leaving the
-/// vertex where it was. The shortening sweep refuses only the candidate
-/// it cannot form; the answer it already holds stands.
+/// False when the step onto the plane leaves the rung the solve is stated
+/// on: it refuses rather than wraps, and the certificate takes the wide
+/// lane instead. The shortening sweep refuses only the candidate it cannot
+/// form; the answer it already holds stands.
 template <typename Int>
 auto place_on_plane(const plane_frame<Int> &frame,
                     typename tf::exact::meta<Int>::T1 r,

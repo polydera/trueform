@@ -30,9 +30,10 @@
 namespace tf::exact::door::pool {
 
 /// THE WIDTH GATE. The frame of a primitive EXACT direction stated on the
-/// door's own quantized rung, or the refusal that the rung cannot state it.
+/// narrow rung, or the refusal that the rung cannot state it.
 ///
-/// It is the door's construction with its initial products guarded: a
+/// It is @ref tf::exact::door::make_plane_frame with its initial products
+/// guarded: a
 /// support normal is a cross of coordinate DIFFERENCES and its Bezout
 /// products occupy twice that again, so the components the door forms
 /// unguarded — `a u`, `a v`, `-u Nz`, `-v Nz` — are exactly where a normal
@@ -42,8 +43,8 @@ namespace tf::exact::door::pool {
 /// direction to the wide lane.
 ///
 /// Selection is by WIDTH and not by provenance: an exact wall plane whose
-/// primitive normal is small stands here beside a quantized name, and a
-/// generic triangle's own plane does not.
+/// primitive normal is small stands here, and a generic triangle's own plane
+/// does not.
 template <typename Int>
 auto make_narrow_plane_frame(
     const std::array<typename exact_lane<Int>::coefficient_type, 3> &n,

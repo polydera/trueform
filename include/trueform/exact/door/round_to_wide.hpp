@@ -19,13 +19,13 @@
 
 namespace tf::exact::door {
 
-/// The bound every double-valued step of the placement is clamped to
+/// The bound every double-valued step of the narrow lane is clamped to
 /// before it re-enters integer arithmetic. It is half the reach of the
-/// rung the placement is solved on, so a clamped value still multiplies
-/// against a name and an offset on the rung ABOVE that one — which is
-/// where @ref tf::exact::door::wide_dot, @ref tf::exact::door::wide_det3
-/// and @ref tf::exact::door::wide_axpy form their products. It states
-/// nothing about a product taken at the placement's own rung.
+/// rung the lane is solved on, so a clamped value still multiplies against
+/// a direction and an offset on the rung ABOVE that one — which is where
+/// @ref tf::exact::door::wide_dot and @ref tf::exact::door::wide_axpy form
+/// their products. It states nothing about a product taken at the lane's
+/// own rung.
 ///
 /// The bound is a fact of the lattice and not of the wide type alone: a
 /// lattice twice as wide states a rung twice as wide and a bound twice

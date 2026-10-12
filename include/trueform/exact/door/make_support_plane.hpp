@@ -12,17 +12,17 @@
  */
 #pragma once
 
-#include "../../../core/point.hpp"
-#include "../../canonical_plane.hpp"
-#include "../../plane_support.hpp"
+#include "../../core/point.hpp"
+#include "../canonical_plane.hpp"
+#include "../plane_support.hpp"
 
-namespace tf::exact::door::pool {
+namespace tf::exact::door {
 
 /// The EXACT plane a face names: the canonical quadruple through the
 /// three original lattice vertices its own support stands on. It is the
-/// same currency the downstream namer speaks, so an elected
-/// representative is a plane some face actually stood on and not one the
-/// grid invented.
+/// same currency the downstream namer speaks, so a contact lands on the
+/// plane the face actually stands on and an elected pool representative
+/// is a plane some face stood on, not one a grid invented.
 ///
 /// False for a face with no support triple, which names no plane.
 template <typename Int, typename Corners>
@@ -40,4 +40,4 @@ auto make_support_plane(const Corners &corners,
   return true;
 }
 
-} // namespace tf::exact::door::pool
+} // namespace tf::exact::door

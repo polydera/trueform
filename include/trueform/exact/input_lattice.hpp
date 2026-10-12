@@ -12,16 +12,15 @@
  */
 #pragma once
 
-#include "../core/blocked_buffer.hpp"
 #include "../core/buffer.hpp"
 #include "../core/none.hpp"
 #include "../core/point.hpp"
 #include "../core/range.hpp"
-#include "./door/place_vertices.hpp"
+#include "./door/gather_vertex_contacts.hpp"
+#include "./door/hold_exact_contacts.hpp"
+#include "./door/placement_census.hpp"
 #include "./door/placement_tables.hpp"
 #include "./door/pool/discovery_resolution.hpp"
-#include "./door/pool/exact_lane.hpp"
-#include "./door/pool/gather_input_corners.hpp"
 #include "./door/pool/pool_input_planes.hpp"
 #include "./input_lattice_reader.hpp"
 #include "./resolve_int_type.hpp"
@@ -37,17 +36,37 @@ namespace tf::exact {
 /// lattice, and the one producer of that fact for the whole pipeline:
 /// the converter the whole run shares, the flat vertex space that names
 /// a vertex `(tag, id)` by one integer, and — when a tolerance is given
-/// — the table the door placed every vertex into.
+/// — the sparse table of the vertices the band moved.
 ///
-/// Under a band the input is POOLED, THEN PLACED: faces whose quantized
-/// directions agree pool onto one exact plane, and each original vertex
-/// moves at most the tolerance, to a lattice vertex — its pool's
-/// committed plane where its own name joined one, the planes its faces
-/// state otherwise. The arrangement is then the exact arrangement of
-/// the moved mesh, computed at zero, and nothing is promised of the
-/// output. A tolerance of zero is the identity: nothing is pooled, no
-/// table is built, no face is read, no normal is taken, and the view is
-/// the plain converter.
+/// A TOLERANCE PROMISES EXACTLY TWO THINGS, through one shared object, the
+/// COMMITTED PLANE, so both hold transitively:
+///
+/// 1. ALMOST-COPLANAR IS COPLANAR. Planes that are almost one plane pull
+///    together into one committed plane — faces whose directions agree pool,
+///    and a face a vertex of another form stands within the band of gathers
+///    the faces of that vertex lying within the band of it.
+/// 2. ALMOST-ON-PLANE IS ON-PLANE. A vertex within the band of a committed
+///    plane is dropped onto it exactly — where the plane settled, not where
+///    its face began.
+///
+/// FIRST THE PLANES PULL: a face commits to a plane only if its own corners
+/// move within the band onto it; a plane they cannot follow is not changed
+/// and stays the face's exact self. THEN THE VERTICES DROP into the
+/// committed planes, bounded by the same certificate. The band bounds both
+/// motions, and there is no special case: a vertex no committed plane
+/// claims is not placed at all, and every tier reads it exactly as at zero.
+/// A plane that could not commit and a vertex that could not drop are
+/// counted in @ref census — the law refusing, visibly.
+///
+/// AN EXISTING IDENTIFICATION OUTRANKS A NEW ONE. Every exact contact the
+/// input states between two forms survives the placement, in every class:
+/// a vertex whose new pull would undo one refuses the pull and keeps its
+/// input point. An add forgone is legal; a removal never is.
+///
+/// The arrangement is then the exact arrangement of the moved mesh,
+/// computed at zero. A tolerance of zero is the identity: nothing is
+/// pooled, nothing is discovered, no table is built, and the view is the
+/// plain converter.
 template <typename Index, typename RealType,
           typename Int = tf::exact::resolve_int_type<tf::none_t, RealType>>
 class input_lattice {
@@ -61,7 +80,9 @@ public:
   auto build(converter_type input_converter, const ApplyToForm &apply_to_form,
              Index n_tags, double tolerance) -> void {
     _converter = std::move(input_converter);
-    _placed.clear();
+    _ticket.clear();
+    _moved.clear();
+    _census = tf::exact::door::placement_census{};
     _vertex_offsets.allocate(std::size_t(n_tags) + 1);
     _vertex_offsets[0] = Index(0);
     tf::buffer<Index> face_offsets;
@@ -90,32 +111,34 @@ public:
     }
     tf::exact::door::placement_tables<Index, Int, RealType> tables;
     tables.build(_converter, apply_to_form, n_tags, _vertex_offsets,
-                 face_offsets, _tolerance_int);
+                 face_offsets);
+    tf::exact::door::gather_vertex_contacts(tables, _converter, apply_to_form,
+                                            n_tags, _vertex_offsets,
+                                            face_offsets, _tolerance_int);
     // The partition states which exact planes the input's faces give up for
-    // which others, before a single vertex is placed, so rank 1 aims at a
-    // pooled wall instead of at each face's own rounded tangent.
-    //
-    // A lattice with no arithmetic lane has no certificate to judge a pool
-    // by, so its door is the cascade alone.
+    // which others before a single vertex is placed, so a contact against a
+    // pooled face lands on the plane the face will stand on.
     tf::exact::door::pool::input_pools<Int> pools;
-    if constexpr (tf::exact::door::pool::has_exact_lane<Int>) {
-      tf::blocked_buffer<Index, 3> corners;
-      if (tf::exact::door::pool::gather_input_corners(
-              apply_to_form, n_tags, _vertex_offsets, face_offsets, corners))
-        tf::exact::door::pool::pool_input_planes(
-            tables, corners, _tolerance_int,
-            tf::exact::door::pool::pool_discovery_resolution<Int>(
-                _tolerance_int),
-            pools);
+    if (tables.triangles())
+      tf::exact::door::pool::pool_input_planes(
+          tables, _tolerance_int,
+          tf::exact::door::pool::pool_discovery_resolution<Int>(_tolerance_int),
+          pools);
 #ifdef TF_POOL_CENSUS
-      _election = pools.election;
-      _certificate = pools.certificate;
+    _election = pools.election;
+    _certificate = pools.certificate;
 #endif
-    }
-    tf::exact::door::place_vertices(tables, pools, _tolerance_int, _placed);
+    tf::exact::door::hold_exact_contacts(
+        tables, pools, _converter, apply_to_form, n_tags, _vertex_offsets,
+        face_offsets, _tolerance_int, _ticket, _moved, _census);
   }
 
   auto converter() const -> const converter_type & { return _converter; }
+  /// What the band did: the planes its contacts committed, the vertices
+  /// that moved, and every refusal. Zero throughout when no band ran.
+  auto census() const -> const tf::exact::door::placement_census & {
+    return _census;
+  }
   auto n_tags() const -> Index { return _n_tags; }
   /// The door's band in lattice units; zero when no door ran.
   auto tolerance_int() const -> Int { return _tolerance_int; }
@@ -126,34 +149,43 @@ public:
   auto election() const -> const tf::exact::door::pool::election_census & {
     return _election;
   }
-  auto certificate() const -> const tf::exact::door::pool::certificate_census & {
+  auto certificate() const
+      -> const tf::exact::door::pool::certificate_census & {
     return _certificate;
   }
 #endif
   auto vertex_offsets() const -> const tf::buffer<Index> & {
     return _vertex_offsets;
   }
-  /// The placed table by flat vertex id — empty when no door ran, which
-  /// is how @ref tf::exact::input_lattice_reader knows the mode.
-  auto placed_points() const {
-    return tf::make_range(_placed.begin(), _placed.end());
+  /// The vertices the band moved, in flat order — empty when it moved
+  /// none, which is the band answering exactly as zero does.
+  auto moved_points() const {
+    return tf::make_range(_moved.begin(), _moved.end());
+  }
+  /// Per flat vertex its row in @ref moved_points, `-1` for a vertex the
+  /// band did not move; empty when it moved none.
+  auto moved_tickets() const {
+    return tf::make_range(_ticket.begin(), _ticket.end());
   }
 
-  /// The flat name of an original vertex — the index the placed table
+  /// The flat name of an original vertex — the index the moved table
   /// and every identity below are keyed by.
   auto flat_vertex(int tag, Index id) const -> Index {
     return _vertex_offsets[std::size_t(tag)] + id;
   }
 
   /// The pair search's gather. The caller offers the world coordinate it
-  /// already holds, so a run with no door pays only the conversion and a
-  /// run with one never touches the float at all.
+  /// already holds, so a vertex the band did not move pays only the
+  /// conversion, exactly as at zero.
   template <typename P>
   auto point(int tag, Index id, const P &world_point) const
       -> tf::point<Int, 3> {
-    return _placed.size() != 0
-               ? _placed[std::size_t(flat_vertex(tag, id))]
-               : _converter.convert(world_point);
+    if (_ticket.size() != 0) {
+      const auto row = _ticket[std::size_t(flat_vertex(tag, id))];
+      if (row != Index(-1))
+        return _moved[std::size_t(row)];
+    }
+    return _converter.convert(world_point);
   }
 
   /// The reader every consumer programs against, bound to the caller's
@@ -161,15 +193,20 @@ public:
   template <typename ApplyToForm>
   auto reader(ApplyToForm apply_to_form) const
       -> tf::exact::input_lattice_reader<Index, RealType, Int, ApplyToForm> {
-    return {placed_points(),
+    return {moved_points(),
+            moved_tickets(),
             tf::make_range(_vertex_offsets.begin(), _vertex_offsets.end()),
-            _converter, std::move(apply_to_form), _tolerance_int};
+            _converter,
+            std::move(apply_to_form),
+            _tolerance_int};
   }
 
 private:
   converter_type _converter;
   tf::buffer<Index> _vertex_offsets;
-  tf::buffer<tf::point<Int, 3>> _placed;
+  tf::buffer<Index> _ticket;
+  tf::buffer<tf::point<Int, 3>> _moved;
+  tf::exact::door::placement_census _census;
   Index _n_tags = Index(0);
   Int _tolerance_int = Int(0);
 #ifdef TF_POOL_CENSUS
