@@ -88,7 +88,7 @@ auto make_csg_domains_impl(const tf::csg_graph<Policy, Int, Arrangement> &graph,
       graph.descriptor(), graph.inclusion(),
       graph.labels().open_component_mask(),
       graph.domain_nesting_merges(), config, E, universe_fine,
-      graph.is_sheet(), graph.sheet_folds());
+      graph.crossings(), graph.is_sheet());
   auto part = tf::csg::graph::compute_domain_partition(
       membership.domain_of_side, membership.n_components, membership.keep);
   auto result = tf::csg::graph::make_csg_domains<

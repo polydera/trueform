@@ -55,7 +55,9 @@ template <typename Index> struct csg_domains_index_map {
   Index n_output_points = 0;
   /// Per-cell operand inclusion, block size `n_tags`: `inclusion[k][i]`
   /// is true iff cell `k` lies inside form `i` (for a sheet: behind the
-  /// sheet's normal).
+  /// sheet's normal). A cell a sheet does not separate — one that reaches
+  /// both of its sides around its rim — carries no side of it and reads
+  /// false.
   tf::blocked_buffer<bool, tf::dynamic_size> inclusion;
 };
 

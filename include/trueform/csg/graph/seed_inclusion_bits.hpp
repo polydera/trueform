@@ -35,7 +35,6 @@
 #include "./assert_nesting_merges_are_contained.hpp"
 #include "./compute_keyed_aabbs.hpp"
 #include "./domain_depths.hpp"
-#include "./domain_inclusions.hpp"
 #include "./make_closed_volume_tags.hpp"
 #include "./structural_membership.hpp"
 #include "./triangle_component_labels.hpp"
@@ -44,7 +43,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <iterator>
 #include <limits>
 
@@ -52,17 +50,18 @@ namespace tf::csg::graph {
 
 /// @ingroup csg_graph_internals
 /// @brief One exact segment cast per bundle answering two questions, each
-///        with its own producer: the predicate bits at `outer_env(bi)`, and
+///        with its own producer: the predicate at `outer_env(bi)`, and
 ///        the nesting merge that repairs the false split between a
 ///        contact-free bundle and the region around it (the
 ///        implicit-arrangement analogue of
 ///        @ref tf::topology::domains::make_nesting_merges).
 ///
-/// The bits: a volume form's depth is leaves minus enters along seed ->
+/// The predicate: a volume form's depth is leaves minus enters along seed ->
 /// far, the far corner lying beyond all geometry and therefore at zero; a
-/// sheet has no interior, so its bit is the side
-/// @ref tf::csg::graph::winding_side states and it is never crossed for
-/// this question.
+/// sheet has no interior, so its answer is the side
+/// @ref tf::csg::graph::winding_side states, a `(domain, tag, behind)` seed
+/// of @ref tf::csg::graph::propagate_sheet_sides, and it is never crossed
+/// for this question. The bundle's own sheets are not asked.
 ///
 /// The merge cannot be read off the bits: a sheet that cuts a region only
 /// partially leaves one domain wrapping its edge whose points carry both
@@ -76,12 +75,18 @@ namespace tf::csg::graph {
 /// apart only by side, which is the winding's answer.
 ///
 /// A bundle's outer env is its most-negative-volume incident domain; the
-/// globally most negative is `null_seed`, anchored at zero.
+/// globally most negative is `null_seed`, outside every volume form, so the
+/// bundle standing in it casts for nothing; a sheet has no outside, so that
+/// bundle still asks the winding for the sheets it does not hold. Each answer
+/// is a `(domain, tag, behind, bundle)` seed.
+///
+/// A bundle holding an open component of a sheet holds that sheet's free
+/// rim, which lies inside the region the bundle lands in: each such landing
+/// is a `(domain, tag)` rim wrap.
 template <typename Index, typename Int, typename Arrangement,
           typename ApplyToForm, typename Real, std::size_t Dims, typename VolT,
           typename GetMeshPoint>
 auto seed_inclusion_bits(
-    tf::csg::graph::domain_inclusions &inc,
     tf::csg::graph::domain_depths<Index> &depths,
     const tf::csg::graph::arrangement_descriptor<Index> &desc,
     const Arrangement &arrangement,
@@ -90,6 +95,8 @@ auto seed_inclusion_bits(
     const tf::exact::vertex_converter<Int, Real, Dims> &conv,
     const GetMeshPoint &get_mesh_point, const tf::buffer<VolT> &domain_volumes,
     tf::buffer<std::array<Index, 2>> &out_nesting_merges,
+    tf::buffer<std::array<Index, 4>> &out_sheet_seeds,
+    tf::buffer<std::array<Index, 2>> &out_rim_wraps,
     const tf::buffer<char> &is_sheet_tag = {}) -> tf::buffer<Index> {
   using labels_t = tf::csg::graph::triangle_component_labels<Index>;
   using vertex_t = tf::intersect::graph::vertex<Index>;
@@ -117,12 +124,13 @@ auto seed_inclusion_bits(
   };
 
   out_nesting_merges.clear();
+  out_sheet_seeds.clear();
+  out_rim_wraps.clear();
 
   const Index n_bundles = desc.n_bundles;
   const Index n_components = labels.n_components();
   const Index n_domains = desc.n_domains;
   const Index n_tags = arrangement.n_tags();
-  const std::size_t words_per_domain = inc.words_per_domain;
 
   tf::buffer<Index> seeds;
   if (n_bundles == Index(0) || n_domains == Index(0) ||
@@ -145,9 +153,6 @@ auto seed_inclusion_bits(
         outer_env[b] = d;
     }
   }
-
-  for (std::size_t w = 0; w < words_per_domain; ++w)
-    inc.bits[static_cast<std::size_t>(null_seed) * words_per_domain + w] = 0u;
 
   auto record_seed = [&](Index d) {
     for (auto s : seeds)
@@ -328,8 +333,6 @@ auto seed_inclusion_bits(
   tf::buffer<std::array<Index, 2>> sheet_pairs;
   bool any_own_cast = false;
   for (Index bi = Index(0); bi < n_bundles; ++bi) {
-    if (outer_env[bi] == null_seed)
-      continue;
     if (!seed_set[bi])
       continue;
     auto own_tags = desc.bundle_to_tags[bi];
@@ -337,7 +340,8 @@ auto seed_inclusion_bits(
       const bool own = std::binary_search(own_tags.begin(), own_tags.end(), t);
       if (sheet_tag(t) && !own)
         sheet_pairs.push_back({bi, t});
-      if (!tf::exact::segment_hits_aabb_scaled<Int>(
+      if (outer_env[bi] == null_seed ||
+          !tf::exact::segment_hits_aabb_scaled<Int>(
               seed_sum[bi], far_scaled, scaled(form_bv[t].min),
               scaled(form_bv[t].max)))
         continue;
@@ -349,9 +353,11 @@ auto seed_inclusion_bits(
 
   // A casting bundle must not count its own surface; a cut face
   // carries `none_label`, so its bundle comes from its triangles — every
-  // piece of a face lies on one original surface, hence one bundle.
-  // Exposure is tag-major and object-dense, so the prefix of per-tag
-  // face counts is the slot base.
+  // piece of a face lies on one original surface, hence one bundle. A
+  // stacked duplicate is unlabelled and its surface is its survivor's, so
+  // its face takes the survivor's bundle through the stack. Exposure is
+  // tag-major and object-dense, so the prefix of per-tag face counts is
+  // the slot base.
   tf::buffer<Index> face_slot_offsets;
   face_slot_offsets.push_back(Index(0));
   for (Index t = Index(0); t < n_tags; ++t)
@@ -369,6 +375,15 @@ auto seed_inclusion_bits(
       if (c == labels_t::none_label)
         continue;
       const auto &d = descs[slots[e]];
+      cut_face_bundle[static_cast<std::size_t>(
+          face_slot_offsets[std::size_t(Index(d.tag))] + d.object)] =
+          desc.bundle_of_component[c];
+    }
+    for (const auto &triple : arrangement.coplanar_triples()) {
+      const Index c = tri_labels[triple.survivor];
+      if (c == labels_t::none_label)
+        continue;
+      const auto &d = descs[slots[triple.dead]];
       cut_face_bundle[static_cast<std::size_t>(
           face_slot_offsets[std::size_t(Index(d.tag))] + d.object)] =
           desc.bundle_of_component[c];
@@ -537,38 +552,30 @@ auto seed_inclusion_bits(
                      static_cast<std::size_t>(t)] = depth;
       });
 
-  // Bundles sharing an outer-env hit the same row; the first zeros its
-  // bits, the rest OR in. Their depths agree by construction — one
-  // domain is one region, and a region has one winding.
+  // Bundles sharing an outer-env seed the same row. Their depths agree by
+  // construction — one domain is one region, and a region has one winding.
+  for (const auto &pair : sheet_pairs) {
+    const Index bi = pair[0];
+    const Index t = pair[1];
+    out_sheet_seeds.push_back(
+        {outer_env[bi], t,
+         Index(sheet_side[static_cast<std::size_t>(bi) *
+                              static_cast<std::size_t>(n_tags) +
+                          static_cast<std::size_t>(t)]),
+         bi});
+  }
   for (Index bi = Index(0); bi < n_bundles; ++bi) {
     if (outer_env[bi] == null_seed)
       continue;
     if (!seed_set[bi])
       continue;
-    const std::size_t row =
-        static_cast<std::size_t>(outer_env[bi]) * words_per_domain;
-    const bool first_writer = [&] {
-      for (auto s : seeds)
-        if (s == outer_env[bi])
-          return false;
-      return true;
-    }();
-    if (first_writer)
-      for (std::size_t w = 0; w < words_per_domain; ++w)
-        inc.bits[row + w] = 0u;
     const std::size_t column =
         static_cast<std::size_t>(bi) * static_cast<std::size_t>(n_tags);
-    for (Index t = Index(0); t < n_tags; ++t) {
-      if (sheet_tag(t)) {
-        if (sheet_side[column + static_cast<std::size_t>(t)])
-          inc.set(static_cast<std::size_t>(outer_env[bi]),
-                  static_cast<std::size_t>(t));
-        continue;
-      }
-      depths.at(static_cast<std::size_t>(outer_env[bi]),
-                static_cast<std::size_t>(t)) =
-          seed_depth[column + static_cast<std::size_t>(t)];
-    }
+    for (Index t = Index(0); t < n_tags; ++t)
+      if (!sheet_tag(t))
+        depths.at(static_cast<std::size_t>(outer_env[bi]),
+                  static_cast<std::size_t>(t)) =
+            seed_depth[column + static_cast<std::size_t>(t)];
     record_seed(outer_env[bi]);
   }
 
@@ -680,6 +687,17 @@ auto seed_inclusion_bits(
     }
   }
 
+  // (bundle, sheet tag) per open sheet component: a rim the arrangement left
+  // free lies inside the region the bundle lands in
+  tf::buffer<std::array<Index, 2>> rim_sheets;
+  for (Index c = Index(0); c < n_components; ++c) {
+    const Index t = sheet_component(c);
+    if (t >= Index(0) && open_mask[c])
+      rim_sheets.push_back({desc.bundle_of_component[c], t});
+  }
+  std::sort(rim_sheets.begin(), rim_sheets.end());
+  rim_sheets.erase_till_end(std::unique(rim_sheets.begin(), rim_sheets.end()));
+
   tf::buffer<std::array<Index, 2>> outside_walls; // (component, sheet tag)
   for (Index c = Index(0); c < n_components; ++c) {
     const Index t = sheet_component(c);
@@ -738,6 +756,9 @@ auto seed_inclusion_bits(
       continue;
     out_nesting_merges.push_back(
         {std::min(d_in, d_out), std::max(d_in, d_out)});
+    for (const auto &rim : rim_sheets)
+      if (rim[0] == bi)
+        out_rim_wraps.push_back({d_out, rim[1]});
   }
 #ifndef NDEBUG
   tf::csg::graph::assert_nesting_merges_are_contained<Index, Int>(

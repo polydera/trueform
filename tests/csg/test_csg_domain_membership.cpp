@@ -124,6 +124,13 @@ auto membership_volume_of(const membership_mesh_t &mesh) -> membership_real_t {
   return std::abs(membership_real_t(tf::signed_volume(mesh.polygons())));
 }
 
+/// A cube of side `side` centred at the origin, from the generator whose
+/// faces the stacked scenes duplicate exactly.
+auto membership_cube(membership_real_t side) -> membership_mesh_t {
+  return tf::make_box_mesh(side, side, side, membership_index_t(1),
+                           membership_index_t(1), membership_index_t(1));
+}
+
 } // namespace
 
 TEST_CASE("csg domains: two overlapping boxes state both operands, plain and "
@@ -341,6 +348,68 @@ TEST_CASE("csg domains: an aligned coincident pair encloses twice",
   auto [cells, ids, imap] = tf::test::csg_domains_with_index_map_of(graph);
   membership_require_rows(membership_rows_of(cells, imap),
                           {{membership_real_t(8), {1}}});
+}
+
+TEST_CASE("csg domains: a core stacked on its shell's cavity shares no space "
+          "with it",
+          "[domains][membership][coincident][nesting]") {
+  // Every face of the core is a duplicate of a cavity wall, so the core's
+  // surface is the cavity's and the cavity reads the core alone.
+  auto shell = tf::concatenated(
+      membership_cube(membership_real_t(2)).polygons(),
+      membership_reversed(membership_cube(membership_real_t(1))).polygons());
+  auto core = membership_cube(membership_real_t(1));
+
+  std::vector<membership_operand_t> operands;
+  operands.reserve(2);
+  operands.push_back(tf::test::make_tagged_operand(shell));
+  operands.push_back(tf::test::make_tagged_operand(core));
+  auto forms = tf::test::tagged_forms(operands);
+  auto graph = tf::test::build_range_csg_graph(tf::test::forms_range(forms),
+                                               tf::test::no_sheets(), {});
+  REQUIRE(graph.failed().size() == 0);
+
+  auto both = tf::test::csg_mesh_of(graph, tf::csg::op(0) & tf::csg::op(1));
+  REQUIRE(both.polygons().size() == 0);
+  auto hollow = tf::test::csg_mesh_of(graph, tf::csg::op(0) - tf::csg::op(1));
+  REQUIRE_THAT(double(tf::signed_volume(hollow.polygons())),
+               Catch::Matchers::WithinAbs(7.0, 1e-9));
+
+  auto [cells, ids, imap] = tf::test::csg_domains_with_index_map_of(graph);
+  membership_require_rows(membership_rows_of(cells, imap),
+                          {{membership_real_t(7), {1, 0}},
+                           {membership_real_t(1), {0, 1}}});
+}
+
+TEST_CASE("csg domains: an aligned coincident pair nested in a box reads "
+          "inside all three",
+          "[domains][membership][coincident][nesting]") {
+  // The second core is a duplicate of the first throughout, so the pair is
+  // one bundle floating in the box and its interior is inside every form.
+  auto box = membership_cube(membership_real_t(4));
+  auto core = membership_cube(membership_real_t(1));
+
+  std::vector<membership_operand_t> operands;
+  operands.reserve(3);
+  operands.push_back(tf::test::make_tagged_operand(box));
+  operands.push_back(tf::test::make_tagged_operand(core));
+  operands.push_back(tf::test::make_tagged_operand(core));
+  auto forms = tf::test::tagged_forms(operands);
+  auto graph = tf::test::build_range_csg_graph(tf::test::forms_range(forms),
+                                               tf::test::no_sheets(), {});
+  REQUIRE(graph.failed().size() == 0);
+
+  auto hollow = tf::test::csg_mesh_of(
+      graph, tf::csg::op(0) - (tf::csg::op(1) | tf::csg::op(2)));
+  REQUIRE_THAT(double(tf::signed_volume(hollow.polygons())),
+               Catch::Matchers::WithinAbs(63.0, 1e-9));
+  auto apart = tf::test::csg_mesh_of(graph, tf::csg::op(2) - tf::csg::op(1));
+  REQUIRE(apart.polygons().size() == 0);
+
+  auto [cells, ids, imap] = tf::test::csg_domains_with_index_map_of(graph);
+  membership_require_rows(membership_rows_of(cells, imap),
+                          {{membership_real_t(63), {1, 0, 0}},
+                           {membership_real_t(1), {1, 1, 1}}});
 }
 
 TEST_CASE("csg domains: an operand with no faces reads empty",

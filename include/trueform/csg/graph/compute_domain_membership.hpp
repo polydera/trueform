@@ -14,6 +14,7 @@
 #include "../../core/buffer.hpp"
 #include "../../topology/domain_config.hpp"
 #include "./arrangement_descriptor.hpp"
+#include "./component_crossings.hpp"
 #include "./domain_inclusions.hpp"
 #include "./union_find.hpp"
 #include <array>
@@ -51,18 +52,17 @@ template <typename Index> struct domain_membership {
 ///
 /// `is_outer` is the universe's coarse class: `universe_fine` is the
 /// volume-argmin domain, lifted by the union-find to every contact-free
-/// exterior it absorbs. Bits never decide it — a sheet anchored through
-/// the universe writes its side bit there honestly, and a self
-/// arrangement's winding parity misreads double-covered pockets as
-/// outside.
+/// exterior it absorbs. Bits never decide it — a sheet the universe does
+/// not wrap writes its side bit there honestly, and a self arrangement's
+/// winding parity misreads double-covered pockets as outside.
 template <typename Index, typename OpenMask, typename Expr>
 auto compute_domain_membership(
     const tf::csg::graph::arrangement_descriptor<Index> &desc,
     const tf::csg::graph::domain_inclusions &inc, const OpenMask &open_mask,
     const tf::buffer<std::array<Index, 2>> &nesting_merges,
     tf::domain_config config, Expr E, Index universe_fine,
-    const tf::buffer<char> &is_sheet_tag = {},
-    const tf::buffer<std::array<Index, 3>> &sheet_folds = {})
+    const tf::csg::graph::component_crossings<Index> &crossings,
+    const tf::buffer<char> &is_sheet_tag = {})
     -> domain_membership<Index> {
   domain_membership<Index> out;
   const Index n_domains = desc.n_domains;
@@ -77,26 +77,28 @@ auto compute_domain_membership(
     uf.unite(m[0], m[1]);
 
   // Fusing an open component's sides erases the partition that gave
-  // "behind" its meaning for every sheet in that wall: the component's
-  // own tag and the folds (a dropped duplicate has no component of its
-  // own to fuse). Their bits clear from the fused representative below.
+  // "behind" its meaning for every sheet in that wall: every layer it
+  // carries, a dropped duplicate's included. Their bits clear from the
+  // fused representative below.
   tf::buffer<std::array<Index, 2>> sheet_fuses; // (fine domain, sheet tag)
   if (config & tf::domain_config::ignore_open_fragments) {
-    tf::buffer<bool> fused;
-    fused.allocate(static_cast<std::size_t>(out.n_components));
-    for (Index c = 0; c < out.n_components; ++c) {
-      fused[c] = bool(open_mask[c]);
-      if (!fused[c])
-        continue;
-      uf.unite(desc.domain_of_side[2 * c + 0],
-               desc.domain_of_side[2 * c + 1]);
-      const Index t = desc.tag_of_component[c];
+    auto fuse = [&](Index d, Index t) {
       if (t >= 0 && t < Index(is_sheet_tag.size()) && is_sheet_tag[t])
-        sheet_fuses.push_back({desc.domain_of_side[2 * c + 0], t});
+        sheet_fuses.push_back({d, t});
+    };
+    for (Index c = 0; c < out.n_components; ++c) {
+      if (!open_mask[c])
+        continue;
+      const Index d0 = desc.domain_of_side[2 * c + 0];
+      uf.unite(d0, desc.domain_of_side[2 * c + 1]);
+      const Index row = crossings.row_of(c);
+      if (row == Index(-1)) {
+        fuse(d0, desc.tag_of_component[c]);
+        continue;
+      }
+      for (const auto &layer : crossings.layers[static_cast<std::size_t>(row)])
+        fuse(d0, layer[0]);
     }
-    for (const auto &f : sheet_folds)
-      if (fused[f[0]])
-        sheet_fuses.push_back({desc.domain_of_side[2 * f[0] + 0], f[1]});
   }
 
   out.coarse_of_fine.allocate(static_cast<std::size_t>(n_domains));

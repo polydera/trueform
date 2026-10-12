@@ -114,17 +114,12 @@ auto winding_side(const Form &form,
   tf::blocked_reduce(form.faces(), tf::none, local_t{},
                                          task, agg);
 
-  // Threshold at w = 1/4 (total = pi): the midpoint between the
-  // negative-side/outside values {-2*pi, 0} and the behind/inside
-  // values {+2*pi, +4*pi}, so open sheets and closed surfaces declared
-  // as sheets both classify with maximal margin. In particular a
-  // closed sheet's exterior totals exactly 0 — a sign test would be a
-  // coin flip there.
-  // Sign test with a dead zone just above the accumulation noise
-  // floor: a genuine back side is at least the sheet's subtended
-  // angle (a bounded sheet seen from afar or near its rim can be far
-  // below 2*pi, so no fixed fraction of the winding works), while a
-  // closed sheet's exterior totals exactly 0 plus float noise.
+  // A sign test with a dead zone just above the accumulation noise floor,
+  // so the membrane sits at w = 0: a genuine back side is at least the
+  // sheet's subtended angle (a bounded sheet seen from afar or near its
+  // rim can be far below 2*pi, so no fixed fraction of the winding works),
+  // while a closed sheet's exterior totals exactly 0 plus float noise and
+  // reads as the front.
   constexpr double noise_floor = 1e-6;
   for (std::size_t j = 0; j < m; ++j)
     side[j] = total[j] > noise_floor ? char(1) : char(0);

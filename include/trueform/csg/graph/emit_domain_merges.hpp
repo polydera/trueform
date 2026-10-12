@@ -35,6 +35,8 @@ namespace tf::csg::graph {
 ///   2. one component-only merge pair per such occurrence pair to
 ///      `bundle_merges` (drives the 3D-connected-component partition).
 ///
+/// A ring its emission does not certify emits the second alone.
+///
 /// The fan is the arrangement's: one per fan piece, its pages — one
 /// carrier plane on one side — already in radial order, each carrying the
 /// occurrences that sit on it with their traversal bits. Two adjacent
@@ -76,6 +78,9 @@ void emit_domain_merges(const Labels &labels,
 
         auto &out_merges = std::get<0>(out_buffers);
         auto &out_bundles = std::get<1>(out_buffers);
+        // an uncertified ring states that its components touch, not which
+        // of their sides face each other
+        const bool certified = fans.certified[std::size_t(fan)] != 0;
 
         for (Index r = 0; r < K; ++r) {
           const Index rn = tf::circular_increment(r, K);
@@ -116,7 +121,7 @@ void emit_domain_merges(const Labels &labels,
               const Index node_b = 2 * frag_b + sb;
               std::array<Index, 2> p = {std::min(node_a, node_b),
                                         std::max(node_a, node_b)};
-              if (state.seen.insert(p).second)
+              if (certified && state.seen.insert(p).second)
                 out_merges.push_back(p);
 
               if (frag_a != frag_b) {

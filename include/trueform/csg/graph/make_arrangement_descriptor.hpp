@@ -120,7 +120,8 @@ auto make_arrangement_descriptor(
   out.fans = tf::csg::graph::make_plane_radial_fans<Index, Int>(
       arrangement.arrangement(), arrangement.world(),
       arrangement.piece_incidence(), arrangement.piece_fences(), labels,
-      get_mesh_point, apply_to_face, arrangement.apply_to_form(), n_tags);
+      get_mesh_point, apply_to_face, arrangement.apply_to_form(), n_tags,
+      sheet_component.size() > 0);
   const auto n_fans = out.fans.pieces.size();
 
   // One fan already is one 1-cell, so every admitted fan's wedge

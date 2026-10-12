@@ -26,6 +26,7 @@
 #include "../../core/views/sequence_range.hpp"
 #include "./is_arrangement_frontier.hpp"
 #include "./label_plane_arrangement_components.hpp"
+#include "./make_canonical_component_ranks.hpp"
 #include "./make_surface_component_labels.hpp"
 #include "./resolve_face_edge.hpp"
 
@@ -292,7 +293,9 @@ private:
   }
 
   /// Collapse bridge pairs into components and remap every label
-  /// buffer to the final dense ids.
+  /// buffer to the final dense ids. A label is a name, and the floods name
+  /// components in arrival order, so the dense id is the component's rank by
+  /// its first member (@ref make_canonical_component_ranks).
   auto _apply_bridges_and_compact(tf::buffer<std::array<Index, 2>> &bridges,
                                   Index total_nodes) -> void {
     tbb::parallel_sort(bridges.begin(), bridges.end());
@@ -301,6 +304,11 @@ private:
     tf::buffer<Index> map;
     map.allocate(std::size_t(total_nodes));
     _n_components = tf::make_dense_equivalence_class_map(bridges, map);
+    const auto rank = tf::csg::graph::make_canonical_component_ranks<Index>(
+        [&map](Index node) { return map[std::size_t(node)]; }, _labels,
+        _polygon_labels, _n_components, none_label);
+    tf::parallel_for_each(
+        map, [&rank](auto &id) { id = rank[std::size_t(id)]; }, tf::checked);
 
     auto remap = [&map](auto &id) {
       if (id != none_label)

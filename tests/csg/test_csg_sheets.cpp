@@ -756,6 +756,36 @@ TEST_CASE("sheets: stack provenance follows orientation",
     }
   }
 
+  SECTION("an aligned pair and an opposing member: each side its own") {
+    // the side the aligned pair faces names the smaller of the pair; the
+    // other side names the member wound out of it, never the pair
+    std::vector<sheets_operand_t> operands;
+    operands.push_back(tf::test::make_tagged_operand(
+        box, tf::transformation<sheets_real_t, 3>(
+                 sheets_frame_at(0, 0, 0).transformation())));
+    operands.push_back(tf::test::make_tagged_operand(
+        plane, tf::transformation<sheets_real_t, 3>(
+                   sheets_frame_at(0, 0, 0).transformation())));
+    operands.push_back(tf::test::make_tagged_operand(
+        plane, tf::transformation<sheets_real_t, 3>(
+                   sheets_frame_at(0, 0, 0).transformation())));
+    operands.push_back(tf::test::make_tagged_operand(
+        plane_rev, tf::transformation<sheets_real_t, 3>(
+                       sheets_frame_at(0, 0, 0).transformation())));
+    graph_holder holder(std::move(operands), {1, 2, 3});
+    auto [cells, ids, imap] =
+        tf::make_csg_domains(holder.graph, tf::return_index_map);
+    REQUIRE(cells.size() == 2);
+    for (std::size_t k = 0; k < cells.size(); ++k) {
+      const sheets_index_t t =
+          wall_tag_of(cells[k], [&imap = imap, k](std::size_t f) {
+            return imap.face_tag_blocks[k][f];
+          });
+      REQUIRE(t == (centroid_z(cells[k]) < 0 ? sheets_index_t(1)
+                                             : sheets_index_t(3)));
+    }
+  }
+
   SECTION("same-orientation pair collapses to the smallest tag") {
     std::vector<sheets_operand_t> operands;
     operands.push_back(tf::test::make_tagged_operand(
@@ -1211,5 +1241,163 @@ TEST_CASE("sheets: a rim is open where it meets nothing", "[csg][sheets]") {
     REQUIRE(sheets_tag_open(holder.graph, 1));
     auto [cells, ids] = tf::test::csg_domains_of(holder.graph);
     sheets_volumes_check(sheets_enclosed_volumes(cells), {1000.0});
+  }
+}
+
+// ============================================================================
+// A sheet has no outside, so the outside the forms stand in takes each
+// sheet's side from the sheet's winding field. A sheet floating above the
+// box [-5,5]^3 never touches it, so the whole box lies on one side of it,
+// and the box's own interior reaches that side through the outside.
+// ============================================================================
+namespace {
+
+auto shifted_z(sheets_mesh_t m, sheets_real_t dz) -> sheets_mesh_t {
+  for (std::size_t i = 0; i < m.points_buffer().size(); ++i)
+    m.points_buffer()[i][2] += dz;
+  return m;
+}
+
+auto sheets_identity_operand(sheets_mesh_t m) -> sheets_operand_t {
+  return tf::test::make_tagged_operand(
+      std::move(m), tf::transformation<sheets_real_t, 3>(
+                        sheets_frame_at(0, 0, 0).transformation()));
+}
+
+} // namespace
+
+TEST_CASE("sheets: the outside takes a floating sheet's side",
+          "[csg][sheets]") {
+  using tf::csg::op;
+  using tf::csg::selection;
+  auto box = tf::make_box_mesh<sheets_index_t>(
+      sheets_real_t(10), sheets_real_t(10), sheets_real_t(10));
+  auto sheet = shifted_z(
+      tf::make_plane_mesh<sheets_index_t>(sheets_real_t(2), sheets_real_t(2)),
+      sheets_real_t(8));
+  SECTION("the box lies behind the sheet") {
+    std::vector<sheets_operand_t> operands;
+    operands.push_back(sheets_identity_operand(box));
+    operands.push_back(sheets_identity_operand(sheet));
+    graph_holder holder(std::move(operands), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(
+        tf::test::csg_mesh_of(holder.graph, selection({0}, op(0) & op(1))),
+        1000.0, 1e-9);
+    REQUIRE(tf::test::csg_mesh_of(holder.graph, selection({0}, op(0) & ~op(1)))
+                .size() == 0);
+  }
+  SECTION("the box lies in front of the sheet") {
+    std::vector<sheets_operand_t> operands;
+    operands.push_back(sheets_identity_operand(box));
+    operands.push_back(sheets_identity_operand(
+        shifted_z(rotated_about_x(rotated_about_x(shifted_z(sheet, -8))), 8)));
+    graph_holder holder(std::move(operands), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    REQUIRE(tf::test::csg_mesh_of(holder.graph, selection({0}, op(0) & op(1)))
+                .size() == 0);
+    check_closed_solid(
+        tf::test::csg_mesh_of(holder.graph, selection({0}, op(0) & ~op(1))),
+        1000.0, 1e-9);
+  }
+}
+
+// ============================================================================
+// A box of [-5,5]^3 holds two sheets on z = 0 and on that plane turned 15
+// degrees about y; the turned one outruns the flat one along their crossing,
+// so the outside air goes around the flat sheet's end and states no side of
+// it. Every cell bounds both sheets, so its walls state its row, and every
+// cell lies wholly on one side of each sheet's plane, so its centroid states
+// the same row.
+// ============================================================================
+namespace {
+
+auto sheets_turned_about_y(sheets_mesh_t m, double degrees) -> sheets_mesh_t {
+  tf::transform(m.polygons(), tf::make_rotation(tf::deg(sheets_real_t(degrees)),
+                                                tf::axis<1>));
+  return m;
+}
+
+auto sheets_unit_normal(const sheets_mesh_t &m) -> std::array<double, 3> {
+  auto pts = m.polygons().points();
+  auto face = m.faces()[0];
+  const auto n =
+      tf::cross(pts[face[1]] - pts[face[0]], pts[face[2]] - pts[face[0]]);
+  const double l =
+      std::sqrt(double(n[0]) * double(n[0]) + double(n[1]) * double(n[1]) +
+                double(n[2]) * double(n[2]));
+  return {double(n[0]) / l, double(n[1]) / l, double(n[2]) / l};
+}
+
+} // namespace
+
+TEST_CASE("sheets: crossing sheets state every cell's side by its walls",
+          "[csg][sheets]") {
+  auto flat = tf::make_plane_mesh<sheets_index_t>(sheets_real_t(11),
+                                                  sheets_real_t(11), 1, 1);
+  auto turned =
+      sheets_turned_about_y(tf::make_plane_mesh<sheets_index_t>(
+                                sheets_real_t(11), sheets_real_t(12), 1, 1),
+                            15.0);
+  const std::array<std::array<double, 3>, 2> normals{
+      sheets_unit_normal(flat), sheets_unit_normal(turned)};
+  std::vector<sheets_operand_t> operands;
+  operands.push_back(sheets_identity_operand(tf::make_box_mesh<sheets_index_t>(
+      sheets_real_t(10), sheets_real_t(10), sheets_real_t(10), 1, 1, 1)));
+  operands.push_back(sheets_identity_operand(std::move(flat)));
+  operands.push_back(sheets_identity_operand(std::move(turned)));
+  graph_holder holder(std::move(operands), {1, 2});
+  REQUIRE(holder.graph.failed().size() == 0);
+
+  const auto [cells, ids, imap] = tf::test::csg_domains_with_index_map_of(
+      holder.graph, tf::domain_config::ignore_open_fragments |
+                        tf::domain_config::exclude_outer_shell);
+  REQUIRE(cells.size() == 4);
+  for (std::size_t k = 0; k < cells.size(); ++k) {
+    std::array<double, 3> c{0.0, 0.0, 0.0};
+    const auto pts = cells[k].points();
+    for (const auto &p : pts)
+      for (int i = 0; i < 3; ++i)
+        c[i] += double(p[i]) / double(pts.size());
+    REQUIRE(imap.inclusion[k][0]);
+    for (std::size_t s = 0; s < 2; ++s) {
+      const auto &n = normals[s];
+      const bool behind = c[0] * n[0] + c[1] * n[1] + c[2] * n[2] < 0.0;
+      REQUIRE(imap.inclusion[k][s + 1] == behind);
+    }
+  }
+}
+
+// ============================================================================
+// Every index-map axis of the domains runs parallel to the cells, so a kept
+// cell that received no face still owns its blocks. Two crossing sheets
+// alone are all open fragments, and fusing them leaves one empty cell.
+// ============================================================================
+TEST_CASE("sheets: fused open fragments leave one block per cell",
+          "[csg][sheets]") {
+  std::vector<sheets_operand_t> operands;
+  operands.push_back(
+      sheets_identity_operand(tf::make_plane_mesh<sheets_index_t>(
+          sheets_real_t(11), sheets_real_t(11), 5, 5)));
+  operands.push_back(sheets_identity_operand(
+      sheets_turned_about_y(tf::make_plane_mesh<sheets_index_t>(
+                                sheets_real_t(11), sheets_real_t(11), 5, 5),
+                            15.0)));
+  graph_holder holder(std::move(operands), {0, 1});
+  REQUIRE(holder.graph.failed().size() == 0);
+  const auto [cells, ids, imap] = tf::test::csg_domains_with_index_map_of(
+      holder.graph, tf::domain_config::ignore_open_fragments);
+  REQUIRE(cells.size() == 1);
+  REQUIRE(ids.size() == cells.size());
+  REQUIRE(std::size_t(imap.inclusion.size()) == cells.size());
+  REQUIRE(imap.face_tag_blocks.size() == cells.size());
+  REQUIRE(imap.face_blocks.size() == cells.size());
+  REQUIRE(imap.point_tag_blocks.size() == cells.size());
+  REQUIRE(imap.point_blocks.size() == cells.size());
+  for (std::size_t k = 0; k < cells.size(); ++k) {
+    REQUIRE(imap.face_tag_blocks[k].size() == cells[k].faces().size());
+    REQUIRE(imap.face_blocks[k].size() == cells[k].faces().size());
+    REQUIRE(imap.point_tag_blocks[k].size() == cells[k].points().size());
+    REQUIRE(imap.point_blocks[k].size() == cells[k].points().size());
   }
 }

@@ -113,12 +113,13 @@ struct reading_t {
 };
 
 template <typename Forms>
-auto read_at(Forms &forms, double tolerance) -> reading_t {
+auto read_at(Forms &forms, double tolerance,
+             tf::intersect_mode mode = tf::intersect_mode::primitives)
+    -> reading_t {
   auto graph = tf::test::build_range_csg_graph(
       tf::make_range(forms.data(), forms.data() + forms.size()),
       tf::test::no_sheets(),
-      tf::arrangement_config{
-          tf::intersect_config{tf::intersect_mode::primitives, tolerance}});
+      tf::arrangement_config{tf::intersect_config{mode, tolerance}});
   auto [cells, ids] = tf::test::csg_domains_of(graph);
   static_cast<void>(ids);
 
@@ -148,8 +149,8 @@ auto read_at(Forms &forms, double tolerance) -> reading_t {
   return reading;
 }
 
-/// The operands AS THE BAND PLACED THEM: every original vertex read off the
-/// lattice's own table and cleaned to shared-vertex identity. The band's
+/// The operands AS THE BAND PLACED THEM: every original vertex read where the
+/// lattice states it and cleaned to shared-vertex identity. The band's
 /// contract is that the arrangement it answers is the exact arrangement of
 /// this mesh, so this is the oracle, not a second implementation of one.
 template <typename Views>
@@ -157,14 +158,13 @@ auto moved_operands(Views &views, double tolerance)
     -> std::vector<ladder_mesh_t> {
   const auto lattice = tf::test::input_lattice_for(
       tf::make_range(views.data(), views.data() + views.size()), tolerance);
-  const auto placed = lattice.placed_points();
   std::vector<ladder_mesh_t> moved;
   for (index_t tag = 0; tag < index_t(views.size()); ++tag) {
     ladder_mesh_t mesh;
     const auto points = views[std::size_t(tag)].points();
     for (index_t id = 0; id < index_t(points.size()); ++id) {
       const auto at = lattice.converter().deconvert(
-          placed[std::size_t(lattice.flat_vertex(int(tag), id))]);
+          lattice.point(int(tag), id, points[id]));
       mesh.points_buffer().emplace_back(at[0], at[1], at[2]);
     }
     for (const auto face : views[std::size_t(tag)].faces())
@@ -287,12 +287,15 @@ TEST_CASE("csg tolerance ladder: a collapse no cut face names is still one "
           "[csg][tolerance]") {
   const real_t thickness = real_t(2e-5);
   // One operand carries the cut and a thin slab that stands well clear of
-  // it, so the slab's four vertical edges collapse in the placement while
-  // no definition, no split and no promoted ring ever names one of their
-  // ends. Only the identity gate can answer them.
+  // it. The slab's two walls are almost one plane, and their grids carry
+  // flat vertices, so the band pools them: the walls become one plane and
+  // every vertex of the one lands on its twin of the other, while no
+  // definition, no split and no promoted ring ever names one of them. Only
+  // the identity gate can answer them.
   tf::test::tagged_operand<index_t, real_t> cut_and_slab(joined(
       tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)),
-      shifted(tf::make_box_mesh<index_t>(real_t(2), real_t(2), thickness),
+      shifted(tf::make_box_mesh<index_t>(real_t(2), real_t(2), thickness,
+                                         index_t(4), index_t(4), index_t(1)),
               real_t(2.5))));
   tf::test::tagged_operand<index_t, real_t> cutter(shifted(
       tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)),
@@ -309,14 +312,20 @@ TEST_CASE("csg tolerance ladder: a collapse no cut face names is still one "
       continue;
     auto moved = moved_operands(views, tolerance);
     // the oracle's own premise: the placement flattened the slab, so the
-    // operand's points are the cube's eight and the slab's four
-    REQUIRE(moved[0].points_buffer().size() == 12u);
+    // operand's points are the cube's eight and one wall's grid of 25
+    REQUIRE(moved[0].points_buffer().size() == 33u);
     std::vector<tf::test::tagged_operand<index_t, real_t>> moved_ops;
     moved_ops.reserve(moved.size());
     for (auto &mesh : moved)
       moved_ops.push_back(tf::test::make_tagged_operand(mesh));
     auto moved_forms = tf::test::tagged_forms(moved_ops);
-    const auto placed = read_at(moved_forms, 0.0);
+    // The band brings the flattened slab's walls into the cut world through
+    // the entrance, where one named plane makes them one stacked wall. The
+    // reference must grant the same identity scope, so it asks for the
+    // operand's own coincidences — `within` — and the walls stack there too.
+    const auto placed = read_at(
+        moved_forms, 0.0,
+        tf::intersect_mode::primitives | tf::intersect_mode::within);
     REQUIRE_FALSE(banded.arrangement_degenerate);
     REQUIRE(banded.n_arrangement_points == placed.n_arrangement_points);
     REQUIRE(banded.n_arrangement_faces == placed.n_arrangement_faces);

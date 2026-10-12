@@ -177,7 +177,8 @@ TEST_CASE("triangulation store: WantLabels face provenance on the generic "
         tf::domain_config::exclude_outer_shell |
             tf::domain_config::ignore_open_fragments,
         E,
-        Index(tf::csg::graph::find_universe_domain(graph.domain_volumes())));
+        Index(tf::csg::graph::find_universe_domain(graph.domain_volumes())),
+        graph.crossings());
     auto part = tf::csg::graph::compute_domain_partition(
         membership.domain_of_side, membership.n_components, membership.keep);
     auto [cells, ids, tag_blocks, face_blocks] =

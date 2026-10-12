@@ -13,7 +13,6 @@
 #pragma once
 #include "../../arrangement/construct/emit_arrangement_points.hpp"
 #include "../../arrangement/construct/make_arrangement_point_inverse.hpp"
-#include "../../core/algorithm/compute_offsets.hpp"
 #include "../../core/algorithm/parallel_copy.hpp"
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_iota.hpp"
@@ -39,7 +38,6 @@
 #include "tbb/task_group.h"
 #include <array>
 #include <cstddef>
-#include <iterator>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -207,6 +205,25 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
     point_blocks.data_buffer().reserve(static_cast<std::size_t>(total_pts));
   }
 
+  // Every provenance block runs parallel to `cells`, so a kept cell that
+  // received no face still owns its block: the soup is bucketed by dense
+  // cell id through counts and one prefix, never by the groups it happens
+  // to fill.
+  auto make_cell_offsets = [n_kept](const tf::buffer<Index> &dom) {
+    tf::buffer<Index> offsets;
+    offsets.allocate(static_cast<std::size_t>(n_kept) + 1);
+    tf::parallel_fill(offsets, Index(0));
+    for (const Index d : dom)
+      ++offsets[static_cast<std::size_t>(d) + 1];
+    for (Index k = 0; k < n_kept; ++k)
+      offsets[k + 1] += offsets[k];
+    return offsets;
+  };
+  [[maybe_unused]] auto close_empty_cell = [&] {
+    if constexpr (WantPointMap)
+      cell_pt_off.push_back(cell_pt_off[cell_pt_off.size() - 1]);
+  };
+
   if constexpr (N_in == 3) {
   tf::core::std_vector<tf::buffer<std::array<Index, 3>>> soup_t(n_tags);
   tf::core::std_vector<tf::buffer<Index>> dom_t(n_tags);
@@ -335,7 +352,7 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
   }
 
   // Stage 5b: split the soup exactly like tf::split_into_domains —
-  // sort triangle ids by domain, bucket via compute_offsets, then emit
+  // sort triangle ids by domain, bucket by counts and one prefix, then emit
   // each domain with a reused point_map + watermark.
   tf::buffer<Index> tri_ids;
   tri_ids.allocate(static_cast<std::size_t>(n_tris));
@@ -345,10 +362,7 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
   tbb::parallel_sort(tri_ids.begin(), tri_ids.end(), [&](Index a, Index b) {
     return dom[a] != dom[b] ? dom[a] < dom[b] : a < b;
   });
-  tf::buffer<Index> offsets;
-  offsets.reserve(static_cast<std::size_t>(n_kept));
-  tf::compute_offsets(tri_ids, std::back_inserter(offsets), Index(0),
-                      [&](Index a, Index b) { return dom[a] == dom[b]; });
+  auto offsets = make_cell_offsets(dom);
   auto groups = tf::make_offset_block_range(offsets, tri_ids);
 
   tf::buffer<Index> point_map;
@@ -358,10 +372,12 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
   Index point_sentinel = 0;
   tf::buffer<Index> pt_ids;
 
-  for (auto &&group : groups) {
-    if (group.size() == 0)
+  for (Index k = 0; k < n_kept; ++k) {
+    auto group = groups[k];
+    if (group.size() == 0) {
+      close_empty_cell();
       continue;
-    const Index k = dom[group.front()];
+    }
     auto &out = cells[static_cast<std::size_t>(k)];
     auto &data = out.faces_buffer().data_buffer();
     data.allocate(3 * group.size());
@@ -543,10 +559,7 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
     tbb::parallel_sort(face_ids.begin(), face_ids.end(), [&](Index a, Index b) {
       return dom[a] != dom[b] ? dom[a] < dom[b] : a < b;
     });
-    tf::buffer<Index> offsets;
-    offsets.reserve(static_cast<std::size_t>(n_kept));
-    tf::compute_offsets(face_ids, std::back_inserter(offsets), Index(0),
-                        [&](Index a, Index b) { return dom[a] == dom[b]; });
+    auto offsets = make_cell_offsets(dom);
     auto groups = tf::make_offset_block_range(offsets, face_ids);
     const auto &soup_off = soup.offsets_buffer();
     const auto &soup_dat = soup.data_buffer();
@@ -556,10 +569,12 @@ auto make_csg_domains(const Arrangement &arrangement, const Labels &labels,
     tf::parallel_fill(point_map, Index(-1));
     Index point_sentinel = 0;
     tf::buffer<Index> pt_ids;
-    for (auto &&group : groups) {
-      if (group.size() == 0)
+    for (Index k = 0; k < n_kept; ++k) {
+      auto group = groups[k];
+      if (group.size() == 0) {
+        close_empty_cell();
         continue;
-      const Index k = dom[group.front()];
+      }
       auto &out = cells[static_cast<std::size_t>(k)];
       auto &foff = out.faces_buffer().offsets_buffer();
       auto &fdata = out.faces_buffer().data_buffer();

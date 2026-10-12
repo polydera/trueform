@@ -66,10 +66,12 @@ struct domain_inclusions {
 ///        bit is stated from: outside everything.
 ///
 /// Bit `inclusion[d * words_per_domain + i/32] & (1 << (i % 32))` is set
-/// iff domain `d` is inside form `i`. The seeds are cast by
-/// @ref tf::csg::graph::seed_inclusion_bits and every other domain is
-/// reached from them by @ref tf::csg::graph::propagate_inclusion_bits,
-/// which is the sole authority for what a domain is inside of.
+/// iff domain `d` is inside form `i` — behind it, for a sheet. A volume
+/// column is the depth @ref tf::csg::graph::propagate_inclusion_bits carries
+/// from the seeds @ref tf::csg::graph::seed_inclusion_bits casts; a sheet
+/// column is the side @ref tf::csg::graph::propagate_sheet_sides publishes,
+/// zero where the sheet does not separate the domain. Each is the sole
+/// authority for its columns.
 ///
 /// @param n_tags    The number of forms in the arrangement.
 /// @param n_domains The arrangement descriptor's domain count.

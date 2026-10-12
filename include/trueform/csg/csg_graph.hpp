@@ -17,7 +17,6 @@
 #include "../core/none.hpp"
 #include "../core/point.hpp"
 #include "../core/transformed.hpp"
-#include "./graph/anchor_sheet_sides.hpp"
 #include "./graph/assert_nesting_merges_keep_closed_bits.hpp"
 #include "./graph/arrangement_descriptor.hpp"
 #include "./graph/component_crossings.hpp"
@@ -26,7 +25,12 @@
 #include "./graph/domain_inclusions.hpp"
 #include "./graph/make_arrangement_descriptor.hpp"
 #include "./graph/make_closed_volume_tags.hpp"
+#include "./graph/make_domain_components.hpp"
+#include "./graph/make_sheet_sides.hpp"
+#include "./graph/mark_nested_sheet_wraps.hpp"
+#include "./graph/mark_sheet_wraps.hpp"
 #include "./graph/propagate_inclusion_bits.hpp"
+#include "./graph/propagate_sheet_sides.hpp"
 #include "./graph/seed_inclusion_bits.hpp"
 #include "./graph/triangle_component_labels.hpp"
 #include <array>
@@ -38,7 +42,7 @@ namespace tf {
 /// @ingroup csg
 /// @brief Implicit N-form CSG graph — an @ref tf::arrangement_graph
 ///        plus classification: descriptor, domain inclusions, volumes,
-///        and sheet anchoring.
+///        and the sheets' sides.
 ///
 /// Built once per form set, reused across many @ref tf::make_csg_mesh
 /// calls (one per boolean expression).
@@ -100,45 +104,32 @@ public:
             _arr, _labels, _desc, apply_form, get_mesh_point);
     _crossings =
         tf::csg::graph::make_component_crossings<index_type>(_arr, _labels);
-    // The depths are the flood's working state and the inclusion bits its
-    // published answer, so the rows live exactly from the seeding cast to
-    // the publication that ends the flood.
+    // The depths and the sheet sides are the floods' working state and the
+    // inclusion bits their published answer, so they live exactly from the
+    // seeding cast to the publication that ends the floods.
     {
       auto depths = tf::csg::graph::make_domain_depths(_arr.n_tags(),
                                                        _desc.n_domains);
+      tf::buffer<std::array<index_type, 4>> sheet_seeds;
+      tf::buffer<std::array<index_type, 2>> rim_wraps;
       auto seeds = tf::csg::graph::seed_inclusion_bits<index_type,
                                                        resolved_int_type>(
-          _inc, depths, _desc, _arr, _labels, apply_form, conv, get_mesh_point,
-          _domain_volumes, _domain_nesting_merges, _is_sheet);
-      tf::csg::graph::propagate_inclusion_bits(_inc, depths, _desc,
-                                               _labels.n_components(),
-                                               _crossings, _is_sheet, seeds);
+          depths, _desc, _arr, _labels, apply_form, conv, get_mesh_point,
+          _domain_volumes, _domain_nesting_merges, sheet_seeds, rim_wraps,
+          _is_sheet);
+      auto domain_components = tf::csg::graph::make_domain_components(_desc);
+      tf::csg::graph::propagate_inclusion_bits(
+          _inc, depths, _desc, _crossings, domain_components, _is_sheet, seeds);
+      auto sides = tf::csg::graph::make_sheet_sides(_desc, _crossings,
+                                                    _arr.n_tags(), _is_sheet);
+      tf::csg::graph::mark_sheet_wraps(sides, _desc, _crossings,
+                                       _labels.triangle_labels(),
+                                       _arr.exposed_of_row());
+      tf::csg::graph::mark_nested_sheet_wraps(sides, rim_wraps,
+                                              _domain_nesting_merges);
+      tf::csg::graph::propagate_sheet_sides(_inc, sides, sheet_seeds, _desc,
+                                            _crossings, domain_components);
     }
-    // Sheets coplanar-folded into another wall have no fragments of
-    // their own to anchor from, and their winding seeds are degenerate
-    // (evaluated exactly on the shared wall): anchor them through the
-    // carrying component, mirrored by the fold's reversed flag.
-    {
-      auto triangle_labels = _labels.triangle_labels();
-      auto triangle_tags = _arr.triangle_tags();
-      for (const auto &triple : _arr.coplanar_triples()) {
-        const auto c = index_type(triangle_labels[triple.survivor]);
-        if (c ==
-            tf::csg::graph::triangle_component_labels<index_type>::none_label)
-          continue;
-        const auto t = triangle_tags[triple.dead];
-        if (t < index_type(_is_sheet.size()) && _is_sheet[t]) {
-          // A survivor can stack with several same-tag dead triangles;
-          // the consecutive-duplicate guard keeps one entry per fold.
-          const std::array<index_type, 3> fold{c, t,
-                                               index_type(triple.opposing)};
-          if (_sheet_folds.size() == 0 ||
-              _sheet_folds[_sheet_folds.size() - 1] != fold)
-            _sheet_folds.push_back(fold);
-        }
-      }
-    }
-    tf::csg::graph::anchor_sheet_sides(_inc, _desc, _is_sheet, _sheet_folds);
 #ifndef NDEBUG
     tf::csg::graph::assert_nesting_merges_keep_closed_bits(
         _domain_nesting_merges, _inc,
@@ -170,11 +161,6 @@ public:
   /// @brief Per-form sheet mask (empty when no sheets were declared).
   auto is_sheet() const -> const tf::buffer<char> & { return _is_sheet; }
 
-  /// Sheets coplanar-folded into another component's wall:
-  /// `(component, sheet tag, reversed)` per fold.
-  auto sheet_folds() const -> const tf::buffer<std::array<index_type, 3>> & {
-    return _sheet_folds;
-  }
 
   auto descriptor() const
       -> const tf::csg::graph::arrangement_descriptor<index_type> & {
@@ -213,7 +199,6 @@ private:
   tf::buffer<char> _is_sheet;
   arrangement_type _arr;
   tf::csg::graph::triangle_component_labels<index_type> _labels;
-  tf::buffer<std::array<index_type, 3>> _sheet_folds;
   tf::csg::graph::arrangement_descriptor<index_type> _desc;
   tf::csg::graph::component_crossings<index_type> _crossings;
   tf::csg::graph::domain_inclusions _inc;

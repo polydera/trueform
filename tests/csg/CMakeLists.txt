@@ -3,15 +3,18 @@ add_executable(trueform_csg_tests
   test_expression.cpp
   test_expression_fuzz.cpp
   test_csg_graph.cpp
+  test_csg_component_names.cpp
   test_csg_solids.cpp
   test_csg_sheets.cpp
   test_csg_refusal_recovery.cpp
+  test_csg_boundary_law.cpp
   test_csg_attached_flap.cpp
   test_csg_bundle_containment.cpp
   test_csg_domains.cpp
   test_csg_domain_membership.cpp
   test_csg_tolerance_ladder.cpp
   test_nonmanifold_edge_rings.cpp
+  test_plane_radial_ring_emission.cpp
   test_make_outer_shell.cpp
   test_selection.cpp
   test_triangulated_csg.cpp
