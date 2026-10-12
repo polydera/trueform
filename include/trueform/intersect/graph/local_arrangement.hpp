@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../../core/buffer.hpp"
+#include "../../core/offset_block_buffer.hpp"
 #include "../../core/range.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
@@ -38,6 +39,8 @@
 #include "./plane_identity_names.hpp"
 #include "./plane_tables.hpp"
 #include "./plane_uncut_entrants.hpp"
+#include "./seat_entrant_plane_edges.hpp"
+#include "./seat_entrant_planes.hpp"
 #include "./state_uncut_entrants.hpp"
 
 #include <algorithm>
@@ -103,6 +106,8 @@ public:
     _entrant_descriptors.clear();
     _entrant_planes.clear();
     _entrant_orientations.clear();
+    _entrant_plane_of.clear();
+    _seated.clear();
     _vertex_offsets.clear();
     _split_edge.clear();
     _split_offsets.clear();
@@ -231,17 +236,23 @@ public:
     tf::buffer<def_t> entrant_parts;
     tf::buffer<Index> entrant_instance_offsets;
     tf::buffer<def_t> entrant_instance_defs;
-    if (_entrants.size() != 0)
+    if (_entrants.size() != 0) {
       state_uncut_entrants(
-          _graph, get_point, apply_to_form, tf::make_range(_face_offsets),
+          _graph, apply_to_form, tf::make_range(_face_offsets),
           tf::make_range(_entrants), tf::make_range(_split_edge),
-          _entrant_descriptors, _entrant_planes, _entrant_orientations,
-          entrant_parts, entrant_instance_offsets, entrant_instance_defs);
+          _entrant_descriptors, entrant_parts, entrant_instance_offsets,
+          entrant_instance_defs);
+      seat_entrant_planes(_graph, _entrant_descriptors, apply_to_form,
+                          get_point, _entrant_plane_of, _entrant_planes,
+                          _entrant_orientations, _seated);
+    }
     _tables.n_canon() = respan_plane_defs(
         _graph, _merges, tf::make_range(_vertex_offsets), _split_edge,
         _split_offsets, _split_data, entrant_parts, entrant_instance_offsets,
         entrant_instance_defs, _tables.defs(), _tables.def_offsets(),
-        _tables.edges());
+        _tables.edges(), n_cut_faces(), Index(_entrants.size()));
+    if (_entrants.size() != 0)
+      seat_entrant_plane_edges(_tables.edges(), n_cut_planes(), _seated);
     if (_merges.size() != 0)
       _tables.n_canon() = fuse_plane_defs(
           _merges, tf::make_range(_vertex_offsets), _tables.defs(),
@@ -370,11 +381,11 @@ public:
   auto entrant_descriptors() const {
     return tf::make_range(_entrant_descriptors);
   }
-  /// One plane per entrant face, in the same order: the blocks the plane
-  /// CSR carries past the graph's planes.
+  /// The frames of the planes the entrants founded, past the graph's planes;
+  /// an entrant whose name a cut plane holds is seated on that plane.
   auto entrant_planes() const { return tf::make_range(_entrant_planes); }
-  /// One projected winding per entrant face, in the same order. The source
-  /// face states this once when it enters; downstream plane consumers read it.
+  /// One projected winding per entrant face, in entrant order, in the frame
+  /// of the plane it is seated on; downstream plane consumers read it.
   auto entrant_orientations() const {
     return tf::make_range(_entrant_orientations);
   }
@@ -406,19 +417,28 @@ public:
       return _graph.frame(plane);
     return _entrant_planes[std::size_t(plane - n_cut_planes())];
   }
+  /// A plane's members: the graph's own, then the entrants seated on it.
   auto member_count(Index plane) const -> Index {
-    return plane < n_cut_planes() ? Index(_graph.plane_faces(plane).size())
-                                  : Index(1);
+    const auto own = plane < n_cut_planes()
+                         ? Index(_graph.plane_faces(plane).size())
+                         : Index(0);
+    return _seated.size() == 0
+               ? own
+               : own + Index(_seated[std::size_t(plane)].size());
   }
   auto member(Index plane, Index position) const -> Index {
-    if (plane < n_cut_planes())
+    const auto own = plane < n_cut_planes()
+                         ? Index(_graph.plane_faces(plane).size())
+                         : Index(0);
+    if (position < own)
       return _graph.plane_faces(plane)[std::size_t(position)];
-    return n_cut_faces() + (plane - n_cut_planes());
+    return n_cut_faces() +
+           _seated[std::size_t(plane)][std::size_t(position - own)];
   }
   auto plane_of_face(Index face) const -> Index {
     if (face < n_cut_faces())
       return _graph.plane_of()[std::size_t(face)];
-    return n_cut_planes() + (face - n_cut_faces());
+    return _entrant_plane_of[std::size_t(face - n_cut_faces())];
   }
   auto descriptor(Index face) const -> const descriptor_t & {
     if (face < n_cut_faces())
@@ -479,6 +499,10 @@ private:
   tf::buffer<descriptor_t> _entrant_descriptors;
   tf::buffer<tf::exact::plane_frame<Int>> _entrant_planes;
   tf::buffer<std::int8_t> _entrant_orientations;
+  // per entrant: the plane its name seats it on
+  tf::buffer<Index> _entrant_plane_of;
+  // per plane, the entrants seated on it; empty while there are none
+  tf::offset_block_buffer<Index, Index> _seated;
   tf::buffer<Index> _vertex_offsets;
   tf::buffer<Index> _split_edge;
   tf::buffer<Index> _split_offsets;

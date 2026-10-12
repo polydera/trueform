@@ -29,6 +29,29 @@
 
 namespace tf::intersect::graph {
 
+/// The name of the plane face `object` of form `tag` stands on.
+template <typename Index, typename Int, typename ApplyToForm, typename GetPoint>
+auto name_plane_face(Index tag, Index object, const ApplyToForm &apply_to_form,
+                     const GetPoint &get_point)
+    -> tf::exact::canonical_plane<Int> {
+  tf::exact::canonical_plane<Int> name{};
+  apply_to_form(tag, [&](const auto &form) {
+    const auto corners = form.faces()[object];
+    name = tf::exact::make_canonical_plane<Int>(
+        plane_face_support<Int>(corners, [&](std::size_t corner) {
+          return get_point(std::int16_t(tag), Index(corners[corner]));
+        }));
+  });
+  return name;
+}
+
+/// A name no plane can take: a face whose corners are collinear.
+template <typename Int>
+auto is_plane_name_void(const tf::exact::canonical_plane<Int> &name) -> bool {
+  using T2 = typename tf::exact::meta<Int>::T2;
+  return name[0] == T2(0) && name[1] == T2(0) && name[2] == T2(0);
+}
+
 /// THE PLANE IDENTITY: every cut face names the plane it stands on, and
 /// equal NAMES are one carrier.
 ///
@@ -53,12 +76,15 @@ namespace tf::intersect::graph {
 /// first entry is its smallest member, and the planes take their ids in
 /// ascending order of that member. The identity is therefore independent
 /// of how the names happen to sort.
+///
+/// `plane_names[p]` is plane `p`'s name, so a face that reaches the cut
+/// world later is seated by the same law.
 template <typename Index, typename Int, typename ApplyToForm, typename GetPoint>
-auto name_plane_carriers(const tf::buffer<face_descriptor<Index>> &descriptors,
-                         const ApplyToForm &apply_to_form,
-                         const GetPoint &get_point, tf::buffer<Index> &plane_of,
-                         Index &n_planes) -> void {
-  using T2 = typename tf::exact::meta<Int>::T2;
+auto name_plane_carriers(
+    const tf::buffer<face_descriptor<Index>> &descriptors,
+    const ApplyToForm &apply_to_form, const GetPoint &get_point,
+    tf::buffer<Index> &plane_of, Index &n_planes,
+    tf::buffer<tf::exact::canonical_plane<Int>> &plane_names) -> void {
   struct entry_t {
     tf::exact::canonical_plane<Int> name;
     Index group;
@@ -69,16 +95,10 @@ auto name_plane_carriers(const tf::buffer<face_descriptor<Index>> &descriptors,
       tf::make_sequence_range(Index(descriptors.size())),
       [&](Index g) {
         const auto &d = descriptors[std::size_t(g)];
-        entry_t entry{};
-        entry.group = g;
-        apply_to_form(d.tag, [&](const auto &form) {
-          const auto corners = form.faces()[d.object];
-          entry.name = tf::exact::make_canonical_plane<Int>(
-              plane_face_support<Int>(corners, [&](std::size_t corner) {
-                return get_point(std::int16_t(d.tag), Index(corners[corner]));
-              }));
-        });
-        entries[std::size_t(g)] = entry;
+        entries[std::size_t(g)] = {
+            name_plane_face<Index, Int>(Index(d.tag), d.object, apply_to_form,
+                                        get_point),
+            g};
       },
       // naming a plane is an exact reduction, orders above the threading
       // overhead, so only a handful of faces are worth keeping serial
@@ -93,8 +113,7 @@ auto name_plane_carriers(const tf::buffer<face_descriptor<Index>> &descriptors,
   run_offsets.reserve(entries.size() + 1);
   tf::compute_offsets(entries, std::back_inserter(run_offsets), Index(0),
                       [](const entry_t &x, const entry_t &y) {
-                        return (x.name[0] != T2(0) || x.name[1] != T2(0) ||
-                                x.name[2] != T2(0)) &&
+                        return !is_plane_name_void<Int>(x.name) &&
                                x.name == y.name;
                       });
   n_planes = Index(run_offsets.size() - 1);
@@ -115,12 +134,14 @@ auto name_plane_carriers(const tf::buffer<face_descriptor<Index>> &descriptors,
                        return a.first_group < b.first_group;
                      });
   plane_of.allocate(descriptors.size());
+  plane_names.allocate(std::size_t(n_planes));
   tf::parallel_for_each(
       tf::enumerate(runs),
       [&](auto pair) {
         auto &&[plane, run] = pair;
         const auto begin = run_offsets[std::size_t(run.run)];
         const auto end = run_offsets[std::size_t(run.run) + 1];
+        plane_names[std::size_t(plane)] = entries[std::size_t(begin)].name;
         for (auto at = begin; at != end; ++at)
           plane_of[std::size_t(entries[std::size_t(at)].group)] = Index(plane);
       },

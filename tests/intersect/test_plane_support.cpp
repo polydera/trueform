@@ -123,8 +123,9 @@ auto named(const scene_t &scene) -> naming_t {
 
   tf::buffer<support_index_t> plane_of;
   support_index_t n_planes = 0;
+  tf::buffer<tf::exact::canonical_plane<support_int_t>> plane_names;
   tf::intersect::graph::name_plane_carriers<support_index_t, support_int_t>(
-      descriptors, apply_to_form, get_point, plane_of, n_planes);
+      descriptors, apply_to_form, get_point, plane_of, n_planes, plane_names);
 
   naming_t out;
   out.n_planes = n_planes;

@@ -2,17 +2,15 @@
  * @file test_tolerance_contact_holes.cpp
  * @brief Which contact pathways a band closes, and which it does not.
  *
- * A band is spent on the INPUT: each vertex moves at most the band onto a
- * lattice point of the planes ITS OWN faces state, and the classification
- * that follows is exact on the mesh that produced. So a gap closes when
- * the two sides come to stand on the same names, and only then.
+ * A band is spent on the INPUT: a vertex within the band of another
+ * form's face is dropped exactly onto the plane that face commits, and the
+ * classification that follows is exact on the mesh that produced. So a gap
+ * closes when one side comes to stand on the other's plane.
  *
  * Each pathway is pinned from both sides: the exact fixture proves the
  * scene states the contact at all, and the gapped fixture — the same scene
  * with the contact opened by one lattice unit and a band that spans it —
- * says whether the band recovers it. The four that recover it do so
- * because the two sides name one plane; the two that do not are the
- * contract's price, and they say so where they stand.
+ * says whether the band recovers it. Every pathway here does.
  *
  * Coordinates are integers, so the converter is the identity and the
  * exact cases are incident on the lattice rather than merely close.
@@ -200,13 +198,9 @@ auto grazing_crossing(int rise) -> holes_mesh_t {
 /// numbers. A pathway that answers one and not the other is a HOLE — the
 /// contact exists at the stated tolerance and no record names it.
 ///
-/// WHAT CLOSES A GAP IS AGREEMENT OF NAMES. A tolerance moves each vertex
-/// at most the band onto a lattice point of the planes ITS OWN faces
-/// state; two features become one when the names they stand on agree, and
-/// the classification below is exact on what the move produced. A vertex
-/// is never drawn onto ANOTHER form's feature just for being near it —
-/// that is the contract's price, and the scenes below state which
-/// pathways it keeps and which it does not.
+/// WHAT CLOSES A GAP IS A DROP: a vertex within the band of another form's
+/// face lands exactly on the plane that face commits, and the
+/// classification below is exact on what the move produced.
 auto same_census(holes_mesh_t exact_left, holes_mesh_t exact_right,
                  holes_mesh_t gap_left, holes_mesh_t gap_right, contact kind,
                  int at_least) -> bool {
@@ -224,13 +218,10 @@ TEST_CASE("contact holes: a corner meeting a corner", "[intersect][tolerance]") 
 }
 
 TEST_CASE("contact holes: a corner meeting an edge", "[intersect][tolerance]") {
-  // The exact scene states the incidence.
-  CHECK(n_of(contacts(host(), corner_on_edge(0), 0.0), contact::ve) >= 1);
-  // The gapped one does not, and cannot: B's corner lies in B's own plane
-  // `y = 0` and already stands on it, so the placement leaves it where it
-  // is — the host's EDGE is not a plane B names.
-  CHECK(contacts(host(), corner_on_edge(gap), spanning_tolerance) ==
-        contacts(host(), corner_on_edge(gap), 0.0));
+  // B's corner is dropped onto the host's plane, and B's own plane `y = 0`
+  // slides it there along itself — onto the host's edge.
+  CHECK(same_census(host(), corner_on_edge(0), host(), corner_on_edge(gap),
+                    contact::ve, 1));
 }
 
 TEST_CASE("contact holes: an edge lying along an edge",
@@ -243,13 +234,8 @@ TEST_CASE("contact holes: an edge lying along an edge",
 }
 
 TEST_CASE("contact holes: a corner meeting a face", "[intersect][tolerance]") {
-  // The exact scene states the incidence.
-  CHECK(n_of(contacts(host(), corner_in_face(0), 0.0), contact::vf) >= 1);
-  // The gapped one does not: B's corner meets the planes of B's own faces,
-  // none of which is the host's `z = 0`, so it is placed on those and stays
-  // off the host's face.
-  CHECK(contacts(host(), corner_in_face(gap), spanning_tolerance) ==
-        contacts(host(), corner_in_face(gap), 0.0));
+  CHECK(same_census(host(), corner_in_face(0), host(), corner_in_face(gap),
+                    contact::vf, 1));
 }
 
 TEST_CASE("contact holes: a wall coincident with a wall",

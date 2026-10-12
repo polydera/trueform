@@ -7,6 +7,7 @@ add_executable(trueform_intersect_tests
   test_intersection_primitives.cpp
   test_plane_crossings.cpp
   test_plane_support.cpp
+  test_plane_seating.cpp
   test_tolerance_contact_holes.cpp
   test_pinched_loop_walls.cpp
   test_plane_radial_authority.cpp

@@ -17,6 +17,7 @@
 #include "../../core/range.hpp"
 #include "../../core/views/offset_block_range.hpp"
 #include "../../core/views/slice.hpp"
+#include "../../exact/canonical_plane.hpp"
 #include "../../exact/plane_frame.hpp"
 #include "./build_plane_csr.hpp"
 #include "./build_plane_edge_defs.hpp"
@@ -83,6 +84,8 @@ public:
   auto frame(Index p) const -> const frame_t & {
     return _frames[std::size_t(p)];
   }
+  /// Per plane: the name its carriers share.
+  auto plane_names() const { return tf::make_range(_plane_names); }
   auto face_orientation() const { return tf::make_range(_face_orientation); }
   auto face_contour() const { return tf::make_range(_face_contour); }
 
@@ -97,6 +100,7 @@ public:
     _plane_offsets.clear();
     _plane_data.clear();
     _frames.clear();
+    _plane_names.clear();
     _face_orientation.clear();
     _face_contour.clear();
   }
@@ -127,7 +131,7 @@ public:
     // a single definition is read and nothing closes a pairwise relation
     // to reach it.
     name_plane_carriers<Index, Int>(_descriptors, apply_to_form, get_point,
-                                    _plane_of, _n_planes);
+                                    _plane_of, _n_planes, _plane_names);
     build_plane_csr<Index>(_plane_of, _n_planes, _plane_offsets, _plane_data);
     build_plane_frames<Index, Int>(_n_planes, plane_faces(), _descriptors,
                                    apply_to_face, get_point, _frames);
@@ -156,6 +160,8 @@ private:
   Index _n_canon = 0;
   // per plane: the projection its arrangement is computed in
   tf::buffer<frame_t> _frames;
+  // per plane: the name every one of its carriers states
+  tf::buffer<tf::exact::canonical_plane<Int>> _plane_names;
   // per face group: its winding in its plane's projection
   tf::buffer<std::int8_t> _face_orientation;
   // per face group: -1 = no interior contour edges, -2 = several
