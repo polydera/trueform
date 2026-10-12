@@ -141,6 +141,136 @@ auto fill_plane_points(tf::buffer<tf::point<Int, 3>> &points,
 }
 
 // =============================================================================
+// The rim law: a cut the rounding carried across its own face's side
+// =============================================================================
+
+/// One triangle A B C on z = 0 whose side A -> B the cut's ends X1, X2 split,
+/// and whose cut X1 -> P -> X2 bends through P, one lattice unit OUTSIDE that
+/// side: the sliver X1 P X2 is covered by the face on neither side of the cut,
+/// and nothing crosses anything. `stacked` adds a second, coplanar member — a
+/// face the first one stands on in reverse — so the law is read on a stack's
+/// coverage as well as a lone member's.
+template <typename Int>
+auto make_plane_rim_world(bool stacked = false) -> plane_hand_world<Int> {
+  plane_hand_world<Int> world;
+  const std::array<std::array<int, 3>, 6> coordinates{{
+      {{-1000000, 0, 0}},
+      {{1000000, 0, 0}},
+      {{0, 500000, 0}},
+      {{-300000, 0, 0}},
+      {{300000, 0, 0}},
+      {{0, -1, 0}},
+  }};
+  fill_plane_points(world.points, coordinates, Int(1));
+
+  const auto reversed = tf::intersect::graph::plane_edge_reversed_flag;
+  const auto fan = tf::intersect::graph::plane_edge_fan_flag;
+  tf::buffer<plane_def_t> raw;
+  // the face's loop A X1 X2 B C, its side A -> B split twice
+  raw.push_back({0, 3, -1, 0, -1, 0, 0, -1, 0, 0, 0});
+  raw.push_back({3, 4, -1, 0, -1, 0, 0, -1, 1, 0, 0});
+  raw.push_back({1, 4, -1, 0, -1, 0, 0, -1, 2, 0, reversed});
+  raw.push_back({1, 2, -1, 0, -1, 0, 0, -1, 3, 1, 0});
+  raw.push_back({0, 2, -1, 0, -1, 0, 0, -1, 4, 2, reversed});
+  // its cut X1 -> P -> X2
+  raw.push_back({3, 5, -1, 0, -1, 0, 0, -1, -1, -1, fan});
+  raw.push_back({4, 5, -1, 0, -1, 0, 0, -1, -1, -1, fan});
+  if (stacked) {
+    // the same triangle, wound the other way, as the plane's second member
+    raw.push_back({0, 3, -1, 1, -1, 0, 0, -1, 4, 2, reversed});
+    raw.push_back({3, 4, -1, 1, -1, 0, 0, -1, 3, 2, reversed});
+    raw.push_back({1, 4, -1, 1, -1, 0, 0, -1, 2, 2, 0});
+    raw.push_back({1, 2, -1, 1, -1, 0, 0, -1, 1, 1, reversed});
+    raw.push_back({0, 2, -1, 1, -1, 0, 0, -1, 0, 0, 0});
+  }
+  fill_plane_tables(world.input, std::move(raw), 1);
+  if (stacked) {
+    // both members' rows belong to the one plane
+    auto &edges = world.input.tables().edges();
+    edges.data_buffer().clear();
+    edges.offsets_buffer().clear();
+    edges.offsets_buffer().push_back(0);
+    for (std::size_t row = 0; row < world.input.tables().defs().size(); ++row)
+      edges.data_buffer().push_back(plane_index_t(row));
+    edges.offsets_buffer().push_back(
+        plane_index_t(edges.data_buffer().size()));
+  }
+
+  world.input.frames().allocate(1);
+  world.input.frames()[0].ax0 = 0;
+  world.input.frames()[0].ax1 = 1;
+  world.input.frames()[0].plane_n = {0, 0, 1};
+  world.input.frames()[0].plane_d = 0;
+  world.input.frames()[0].plane_fallback = 0;
+  world.input.plane_members_data().offsets_buffer().push_back(0);
+  world.input.plane_members_data().data_buffer().push_back(0);
+  world.input.descriptor_data().push_back({0, 0});
+  world.input.face_planes().push_back(0);
+  world.input.face_orientations().push_back(1);
+  if (stacked) {
+    world.input.plane_members_data().data_buffer().push_back(1);
+    world.input.descriptor_data().push_back({0, 1});
+    world.input.face_planes().push_back(0);
+    world.input.face_orientations().push_back(-1);
+  }
+  world.input.plane_members_data().offsets_buffer().push_back(
+      plane_index_t(world.input.plane_members_data().data_buffer().size()));
+  world.vertex_offsets.push_back(0);
+  world.vertex_offsets.push_back(plane_index_t(world.points.size()));
+  return world;
+}
+
+// =============================================================================
+// The folded tip: a needle's tip the rounding turned inside out
+// =============================================================================
+
+/// One triangle A B C on z = 0 whose tip at B a crossing M cut off: side
+/// A -> B runs A M S T B, side B -> C runs B S M C, so the wall M S is stated
+/// both ways and cancels, and the loop runs the body A M C and the tip
+/// S T B as two cycles joined only through it. T and S stand where the
+/// rounding left them — each across the other's side — so the tip winds
+/// against the face.
+template <typename Int>
+auto make_plane_folded_tip_world() -> plane_hand_world<Int> {
+  plane_hand_world<Int> world;
+  const std::array<std::array<int, 3>, 6> coordinates{{
+      {{0, 0, 0}},
+      {{100000, 0, 0}},
+      {{0, 100000, 0}},
+      {{91000, 8000, 0}},
+      {{91000, 2000, 0}},
+      {{88000, 5000, 0}},
+  }};
+  fill_plane_points(world.points, coordinates, Int(1));
+
+  const auto reversed = tf::intersect::graph::plane_edge_reversed_flag;
+  tf::buffer<plane_def_t> raw;
+  // side A -> B: A M, M S, S T, T B
+  raw.push_back({0, 5, -1, 0, -1, 0, 0, -1, 0, 0, 0});
+  raw.push_back({4, 5, -1, 0, -1, 0, 0, -1, 1, 0, reversed});
+  raw.push_back({3, 4, -1, 0, -1, 0, 0, -1, 2, 0, reversed});
+  raw.push_back({1, 3, -1, 0, -1, 0, 0, -1, 3, 0, reversed});
+  // side B -> C: B S, S M, M C
+  raw.push_back({1, 4, -1, 0, -1, 0, 0, -1, 4, 1, 0});
+  raw.push_back({4, 5, -1, 0, -1, 0, 0, -1, 5, 1, 0});
+  raw.push_back({2, 5, -1, 0, -1, 0, 0, -1, 6, 1, reversed});
+  // side C -> A
+  raw.push_back({0, 2, -1, 0, -1, 0, 0, -1, 7, 2, reversed});
+  fill_plane_tables(world.input, std::move(raw), 1);
+
+  world.input.frames().allocate(1);
+  world.input.frames()[0].ax0 = 0;
+  world.input.frames()[0].ax1 = 1;
+  world.input.frames()[0].plane_n = {0, 0, 1};
+  world.input.frames()[0].plane_d = 0;
+  world.input.frames()[0].plane_fallback = 0;
+  fill_single_member_planes(world.input, 1);
+  world.vertex_offsets.push_back(0);
+  world.vertex_offsets.push_back(plane_index_t(world.points.size()));
+  return world;
+}
+
+// =============================================================================
 // The shared boundary: two faces meeting along one edge
 // =============================================================================
 
@@ -786,6 +916,51 @@ auto make_plane_mixed_tier_world() -> plane_hand_world<Int> {
   fill_single_member_planes(world.input, 3);
   world.vertex_offsets.push_back(0);
   world.vertex_offsets.push_back(plane_index_t(world.points.size()));
+  return world;
+}
+
+// =============================================================================
+// The near overlap: one face whose constraints nearly overlap on the lattice
+// =============================================================================
+
+/// One face on z = 0 whose side loop runs through `loop`, cut by one interior
+/// chord. Corners a few lattice units apart make two constraints nearly
+/// overlap, so a rounded crossing of a third lands across one of them.
+template <typename Int, typename Corners, typename Loop>
+auto make_plane_near_overlap_world(const Corners &corners, const Loop &loop,
+                                   std::array<plane_index_t, 2> chord)
+    -> plane_hand_world<Int> {
+  plane_hand_world<Int> world;
+  for (const auto &corner : corners)
+    world.points.push_back(
+        tf::point<Int, 3>{Int(corner[0]), Int(corner[1]), Int(0)});
+
+  const auto whole = tf::intersect::graph::plane_edge_whole_side_flag;
+  const auto reversed = tf::intersect::graph::plane_edge_reversed_flag;
+  tf::buffer<plane_def_t> raw;
+  for (std::size_t side = 0; side < loop.size(); ++side) {
+    const plane_index_t a = loop[side];
+    const plane_index_t b = loop[(side + 1) % loop.size()];
+    raw.push_back({std::min(a, b), std::max(a, b), -1, 0, -1, 0, 0, -1,
+                   std::int16_t(side), std::int16_t(side),
+                   std::uint8_t(b < a ? whole | reversed : whole)});
+  }
+  raw.push_back({std::min(chord[0], chord[1]), std::max(chord[0], chord[1]),
+                 -1, 0, -1, 0, 0, -1, -1, -1, 0});
+  fill_plane_tables(world.input, std::move(raw), 1);
+  world.input.source_tables() = world.input.tables();
+
+  world.input.frames().allocate(1);
+  world.input.frames()[0].ax0 = 0;
+  world.input.frames()[0].ax1 = 1;
+  world.input.frames()[0].plane_n = {0, 0, 1};
+  world.input.frames()[0].plane_d = 0;
+  world.input.frames()[0].plane_fallback = 0;
+  fill_single_member_planes(world.input, 1);
+  world.vertex_offsets.push_back(0);
+  world.vertex_offsets.push_back(plane_index_t(world.points.size()));
+  world.face_offsets.push_back(0);
+  world.face_offsets.push_back(1);
   return world;
 }
 

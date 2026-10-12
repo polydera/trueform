@@ -311,13 +311,12 @@ TEST_CASE("mesh_arrangements_tolerance_box_plane",
   // Unit cube [-0.5, +0.5]^3 (volume = 1), with a planar quad at z = 0
   // whose corners sit a small `gap` INSIDE the cube walls.
   //
-  // A TOLERANCE IS A STATEMENT ABOUT THE INPUT, NOT ABOUT A PREDICATE. It
-  // moves each vertex at most `tol` onto a lattice point of the planes its
-  // OWN faces state, and the arrangement of that moved mesh is then exact.
-  // Nothing draws the quad's rim onto the cube's wall: the rim lies in one
-  // plane it already stands on, and the cube's corners meet three planes of
-  // their own. So the fin stays a fin at every tolerance, and the answer is
-  // the exact answer of a mesh that moved by less than `tol`.
+  // A TOLERANCE IS A STATEMENT ABOUT THE INPUT, NOT ABOUT A PREDICATE: a
+  // vertex within the band of another form's plane is dropped onto it
+  // exactly, and the arrangement of that moved mesh is then exact. The
+  // quad's corners stand `gap` from the cube's walls, so a band wider than
+  // the gap drops them onto the walls — the fin becomes a wall and halves
+  // the cube — and at zero it stays a fin.
   using index_t = int;
   using real_t = float;
 
@@ -346,7 +345,8 @@ TEST_CASE("mesh_arrangements_tolerance_box_plane",
   operands.push_back(tf::test::make_tagged_operand(plane));
   auto forms = tf::test::tagged_forms(operands);
 
-  SECTION("tolerance >> gap: the fin is still a fin, the cube still whole") {
+  SECTION("tolerance >> gap: the fin welds to the walls and halves the "
+          "cube") {
     const double tol = 1e-3; // tol >> gap (= 1e-4)
 
     auto [mesh, tag_labels, face_labels] = tf::test::mesh_arrangements_of(
@@ -357,22 +357,21 @@ TEST_CASE("mesh_arrangements_tolerance_box_plane",
     auto labels = tf::make_domain_labels(
         mesh.polygons(), tf::domain_config::ignore_open_fragments);
 
-    // outer + cube interior; the quad is an open fragment either way
-    REQUIRE(labels.n_domains == 2);
+    // outer + the two halves the welded quad separates
+    REQUIRE(labels.n_domains == 3);
 
     auto [domain_meshes, domain_ids] =
         tf::split_into_domains(mesh.polygons(), labels);
-    REQUIRE(domain_meshes.size() == 2);
+    REQUIRE(domain_meshes.size() == 3);
 
     std::vector<double> volumes;
     for (auto &dm : domain_meshes)
       volumes.push_back(double(tf::signed_volume(dm.polygons())));
     std::sort(volumes.begin(), volumes.end());
 
-    // the cube moved by less than the band, so its volume is the exact
-    // volume of a cube whose walls each shifted by at most `tol`
     REQUIRE(volumes[0] == Catch::Approx(-1.0).margin(0.01));
-    REQUIRE(volumes[1] == Catch::Approx(+1.0).margin(0.01));
+    REQUIRE(volumes[1] == Catch::Approx(+0.5).margin(0.01));
+    REQUIRE(volumes[2] == Catch::Approx(+0.5).margin(0.01));
   }
 
   SECTION("tolerance = 0: plane stays detached, cube remains whole") {

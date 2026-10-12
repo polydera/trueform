@@ -260,8 +260,9 @@ public:
         [graph](const exposed_descriptor &descriptor) {
           const auto carrier = descriptor.plane;
           return char(carrier != index_type(-1) &&
-                      carrier < graph->_world.n_planes() &&
-                      graph->_world.member_count(carrier) > index_type(1));
+                      tf::arrangement::plane_arrangement_member_count(
+                          graph->_arr, graph->_world, carrier) >
+                          index_type(1));
         });
   }
   /// @brief The form a flat-original id belongs to.
@@ -328,7 +329,7 @@ private:
     _world.build(std::move(intersections), get_mesh_point, apply_to_face,
                  apply_form, tf::make_range(face_counts),
                  bool(config.mode & tf::intersect_mode::within),
-                 _lattice.placed_points().size() != 0);
+                 _lattice.moved_points().size() != 0);
     // the cell is the classification carrier and the piece is the fence's;
     // the triangulation holds both only while the plane is being emitted, so
     // the requests stand before the build

@@ -15,6 +15,7 @@
 #include "../../core/buffer.hpp"
 #include "../../core/reallocate.hpp"
 #include "../../intersect/graph/flat_of_vertex.hpp"
+#include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "./plane_carrier_boundary.hpp"
 #include "./plane_definition_source.hpp"
@@ -113,8 +114,8 @@ auto prepare_plane_triangulation(
   // The block is canon-grouped, so the unique edges are a run walk and
   // the fold IS the attribution: a canonical edge is a sheet boundary
   // when some member's own side states it, and the members that do are
-  // exactly the ones the coverage flood toggles across it. Coincident
-  // sides pool into ONE group, so the parity carries the multiplicity
+  // exactly the ones the coverage flood crosses it for. Coincident
+  // sides pool into ONE group, so the winding carries the multiplicity
   // a per-instance statement would lose to the triangulation's own
   // deduplication of coincident constraints. The same walk states the
   // original side the run lies on for each member, which is everything
@@ -125,42 +126,60 @@ auto prepare_plane_triangulation(
   local.cons_row.clear();
   local.cons_statements.clear();
   local.cons_side.clear();
+  local.cons_winding.clear();
+  local.cons_cut.clear();
   for (std::size_t i = 0; i < plane_block.size();) {
     const auto &def = tier[std::size_t(plane_block[i])];
     const auto ticket = tier.ticket(plane_block[i]);
     std::size_t j = i;
     const auto row = local.cons_statements.size();
+    const auto cuts = local.cons_cut.size();
     bool boundary = false;
     short side = -1;
-    // a member's statements TOGGLE, they do not accumulate: a member
-    // stating the group twice is the mesh folding onto one carrier, and
-    // its wall cancels — the repeated-boundary law the triangulation
-    // itself states, which the run collapse would otherwise lose
-    int parity = 0;
+    // a member's statements ADD their directions: a member stating the
+    // group both ways is the mesh folding onto one carrier, and its wall
+    // cancels — the repeated-boundary law the triangulation itself states,
+    // which the run collapse would otherwise lose
+    int winding = 0;
     while (j < plane_block.size() &&
            tier.ticket(plane_block[j]) == ticket) {
       const auto &instance = tier[std::size_t(plane_block[j])];
       if (instance.ordinal >= 0) {
+        const auto direction = static_cast<signed char>(
+            instance.flags & tf::intersect::graph::plane_edge_reversed_flag
+                ? -1
+                : 1);
         if (pooled) {
           const auto m = member_of(instance.face);
           if (m != n_members)
             state_plane_member_statement(local.cons_statements, row,
                                          Index(local.bnd.size()), Index(m),
-                                         instance.side, char(1));
+                                         instance.side, direction);
         } else {
-          parity ^= 1;
+          winding += direction;
           if (side < short(0))
             side = instance.side;
         }
+      } else {
+        const auto m = pooled ? member_of(instance.face) : std::size_t(0);
+        if (m != n_members)
+          local.cons_cut.push_back(
+              {Index(local.bnd.size()), Index(m)});
       }
       ++j;
     }
     i = j;
+    // the members stating this cut, once each and ascending
+    std::sort(local.cons_cut.begin() + std::ptrdiff_t(cuts),
+              local.cons_cut.end());
+    local.cons_cut.erase_till_end(
+        std::unique(local.cons_cut.begin() + std::ptrdiff_t(cuts),
+                    local.cons_cut.end()));
     if (pooled) {
       for (auto at = row; at < local.cons_statements.size(); ++at)
-        boundary = boundary || local.cons_statements[at].parity != char(0);
+        boundary = boundary || (local.cons_statements[at].winding & 1) != 0;
     } else
-      boundary = parity != 0;
+      boundary = (winding & 1) != 0;
     const auto a = local_of(flat_of(def.point_tag_0, def.point_0));
     const auto b = local_of(flat_of(def.point_tag_1, def.point_1));
     const auto pa = local.pts2[std::size_t(a)];
@@ -169,6 +188,8 @@ auto prepare_plane_triangulation(
       if (pooled)
         local.cons_statements.erase_till_end(local.cons_statements.begin() +
                                              std::ptrdiff_t(row));
+      local.cons_cut.erase_till_end(local.cons_cut.begin() +
+                                    std::ptrdiff_t(cuts));
       continue;
     }
     local.cons.push_back(a);
@@ -178,8 +199,10 @@ auto prepare_plane_triangulation(
     if (pooled)
       local.cons_row.push_back(
           {Index(row), Index(local.cons_statements.size())});
-    else
+    else {
       local.cons_side.push_back(side);
+      local.cons_winding.push_back(static_cast<signed char>(winding));
+    }
   }
   // the row an edge belonging to no constraint reads: nobody states it
   if (pooled)

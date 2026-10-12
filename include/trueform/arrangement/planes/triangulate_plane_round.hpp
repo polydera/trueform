@@ -33,6 +33,7 @@
 #include "./emit_plane_fan.hpp"
 #include "./emit_plane_triangles.hpp"
 #include "./find_plane_carrier_fan.hpp"
+#include "./find_plane_rim_landings.hpp"
 #include "./plane_arrangement_arena.hpp"
 #include "./plane_arrangement_census.hpp"
 #include "./plane_definition_source.hpp"
@@ -41,11 +42,13 @@
 #include "./plane_recovery_birth.hpp"
 #include "./plane_recovery_statement.hpp"
 #include "./plane_round_evidence.hpp"
+#include "./plane_tier_definitions.hpp"
 #include "./plane_triangulation_types.hpp"
 #include "./prepare_plane_triangulation.hpp"
 #include "./resolve_plane_refusal.hpp"
 #include "./run_plane_cdt.hpp"
 #include "./run_refined_plane_cdt.hpp"
+#include "./state_plane_refusal.hpp"
 #include "tbb/parallel_sort.h"
 
 #include <array>
@@ -63,7 +66,8 @@ auto triangulate_plane_round(
     const World &world, const Planes &planes,
     const tf::intersect::graph::plane_tables<Index, Int> &local_tables,
     const tf::buffer<Index> &plane_ticket, const VertexOffsets &vertex_offsets,
-    Index n_flat, Index crossing_kind, bool refined, bool record_arrangement,
+    Index n_flat, Index first_minted, Index crossing_kind, bool refined,
+    bool record_arrangement,
     bool record_cells, const tf::cdt_refine_config &refine_config,
     const tf::offset_block_buffer<Index, tf::exact::pt3<Int>> &steiner_sites,
     const PointOfFlat &point_of_flat,
@@ -87,6 +91,9 @@ auto triangulate_plane_round(
     tf::buffer<plane_member_statement<Index>> folded_members;
     tf::buffer<Index> statement_offsets;
     tf::buffer<short> cons_side;
+    tf::buffer<signed char> cons_winding;
+    tf::buffer<std::array<Index, 2>> cons_cut;
+    tf::buffer<plane_rim_landing<Index, param_t>> rim_landings;
     tf::buffer<std::array<Index, 2>> member_ticket;
     tf::buffer<tf::topo_id<short>> point_subs;
     tf::buffer<Index> subs_touched;
@@ -117,7 +124,8 @@ auto triangulate_plane_round(
     tf::buffer<plane_flat_weld<Index>> welds;
     tf::buffer<plane_recovery_statement<Index, param_t>> statements;
     tf::buffer<plane_recovery_proposal<Index, param_t>> topology;
-    tf::buffer<std::array<Index, 3>> region_adj;
+    tf::buffer<Index> meeting_record;
+    tf::buffer<std::array<Index, 4>> region_adj;
     tf::buffer<Index> region_offsets;
     tf::buffer<Index> region_stack;
     tf::buffer<Index> surv_mi;
@@ -125,10 +133,13 @@ auto triangulate_plane_round(
     tf::buffer<char> region_reached;
     tf::buffer<std::array<Index, 2>> cover_range;
     tf::buffer<Index> cover;
+    tf::buffer<signed char> cover_winding;
+    tf::buffer<Index> loop_degree;
+    tf::buffer<std::array<Index, 3>> triangle_neighbors;
+    tf::buffer<signed char> triangle_winding;
     tf::buffer<Index> member_offsets;
     tf::buffer<Index> member_cursor;
     tf::buffer<Index> member_tri;
-    tf::buffer<char> member_rev;
     int face_orientation = 1;
     plane_arrangement_census census;
   };
@@ -145,6 +156,7 @@ auto triangulate_plane_round(
   const bool states_groups = world.materialized();
   auto task = [&](auto &&range, work_t &local) {
     for (const auto plane : range) {
+      local.rim_landings.clear();
       const auto before = local.tris.size();
       // the arrangement facts are a request, so their stores roll back to
       // their own marks and a build that asked for none rolls back nothing
@@ -218,9 +230,19 @@ auto triangulate_plane_round(
                                         std::ptrdiff_t(face_before));
         for (std::size_t m = 0; m < n_members; ++m)
           local.face_range.push_back({Index(before), Index(before)});
+        // the rim law's landings name the prepared plane, so they are stated
+        // before the rebuild prepares it again
+        if (states_groups && local.rim_landings.size() != 0)
+          state_plane_rim_landings(
+              make_plane_tier_groups(world.tables(), local_tables), plane,
+              local.rim_landings, local.ends, local.cons_group, n_flat,
+              vertex_offsets,
+              param_t(param_t(1) << tf::exact::meta<Int>::param_bits),
+              local.statements, local.topology, local.census.rim_landings);
         if (states_groups)
           resolve_plane_refusal(world, local_tables, plane_ticket,
-                                vertex_offsets, n_flat, crossing_kind, plane,
+                                vertex_offsets, n_flat, first_minted,
+                                crossing_kind, plane,
                                 local, point_of_flat);
       }
       local.planes.push_back(plane);

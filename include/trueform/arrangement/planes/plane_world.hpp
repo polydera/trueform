@@ -116,28 +116,41 @@ public:
       : _arrangement(&arrangement), _promoted_descriptors(nullptr, nullptr),
         _promoted_frames(nullptr, nullptr),
         _promoted_orientations(nullptr, nullptr),
+        _promoted_plane_of(nullptr, nullptr),
+        _promoted_member_offsets(nullptr, nullptr),
+        _promoted_members(nullptr, nullptr),
         _n_base_planes(arrangement.n_planes()),
         _n_base_faces(arrangement.n_faces()),
         _n_planes(arrangement.n_planes()), _n_faces(arrangement.n_faces()) {}
 
   /// THE PROMOTION BARRIER: the base value, extended by the rows the
-  /// arrangement itself named. Every suffix plane's edge definitions already
-  /// live in the arrangement's local table, so the base tables remain the
-  /// world authority and a suffix plane must hold a local ticket.
+  /// arrangement itself named. Every promoted plane's edge definitions
+  /// already live in the arrangement's local table, so the base tables remain
+  /// the world authority and a promoted plane must hold a local ticket.
   ///
-  /// The promotion appends one plane and one face per row, so the descriptor
-  /// count is the one extent both spaces grow by.
-  template <typename Descriptors, typename Frames, typename Orientations>
+  /// The promotion appends one face per descriptor and one plane per frame:
+  /// a promoted face is seated on the plane `plane_of` names — a standing
+  /// plane its name holds, or one the promotion founds — and
+  /// `member_offsets` / `members` list, per plane, the promoted faces it
+  /// holds after its own.
+  template <typename Descriptors, typename Frames, typename Orientations,
+            typename PlaneOf, typename MemberOffsets, typename Members>
   plane_local_arrangement_policy(const plane_local_arrangement_policy &base,
                                  const Descriptors &descriptors,
                                  const Frames &frames,
-                                 const Orientations &orientations)
+                                 const Orientations &orientations,
+                                 const PlaneOf &plane_of,
+                                 const MemberOffsets &member_offsets,
+                                 const Members &members)
       : _arrangement(base._arrangement),
         _promoted_descriptors(descriptors.begin(), descriptors.end()),
         _promoted_frames(frames.begin(), frames.end()),
         _promoted_orientations(orientations.begin(), orientations.end()),
+        _promoted_plane_of(plane_of.begin(), plane_of.end()),
+        _promoted_member_offsets(member_offsets.begin(), member_offsets.end()),
+        _promoted_members(members.begin(), members.end()),
         _n_base_planes(base._n_base_planes), _n_base_faces(base._n_base_faces),
-        _n_planes(base._n_base_planes + Index(descriptors.size())),
+        _n_planes(base._n_base_planes + Index(frames.size())),
         _n_faces(base._n_base_faces + Index(descriptors.size())) {}
 
   auto graph() const -> const auto & { return _arrangement->graph(); }
@@ -168,17 +181,20 @@ public:
                : _promoted_frames[std::size_t(plane - _n_base_planes)];
   }
   auto member_count(Index plane) const -> Index {
-    return plane < _n_base_planes ? _arrangement->member_count(plane)
-                                  : Index(1);
+    return own_member_count(plane) + promoted_member_count(plane);
   }
   auto member(Index plane, Index position) const -> Index {
-    return plane < _n_base_planes
+    const auto own = own_member_count(plane);
+    return position < own
                ? _arrangement->member(plane, position)
-               : _n_base_faces + (plane - _n_base_planes);
+               : _promoted_members[std::size_t(
+                     _promoted_member_offsets[std::size_t(plane)] +
+                     (position - own))];
   }
   auto plane_of_face(Index face) const -> Index {
-    return face < _n_base_faces ? _arrangement->plane_of_face(face)
-                                : _n_base_planes + (face - _n_base_faces);
+    return face < _n_base_faces
+               ? _arrangement->plane_of_face(face)
+               : _promoted_plane_of[std::size_t(face - _n_base_faces)];
   }
   auto descriptor(Index face) const -> const descriptor_t & {
     return face < _n_base_faces
@@ -218,10 +234,24 @@ public:
   }
 
 private:
+  auto own_member_count(Index plane) const -> Index {
+    return plane < _n_base_planes ? _arrangement->member_count(plane)
+                                  : Index(0);
+  }
+  auto promoted_member_count(Index plane) const -> Index {
+    return _promoted_member_offsets.size() == 0
+               ? Index(0)
+               : _promoted_member_offsets[std::size_t(plane) + 1] -
+                     _promoted_member_offsets[std::size_t(plane)];
+  }
+
   const arrangement_t *_arrangement;
   tf::range<const descriptor_t *, tf::dynamic_size> _promoted_descriptors;
   tf::range<const frame_t *, tf::dynamic_size> _promoted_frames;
   tf::range<const std::int8_t *, tf::dynamic_size> _promoted_orientations;
+  tf::range<const Index *, tf::dynamic_size> _promoted_plane_of;
+  tf::range<const Index *, tf::dynamic_size> _promoted_member_offsets;
+  tf::range<const Index *, tf::dynamic_size> _promoted_members;
   Index _n_base_planes;
   Index _n_base_faces;
   Index _n_planes;

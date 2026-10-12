@@ -33,7 +33,8 @@ auto resolve_plane_refusal(
     const World &world,
     const tf::intersect::graph::plane_tables<Index, Int> &local_tables,
     const tf::buffer<Index> &plane_ticket, const VertexOffsets &vertex_offsets,
-    Index n_flat, Index crossing_kind, Index plane, Local &local,
+    Index n_flat, Index first_minted, Index crossing_kind, Index plane,
+    Local &local,
     const PointOfFlat &point_of_flat) -> void {
   using param_t = typename tf::exact::meta<Int>::param_type;
   if (!prepare_plane_triangulation(world, local_tables, plane_ticket,
@@ -45,11 +46,12 @@ auto resolve_plane_refusal(
     return;
   state_plane_refusal(make_plane_tier_groups(world.tables(), local_tables),
                       plane, local.cdt,
-                      local.ends, local.cons_group, n_flat, vertex_offsets,
-                      crossing_kind,
+                      local.ends, local.cons, local.pts2, local.cons_group,
+                      n_flat, first_minted,
+                      vertex_offsets, crossing_kind,
                       param_t(1) << tf::exact::meta<Int>::param_bits,
-                      local.statements, local.topology, local.census.landings,
-                      local.census.crossings);
+                      local.statements, local.topology, local.meeting_record,
+                      local.census.landings, local.census.crossings);
   local.census.collisions += local.cdt.constraint_collisions().size();
 }
 

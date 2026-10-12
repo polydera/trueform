@@ -35,14 +35,31 @@ auto plane_arrangement_face_descriptor(
 }
 
 /// The plane the face's triangles live in, across the same seam: the world
-/// states its own, and a promoted face's plane follows its row.
+/// states its own, and a promoted face the plane it was seated on.
 template <typename Index, typename Int, typename World>
 auto plane_arrangement_face_plane(
     const plane_arrangement<Index, Int> &arrangement, const World &world,
     Index face) -> Index {
   const auto base = arrangement.n_base_faces();
-  return face < base ? world.plane_of_face(face)
-                     : arrangement.n_base_planes() + (face - base);
+  return face < base
+             ? world.plane_of_face(face)
+             : arrangement.promoted_plane_of()[std::size_t(face - base)];
+}
+
+/// How many members a plane holds across the same seam: the world's own,
+/// then the promoted faces seated on it.
+template <typename Index, typename Int, typename World>
+auto plane_arrangement_member_count(
+    const plane_arrangement<Index, Int> &arrangement, const World &world,
+    Index plane) -> Index {
+  const auto own = plane < arrangement.n_base_planes()
+                       ? world.member_count(plane)
+                       : Index(0);
+  const auto offsets = arrangement.promoted_member_offsets();
+  return std::size_t(plane) + 1 < std::size_t(offsets.size())
+             ? own + offsets[std::size_t(plane) + 1] -
+                   offsets[std::size_t(plane)]
+             : own;
 }
 
 /// The carrier's exact frame across the same seam. `plane_n` is the

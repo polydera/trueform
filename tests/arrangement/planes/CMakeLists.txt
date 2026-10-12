@@ -5,11 +5,13 @@ add_executable(trueform_arrangement_planes_tests
   test_plane_canonicalize_wave.cpp
   test_plane_collision_parity.cpp
   test_plane_components.cpp
+  test_plane_folded_tip.cpp
   test_plane_graph_fan_bits.cpp
   test_plane_mesh_carrier.cpp
   test_plane_radial_fans.cpp
   test_plane_refined_walls.cpp
   test_plane_refusal_recovery.cpp
+  test_plane_rim_law.cpp
   test_plane_wave_entrants.cpp
 )
 

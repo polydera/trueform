@@ -14,14 +14,60 @@
 
 #include "../../core/buffer.hpp"
 #include "../../intersect/graph/plane_identity_names.hpp"
+#include "./find_plane_meeting_landing.hpp"
 #include "./plane_recovery_birth.hpp"
 #include "./plane_recovery_name.hpp"
 #include "./plane_recovery_statement.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
 namespace tf::arrangement {
+
+/// A parameter along the constraint `ticket` as the plane fed it, in the frame
+/// of the name its row belongs to (THE FRAME LAW below).
+template <typename Index, typename Param, typename Groups,
+          typename VertexOffsets>
+auto plane_name_frame_parameter(const Groups &groups, Index ticket, Param t,
+                                Index n_flat,
+                                const VertexOffsets &vertex_offsets,
+                                Param whole) -> Param {
+  return plane_recovery_flat_edge_inverted(plane_recovery_flat_edge_ends(
+             groups.canon_group(ticket)[0], n_flat, vertex_offsets))
+             ? Param(whole - t)
+             : t;
+}
+
+/// One landing, whatever saw it: the identity `name` lands on the constraint
+/// `ticket`, at `t` along it as the plane fed it. A landing on an identity
+/// that already stands proposes its birth; one named by the meeting that
+/// minted its point does not, the meeting's own carriers do.
+template <typename Index, typename Param, typename Groups, typename Name,
+          typename VertexOffsets>
+auto state_plane_landing(
+    const Groups &groups, Index plane, const Name &name, Index ticket, Param t,
+    bool birth, Index n_flat, const VertexOffsets &vertex_offsets, Param whole,
+    tf::buffer<plane_recovery_statement<Index, Param>> &statements,
+    tf::buffer<plane_recovery_proposal<Index, Param>> &topology) -> void {
+  const auto root = groups.group_of(ticket);
+  const auto tier = groups.tier_of(ticket);
+  statements.push_back({name, root, plane, tier});
+  topology.push_back(
+      {name, root, plane, tier,
+       plane_name_frame_parameter(groups, ticket, t, n_flat, vertex_offsets,
+                                  whole),
+       std::uint8_t(birth ? 1 : 0)});
+}
+
+/// The name of the identity a flat id stands for.
+template <typename Index, typename Param>
+auto plane_flat_identity_name(Index flat, Index n_flat) {
+  return make_plane_recovery_name<Index, Param>(
+      flat < n_flat
+          ? tf::intersect::graph::plane_vertex_name<Index>(flat)
+          : tf::intersect::graph::plane_point_name<Index>(flat - n_flat));
+}
 
 /// State what a plane that refused its triangulation still saw.
 ///
@@ -45,40 +91,91 @@ namespace tf::arrangement {
 /// endpoint, so every parameter is stated in the name's frame here, at
 /// emission, where the row and its edge are one fact.
 template <typename Index, typename Param, typename Groups, typename Cdt,
-          typename VertexOffsets>
+          typename Points2, typename VertexOffsets>
 auto state_plane_refusal(
     const Groups &groups, Index plane, const Cdt &cdt,
-    const tf::buffer<Index> &ends, const tf::buffer<Index> &constraint_groups,
-    Index n_flat, const VertexOffsets &vertex_offsets, Index crossing_kind,
+    const tf::buffer<Index> &ends, const tf::buffer<Index> &cons,
+    const Points2 &pts2, const tf::buffer<Index> &constraint_groups,
+    Index n_flat, Index first_minted, const VertexOffsets &vertex_offsets,
+    Index crossing_kind,
     Param whole,
     tf::buffer<plane_recovery_statement<Index, Param>> &statements,
     tf::buffer<plane_recovery_proposal<Index, Param>> &topology,
-    std::size_t &landings, std::size_t &crossings) -> void {
+    tf::buffer<Index> &meeting_record, std::size_t &landings,
+    std::size_t &crossings) -> void {
   const auto kept = cdt.index_map().kept_ids();
-  const auto name_frame_t = [&](Index ticket, Param t) {
-    return plane_recovery_flat_edge_inverted(plane_recovery_flat_edge_ends(
-               groups.canon_group(ticket)[0], n_flat, vertex_offsets))
-               ? Param(whole - t)
-               : t;
+  const auto &records = cdt.parameterized_crossings();
+  const auto meeting_landing = [&](const auto &crossing) {
+    return find_plane_meeting_landing<Index, Param>(
+        cons, pts2, ends, first_minted, crossing.id_a, crossing.id_b);
   };
-  for (const auto &crossing : cdt.parameterized_crossings()) {
+  const auto name_frame_t = [&](Index ticket, Param t) {
+    return plane_name_frame_parameter(groups, ticket, t, n_flat,
+                                      vertex_offsets, whole);
+  };
+  const auto crossing_name = [&](const auto &crossing, Index &birth_root,
+                                 Index &birth_partner) {
+    return make_plane_recovery_crossing_name(
+        groups, constraint_groups[std::size_t(crossing.id_a)],
+        constraint_groups[std::size_t(crossing.id_b)], n_flat, vertex_offsets,
+        crossing_kind, birth_root, birth_partner);
+  };
+  const auto sides_of_one_face = [&](Index x, Index y) {
+    for (const auto &a : groups.canon_group(x))
+      if (a.side >= 0)
+        for (const auto &b : groups.canon_group(y))
+          if (b.side >= 0 && a.face == b.face)
+            return true;
+    return false;
+  };
+  // A created point is named by the meeting that minted it, the first record
+  // stating it; a constraint landing on it joins that name.
+  meeting_record.allocate(std::size_t(cdt.points().size()));
+  std::fill(meeting_record.begin(), meeting_record.end(), Index(-1));
+  for (std::size_t at = records.size(); at-- != 0;)
+    if (records[at].id_b != Index(-1))
+      meeting_record[std::size_t(records[at].point)] = Index(at);
+  for (const auto &crossing : records) {
     if (crossing.id_b == Index(-1)) {
       const auto input = kept[std::size_t(crossing.point)];
-      if (input == Index(ends.size()))
-        continue;
-      const auto flat = ends[std::size_t(input)];
-      const auto feature =
-          flat < n_flat
-              ? tf::intersect::graph::plane_vertex_name<Index>(flat)
-              : tf::intersect::graph::plane_point_name<Index>(flat - n_flat);
-      const auto name = make_plane_recovery_name<Index, Param>(feature);
       const auto ticket = constraint_groups[std::size_t(crossing.id_a)];
-      const auto root = groups.group_of(ticket);
-      const auto tier = groups.tier_of(ticket);
-      statements.push_back({name, root, plane, tier});
-      topology.push_back({name, root, plane, tier,
-                          name_frame_t(ticket, crossing.t_a),
-                          std::uint8_t(1)});
+      if (input == Index(ends.size())) {
+        const auto at = meeting_record[std::size_t(crossing.point)];
+        if (at == Index(-1))
+          continue;
+        const auto &meeting = records[std::size_t(at)];
+        const auto group_a = constraint_groups[std::size_t(meeting.id_a)];
+        const auto group_b = constraint_groups[std::size_t(meeting.id_b)];
+        if (group_a == group_b || ticket == group_a || ticket == group_b)
+          continue;
+        // a meeting stated as a landing, or as nothing, mints no point
+        const auto stated = meeting_landing(meeting);
+        if (stated.shared || stated.point != Index(-1))
+          continue;
+        // a side of a face is never landed on a meeting another side of the
+        // same face carries. Two sides meeting at a corner would share the
+        // meeting beside it and fold the face onto itself between — on a
+        // triangle that is every pair; the rule withholds the landing for
+        // any two sides of one face, adjacent or not
+        if (sides_of_one_face(ticket, group_a) ||
+            sides_of_one_face(ticket, group_b))
+          continue;
+        Index birth_root = Index(-1), birth_partner = Index(-1);
+        const auto feature = crossing_name(meeting, birth_root, birth_partner);
+        if (feature[1] == feature[3] && feature[2] == feature[4])
+          continue;
+        state_plane_landing(groups, plane,
+                            make_plane_recovery_name<Index, Param>(feature),
+                            ticket, crossing.t_a, false, n_flat,
+                            vertex_offsets, whole, statements, topology);
+        ++landings;
+        continue;
+      }
+      state_plane_landing(groups, plane,
+                          plane_flat_identity_name<Index, Param>(
+                              ends[std::size_t(input)], n_flat),
+                          ticket, crossing.t_a, true, n_flat, vertex_offsets,
+                          whole, statements, topology);
       ++landings;
       continue;
     }
@@ -86,10 +183,21 @@ auto state_plane_refusal(
     const auto group_b = constraint_groups[std::size_t(crossing.id_b)];
     if (group_a == group_b)
       continue;
+    const auto landing = meeting_landing(crossing);
+    if (landing.shared)
+      continue;
+    if (landing.point != Index(-1)) {
+      state_plane_landing(groups, plane,
+                          plane_flat_identity_name<Index, Param>(
+                              ends[std::size_t(landing.point)], n_flat),
+                          constraint_groups[std::size_t(landing.constraint)],
+                          landing.parameter, true, n_flat, vertex_offsets,
+                          whole, statements, topology);
+      ++landings;
+      continue;
+    }
     Index birth_root = Index(-1), birth_partner = Index(-1);
-    const auto feature = make_plane_recovery_crossing_name(
-        groups, group_a, group_b, n_flat, vertex_offsets, crossing_kind,
-        birth_root, birth_partner);
+    const auto feature = crossing_name(crossing, birth_root, birth_partner);
     if (feature[1] == feature[3] && feature[2] == feature[4])
       continue;
     const auto name = make_plane_recovery_name<Index, Param>(feature);
@@ -108,6 +216,30 @@ auto state_plane_refusal(
                         name_frame_t(birth_partner, partner_t),
                         std::uint8_t(0)});
     ++crossings;
+  }
+}
+
+/// State the landings the rim law found, in the shape a triangulation's own
+/// landing takes: the identity that lands names the statement, and the group
+/// of the constraint it lands on carries it at the landing's parameter in the
+/// name's frame.
+template <typename Index, typename Param, typename Groups,
+          typename VertexOffsets, typename Landings>
+auto state_plane_rim_landings(
+    const Groups &groups, Index plane, const Landings &landings,
+    const tf::buffer<Index> &ends, const tf::buffer<Index> &constraint_groups,
+    Index n_flat, const VertexOffsets &vertex_offsets, Param whole,
+    tf::buffer<plane_recovery_statement<Index, Param>> &statements,
+    tf::buffer<plane_recovery_proposal<Index, Param>> &topology,
+    std::size_t &rim_landings) -> void {
+  for (const auto &landing : landings) {
+    state_plane_landing(groups, plane,
+                        plane_flat_identity_name<Index, Param>(
+                            ends[std::size_t(landing.point)], n_flat),
+                        constraint_groups[std::size_t(landing.constraint)],
+                        landing.parameter, true, n_flat, vertex_offsets, whole,
+                        statements, topology);
+    ++rim_landings;
   }
 }
 

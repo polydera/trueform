@@ -24,6 +24,9 @@
  *              publishes THAT PLANE while every other plane keeps its
  *              product. No pipeline input is known to reach it, so the
  *              fixture world states it directly.
+ *   NEAR       two refusing client carriers, stated by hand: their resolve
+ *              builds' meetings land across near-coincident constraints,
+ *              and the wave closes only because those landings are stated.
  *
  * Every case also asserts THE COMPLETENESS LAW that `failed()` empty is a
  * claim about: every plane that carries constraints emitted the triangulation
@@ -52,6 +55,7 @@
 
 #include "type_traits.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -245,4 +249,55 @@ TEMPLATE_TEST_CASE("plane refusal: a constraint-less carrier is published",
   REQUIRE(product.plane_range(0)[1] > product.plane_range(0)[0]);
   REQUIRE(product.plane_range(1)[1] == product.plane_range(1)[0]);
   REQUIRE(product.face_range(1)[1] == product.face_range(1)[0]);
+}
+
+// ============================================================================
+// A refusal whose meetings land: the near overlap.
+// ============================================================================
+TEST_CASE("plane refusal: a meeting landing across a near-coincident "
+          "constraint is stated on it",
+          "[cut][planes][refusal]") {
+  using Int = tf::exact::int64;
+  using index_t = tf::test::plane_index_t;
+
+  // the client plane's two refusing carriers: corners a few units apart at
+  // 1e17 make two constraints nearly overlap, so the resolve build's meeting
+  // with a third lands across one of them. The round states that landing on
+  // the constraint it reached, under the meeting's own name, so the next
+  // round triangulates a constraint set that no longer crosses.
+  const std::array<std::array<std::int64_t, 2>, 5> five{{
+      {{-545020530454653381LL, 353835787474720801LL}},
+      {{-539031207207925604LL, 361370513388240941LL}},
+      {{-536192548368805975LL, 364696470682410215LL}},
+      {{-545020530454653374LL, 353835787474720810LL}},
+      {{-536335934011831235LL, 364528470738659695LL}},
+  }};
+  const std::array<std::array<std::int64_t, 2>, 6> six{{
+      {{-617216197846625193LL, 206370718622390587LL}},
+      {{-622023084454420931LL, 181079011068896586LL}},
+      {{-545020530454653381LL, 353835787474720801LL}},
+      {{-619818111922605406LL, 192680599578956832LL}},
+      {{-545020530454653381LL, 353835787474720800LL}},
+      {{-622023084454420931LL, 181079011068896587LL}},
+  }};
+  std::array<tf::test::plane_hand_world<Int>, 2> worlds{
+      tf::test::make_plane_near_overlap_world<Int>(
+          five, std::array<index_t, 5>{0, 1, 4, 2, 3},
+          std::array<index_t, 2>{1, 3}),
+      tf::test::make_plane_near_overlap_world<Int>(
+          six, std::array<index_t, 6>{0, 3, 1, 5, 2, 4},
+          std::array<index_t, 2>{3, 5})};
+  for (auto &world : worlds) {
+    const auto get_original = [&](int, index_t point) {
+      return world.points[std::size_t(point)];
+    };
+    tf::arrangement::plane_arrangement<index_t, Int> product;
+    product.build(world.input, index_t(0), get_original, get_original,
+                  world.vertex_offsets);
+
+    REQUIRE(product.census().refusals != 0);
+    CHECK(product.census().landings != 0);
+    CHECK(product.failed().size() == 0);
+    CHECK(product.plane_range(0)[1] > product.plane_range(0)[0]);
+  }
 }

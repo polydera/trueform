@@ -76,16 +76,18 @@ auto prepare_plane_carrier_boundary(const World &world,
   local.cons_row.clear();
 
   // Every side is a boundary statement of the carrier's only member, so the
-  // side index is the ordinal. A side stated twice is the mesh folding
+  // side index is the ordinal. A side stated both ways is the mesh folding
   // onto itself and its wall cancels — the repeated-boundary law a canon-major
-  // block carries as a run's parity toggle, carried here as the toggle
-  // itself, since equal pairs are what a canonical order would have made
-  // adjacent. The group space is the tier's, and an unmaterialized tier
-  // states none, so no slot of this carrier names a piece.
+  // block carries as a run's winding, carried here as the winding itself,
+  // since equal pairs are what a canonical order would have made adjacent.
+  // The group space is the tier's, and an unmaterialized tier states none, so
+  // no slot of this carrier names a piece.
   local.cons.clear();
   local.bnd.clear();
   local.cons_group.clear();
   local.cons_side.clear();
+  local.cons_winding.clear();
+  local.cons_cut.clear();
   for (std::size_t side = 0; side < n_corners; ++side) {
     const auto a = local.corner_local[side];
     const auto b = local.corner_local[(side + 1) % n_corners];
@@ -103,7 +105,10 @@ auto prepare_plane_carrier_boundary(const World &world,
       }
     }
     if (stated != local.bnd.size()) {
-      local.bnd[stated] = char(local.bnd[stated] ^ 1);
+      local.cons_winding[stated] = static_cast<signed char>(
+          local.cons_winding[stated] +
+          (local.cons[2 * stated] == a ? 1 : -1));
+      local.bnd[stated] = char(local.cons_winding[stated] & 1);
       continue;
     }
     local.cons.push_back(a);
@@ -111,6 +116,7 @@ auto prepare_plane_carrier_boundary(const World &world,
     local.bnd.push_back(char(1));
     local.cons_group.push_back(Index(-1));
     local.cons_side.push_back(short(side));
+    local.cons_winding.push_back(static_cast<signed char>(1));
   }
   return true;
 }

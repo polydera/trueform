@@ -40,7 +40,8 @@ auto run_plane_cdt(Local &local, bool pooled, bool resolve) -> bool {
         local.cons_alias_blocks);
     union_plane_constraint_aliases(local.cons_aliases, local.cons_alias_blocks,
                                    local.bnd, local.cons_row,
-                                   local.cons_statements, local.folded_members,
+                                   local.cons_statements, local.cons_winding,
+                                   local.folded_members,
                                    local.cons_boundary_promotions);
     if (local.cons_boundary_promotions.size() != 0)
       local.cdt.promote_constraint_boundaries(local.cons_boundary_promotions);

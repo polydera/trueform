@@ -21,8 +21,10 @@
 namespace tf::arrangement {
 
 /// ONE MEMBER'S STATEMENT about one constraint row of a pooled carrier: the
-/// side of that member's own polygon the row lies on (`-1` for none) and
-/// whether the member's statements leave a wall standing there.
+/// side of that member's own polygon the row lies on (`-1` for none) and the
+/// winding its loop states there — each instance adds one running the row's
+/// key order and subtracts one running against it. An odd winding is a wall
+/// standing there.
 ///
 /// A row names only the members that speak for it, so the table is the facts
 /// and nothing else — a member absent from a row is silent about it on both
@@ -34,23 +36,24 @@ template <typename Index> struct plane_member_statement {
   Index member;
   Index row;
   short side;
-  char parity;
+  signed char winding;
 };
 
 /// Add one statement to the row being built at `begin`. Rows stay
 /// ascending in member, so the flood's walk across a wall is a merge; a member
-/// RESTATING the row toggles its wall — the mesh folding onto one carrier
-/// cancels — and the first side it names is the one it keeps.
+/// RESTATING the row adds its winding — the mesh folding onto one carrier runs
+/// the row both ways and cancels — and the first side it names is the one it
+/// keeps.
 template <typename Index>
 auto state_plane_member_statement(
     tf::buffer<plane_member_statement<Index>> &statements, std::size_t begin,
-    Index row, Index member, short side, char parity) -> void {
+    Index row, Index member, short side, signed char winding) -> void {
   auto at = statements.size();
   while (at > begin && member < statements[at - 1].member)
     --at;
   if (at > begin && statements[at - 1].member == member) {
     auto &stated = statements[at - 1];
-    stated.parity = char(stated.parity ^ parity);
+    stated.winding = static_cast<signed char>(stated.winding + winding);
     if (stated.side < short(0))
       stated.side = side;
     return;
@@ -58,7 +61,7 @@ auto state_plane_member_statement(
   statements.push_back({});
   for (auto k = statements.size() - 1; k > at; --k)
     statements[k] = statements[k - 1];
-  statements[at] = {member, row, side, parity};
+  statements[at] = {member, row, side, winding};
 }
 
 /// The same statements by MEMBER. Counts plus one prefix put each

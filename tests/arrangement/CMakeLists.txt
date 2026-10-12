@@ -5,6 +5,7 @@ add_executable(trueform_arrangement_tests
   test_mesh_arrangements.cpp
   test_segment_arrangements.cpp
   test_self_arrangements.cpp
+  test_tolerance_pulls.cpp
 )
 
 target_link_libraries(trueform_arrangement_tests PRIVATE trueform_test_common)

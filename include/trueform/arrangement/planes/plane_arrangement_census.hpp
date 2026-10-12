@@ -32,6 +32,9 @@ struct plane_arrangement_census {
   std::size_t refusals = 0;
   std::size_t crossings = 0;
   std::size_t landings = 0;
+  /// Cut ends the rounding carried across their own face's side, landed on
+  /// it under the rim law.
+  std::size_t rim_landings = 0;
   std::size_t collisions = 0;
   std::size_t created = 0;
   std::size_t splits = 0;
@@ -67,6 +70,7 @@ struct plane_arrangement_census {
     refusals += o.refusals;
     crossings += o.crossings;
     landings += o.landings;
+    rim_landings += o.rim_landings;
     collisions += o.collisions;
     created += o.created;
     splits += o.splits;

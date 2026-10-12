@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
@@ -22,17 +23,21 @@
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../core/views/slice.hpp"
+#include "../../exact/canonical_plane.hpp"
 #include "../../exact/dyadic_blend.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/plane_frame.hpp"
+#include "../../exact/plane_frame_winding.hpp"
 #include "../../exact/tag_of_flat_vertex.hpp"
 #include "../../exact/vertex.hpp"
 #include "../../intersect/graph/face_descriptor.hpp"
 #include "../../intersect/graph/flat_of_vertex.hpp"
 #include "../../intersect/graph/local_arrangement.hpp"
+#include "../../intersect/graph/name_plane_carriers.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_identity_collapse.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
+#include "../../intersect/graph/seat_named_planes.hpp"
 #include "../../topology/cdt_refine_config.hpp"
 #include "../../topology/topo_id.hpp"
 #include "./advance_plane_wave.hpp"
@@ -67,6 +72,7 @@
 #include "./publish_plane_final_pieces.hpp"
 #include "./rewrite_plane_flat_triangles.hpp"
 #include "./seat_plane_wave_entrants.hpp"
+#include "./state_plane_promoted_members.hpp"
 #include "./state_plane_round_frontier.hpp"
 #include "./state_plane_weld_entrant_side.hpp"
 #include "./triangulate_plane_round.hpp"
@@ -260,18 +266,24 @@ public:
   /// the same rewrite currency the world publishes its own in, closed, so
   /// one binary search answers what an identity of this arrangement speaks.
   auto merges() const { return tf::make_range(_merges); }
-  /// The faces refinement promoted past the world's own: face
-  /// `n_base_faces() + i` is stated by row `i`, and its plane is
-  /// `n_base_planes() + i`. The three tables are one statement — the
-  /// descriptor, the carrier's exact frame, and the face's winding in it —
-  /// so a consumer reads the promoted side of every carrier fact here
-  /// rather than rederiving it.
+  /// The faces promoted past the world's own: face `n_base_faces() + i` is
+  /// stated by row `i` of `promoted_descriptors`, its winding in its plane's
+  /// frame by `promoted_orientations`, and its plane by `promoted_plane_of` —
+  /// a standing plane its name holds, or one the promotion founded. Plane
+  /// `n_base_planes() + j` is framed by row `j` of `promoted_frames`, and
+  /// `promoted_member_offsets` counts, per plane, the promoted faces seated
+  /// on it after its own. A consumer reads the promoted side of every carrier
+  /// fact here rather than rederiving it.
   auto promoted_descriptors() const {
     return tf::make_range(_promoted_descriptors);
   }
   auto promoted_frames() const { return tf::make_range(_promoted_frames); }
   auto promoted_orientations() const {
     return tf::make_range(_promoted_orientations);
+  }
+  auto promoted_plane_of() const { return tf::make_range(_promoted_plane_of); }
+  auto promoted_member_offsets() const {
+    return tf::make_range(_promoted_member_offsets);
   }
   /// The world extents this build stood on. A face or plane below them is
   /// the world's own; the promotion appended everything at or past them.
@@ -350,6 +362,9 @@ public:
     _promoted_descriptors.clear();
     _promoted_frames.clear();
     _promoted_orientations.clear();
+    _promoted_plane_of.clear();
+    _promoted_member_offsets.clear();
+    _promoted_members.clear();
     _class_t.clear();
     _class_name.clear();
     _base_created = 0;
@@ -623,6 +638,13 @@ private:
     make_plane_refinement_entrant_orientations<Index>(
         _promoted_descriptors, _promoted_frames, get_original_point,
         apply_to_form, _promoted_orientations);
+    _promoted_plane_of.allocate(_promoted_descriptors.size());
+    for (std::size_t at = 0; at < _promoted_plane_of.size(); ++at)
+      _promoted_plane_of[at] = world.n_planes() + Index(at);
+    state_plane_promoted_members(
+        _promoted_plane_of, world.n_faces(),
+        world.n_planes() + Index(_promoted_descriptors.size()),
+        _promoted_member_offsets, _promoted_members);
 
     tf::buffer<Index> entrant_origins;
     tf::buffer<char> fresh_origins;
@@ -676,7 +698,8 @@ private:
     // the pre-step above holds the base value and its base extents; the
     // wave below reads the promoted one
     World promoted_world(world, _promoted_descriptors, _promoted_frames,
-                               _promoted_orientations);
+                         _promoted_orientations, _promoted_plane_of,
+                         _promoted_member_offsets, _promoted_members);
     if (!apply_refinement_wave(promoted_world, mapped_splits,
                                std::move(initial.welds), get_base_point,
                                get_original_point)) {
@@ -770,6 +793,7 @@ private:
     evidence.census.rebuilt_planes = planes.size();
     triangulate_plane_round(world, planes, _local_tables, _plane_ticket,
                             _vertex_offsets, n_flat_points(),
+                            n_flat_points() + _base_created,
                             crossing_name_kind, _refined, _record_arrangement,
                             _record_cells, _refine_config, _plane_steiner_sites,
                             flat_point, _arena, evidence);
@@ -863,8 +887,9 @@ private:
     };
     round = close_frontier(evidence, take_entrance(round));
     // A wave advances by stating something a table keeps: a new
-    // identity, a merge, or a smaller frontier; a round stating none of
-    // the three has restated what the tables already hold. One such
+    // identity, a merge, a split — a landing states no identity, yet splits
+    // its constraint — or a smaller frontier; a round stating none of the
+    // four has restated what the tables already hold. One such
     // round is legitimate rebuilding. The budget of eight is measured,
     // not chosen — far above every recovery observed, far below a
     // restating cycle — so the guard cannot cut a live wave short and
@@ -872,6 +897,7 @@ private:
     constexpr std::size_t no_progress_budget = 8;
     auto stated_created = _created_class.size();
     auto stated_merges = _merges.size();
+    auto stated_splits = _census.splits;
     auto stated_frontier = frontier.size();
     // the entrance states no identity and no merge — it promotes faces — so
     // the set of faces this arrangement has answered for is its own term, and
@@ -886,6 +912,7 @@ private:
       const auto retried = tf::make_range(attempted);
       triangulate_plane_round(world, retried, _local_tables, _plane_ticket,
                               _vertex_offsets, n_flat_points(),
+                              n_flat_points() + _base_created,
                               crossing_name_kind, _refined,
                               _record_arrangement, _record_cells,
                               _refine_config, _plane_steiner_sites, flat_point,
@@ -896,6 +923,7 @@ private:
         break;
       if (_created_class.size() == stated_created &&
           _merges.size() == stated_merges &&
+          _census.splits == stated_splits &&
           frontier.size() >= stated_frontier &&
           answered.count == stated_answered)
         ++stalled_run;
@@ -913,6 +941,7 @@ private:
       }
       stated_created = _created_class.size();
       stated_merges = _merges.size();
+      stated_splits = _census.splits;
       stated_frontier = frontier.size();
       stated_answered = answered.count;
     }
@@ -996,37 +1025,93 @@ private:
     if (seated.size() != entrants.size())
       state_entrant_tables(tf::make_range(seated));
 
-    make_plane_refinement_entrant_orientations<Index>(
-        descriptors, frames, get_original_point, apply_to_form, orientations);
-    const auto plane_base = world.n_planes();
+    // THE SEATING LAW, the local arrangement's own: an entrant whose name a
+    // standing plane holds joins it, equal names found one plane together
+    const auto n_world_planes = world.n_planes();
+    const auto n_cut = world.graph().n_planes();
+    const auto cut_names = world.graph().plane_names();
+    const auto name_of = [&](const descriptor_t &descriptor) {
+      return tf::intersect::graph::name_plane_face<Index, Int>(
+          Index(descriptor.tag), descriptor.object, apply_to_form,
+          get_original_point);
+    };
+    tf::buffer<tf::exact::canonical_plane<Int>> names;
+    names.allocate(descriptors.size());
+    tf::parallel_for_each(
+        tf::make_sequence_range(descriptors.size()),
+        [&](std::size_t at) { names[at] = name_of(descriptors[at]); },
+        tf::checked(64));
+    const auto standing_names = tf::make_mapped_range(
+        tf::make_sequence_range(n_world_planes), [&](Index plane) {
+          return plane < n_cut ? cut_names[std::size_t(plane)]
+                               : name_of(world.descriptor(
+                                     world.member(plane, Index(0))));
+        });
+    tf::buffer<Index> plane_of;
+    tf::buffer<Index> new_plane_first;
+    const auto n_new = tf::intersect::graph::seat_named_planes<Index, Int>(
+        names, standing_names, n_world_planes, plane_of, new_plane_first);
+    tf::buffer<frame_t> new_frames;
+    new_frames.allocate(std::size_t(n_new));
+    for (Index r = 0; r < n_new; ++r)
+      new_frames[std::size_t(r)] = frames[std::size_t(new_plane_first[r])];
+    // each entrant's winding in the frame of the plane it is seated on
+    orientations.allocate(descriptors.size());
+    tf::parallel_for_each(
+        tf::make_sequence_range(descriptors.size()),
+        [&](std::size_t at) {
+          const auto plane = plane_of[at];
+          const auto &frame =
+              plane < n_world_planes
+                  ? world.frame(plane)
+                  : new_frames[std::size_t(plane - n_world_planes)];
+          const auto &descriptor = descriptors[at];
+          apply_to_form(Index(descriptor.tag), [&](const auto &form) {
+            orientations[at] = tf::exact::plane_frame_winding(
+                frame, form.faces()[descriptor.object], [&](auto corner) {
+                  return get_original_point(std::int16_t(descriptor.tag),
+                                            Index(corner));
+                });
+          });
+        },
+        tf::checked);
     const auto plane_of_face = [&world](Index face) {
       return world.plane_of_face(face);
     };
+    tf::buffer<Index> joined;
     if (!seat_plane_wave_entrants(world, raw_entrants, world_group_of,
-                                  route_of, plane_base, plane_of_face,
-                                  _local_tables, _plane_ticket,
-                                  _group_router))
+                                  route_of, plane_of, n_world_planes, n_new,
+                                  plane_of_face, _local_tables, _plane_ticket,
+                                  _group_router, joined))
       return plane_round_result::aborted;
     tf::core::append(descriptors, _promoted_descriptors);
-    tf::core::append(frames, _promoted_frames);
+    tf::core::append(new_frames, _promoted_frames);
     tf::core::append(orientations, _promoted_orientations);
+    tf::core::append(plane_of, _promoted_plane_of);
+    state_plane_promoted_members(_promoted_plane_of, _base_faces,
+                                 n_world_planes + n_new,
+                                 _promoted_member_offsets, _promoted_members);
     // The promotion constructor reads its base
     // extents off the value it is handed, never off that value's current
-    // ones, so appending to the three buffers and rebuilding from the
+    // ones, so appending to the promoted tables and rebuilding from the
     // value in hand composes. Layering one promoted value on another would
     // restate an extent that is already frozen.
     world = World(world, _promoted_descriptors, _promoted_frames,
-                  _promoted_orientations);
+                  _promoted_orientations, _promoted_plane_of,
+                  _promoted_member_offsets, _promoted_members);
     _arena.grow_planes(world.n_planes());
     _arena.grow_faces(world.n_faces());
     refusals.reallocate_and_initialize(std::size_t(world.n_planes()), Index(0));
     _census.entrant_planes += seated.size();
 
     // the entrants join the frontier DIRTY — they hold no product — beside
-    // the carriers the discarded round saw something on; their planes stamp
-    // past every world plane, so the frontier stays ascending and unique
-    for (Index at = 0; at < Index(seated.size()); ++at)
-      frontier.push_back(plane_base + at);
+    // the carriers the discarded round saw something on, and so does every
+    // standing plane that gained a member
+    for (Index r = 0; r < n_new; ++r)
+      frontier.push_back(n_world_planes + r);
+    tf::core::append(joined, frontier);
+    std::sort(frontier.begin(), frontier.end());
+    frontier.erase_till_end(std::unique(frontier.begin(), frontier.end()));
     return plane_round_result::retry;
   }
 
@@ -1291,6 +1376,9 @@ private:
   tf::buffer<descriptor_t> _promoted_descriptors;
   tf::buffer<frame_t> _promoted_frames;
   tf::buffer<std::int8_t> _promoted_orientations;
+  tf::buffer<Index> _promoted_plane_of;
+  tf::buffer<Index> _promoted_member_offsets;
+  tf::buffer<Index> _promoted_members;
   tf::buffer<param_t> _class_t;
   tf::buffer<name_t> _class_name;
   tf::range<const Index *, tf::dynamic_size> _vertex_offsets;

@@ -54,6 +54,8 @@ template <typename Index, typename Int> struct plane_refinement_workspace {
   tf::buffer<std::array<Index, 2>> cons_row;
   tf::buffer<tf::arrangement::plane_member_statement<Index>> cons_statements;
   tf::buffer<short> cons_side;
+  tf::buffer<signed char> cons_winding;
+  tf::buffer<std::array<Index, 2>> cons_cut;
   tf::buffer<std::array<Index, 2>> member_ticket;
   int face_orientation = 1;
 };
