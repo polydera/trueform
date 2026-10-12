@@ -1,3 +1,67 @@
+## trueform v0.10.7
+
+The domain decomposition is deterministic at any thread count. A
+component's label was a name claimed in arrival order, and the public
+cell order of `make_csg_domains` — with the index maps over it —
+inherited the schedule. Components are now ranked by their first member
+once the labels close, so the stored names are canonical: the same
+input returns the same cells in the same order, single-threaded or
+parallel, run after run.
+
+A radial fan certifies its order or withholds it. Around every edge
+where three or more surface pieces meet, the classifier now reads each
+page's emitted apex against every other page's carrier with exact
+predicates; a ring whose emission does not stand where its carriers
+place it publishes no side testimony — contact is kept, merging is
+withheld, and the census counts the abstention. The predicates sit
+behind sound float filters whose error bounds are derived in their
+headers (`tf::exact::triple_product`, `projected_dot`, `offset_dot`),
+and the filters decide on double images formed once per page, so the
+certificate's exactness costs a few milliseconds where it used to cost
+tens.
+
+Every entrant takes the plane its name states. The entrance of the cut
+world and the recovery wave now seat their faces through one law
+(`seat_named_planes`): a name a standing plane holds joins that plane,
+equal names found one plane together, and the numeric coplanarity
+allowance is deleted. A point the wave mints within one lattice unit of
+another piece lands on that piece instead of minting beside it, so the
+near-collinear recovery that used to crawl forever now converges; a
+landing that would sit past a constraint's end states a vertex fact,
+through the one landing rule both the rim and the meeting share.
+
+A face's cut never leaves the face, and a mint that lands on another
+constraint is an identity of it. The rim law routes a crossing rounded
+past its side back onto the wall through refusal and recovery; the
+constrained Delaunay tier states a landing on an existing constraint as
+a shared record rather than a new point; and a wall whose two stated
+passes cancel still joins the loop it cancels in, so a folded tip is
+wound by its loop instead of its accident.
+
+The band pulls through committed planes. A tolerance commits a plane
+only when every corner of the face stands within the band, vertices owing
+a committed plane drop exactly onto it, and an identification the input
+already states exactly outranks any new one the band would make — an
+edge contact is a crossing, an end on the other edge is a vertex
+contact, and a vertex whose move undid an exact contact is pinned back.
+After placement the pipeline runs exactly at zero on the moved mesh.
+
+A fused wall reads its sheets off its layers. The combinatorial
+classifier states a sheet's two sides from the stack's own layer
+algebra; a free rim's region wraps its sheet across the nesting merges;
+and a cell a sheet does not separate — one that reaches both of its
+sides around its rim — carries no side of it and reads false.
+
+Inputs whose features sit below the lattice's own resolution are now a
+stated contract rather than an accident. Separations smaller than one
+lattice unit cannot be stated exactly by any weld the pipeline could
+lawfully make; the honest routes are the f64 one-shot when the source
+floats exist, a band where the door can place, and `tf::cleaned` with
+one tolerance on every operand — a transitive grid quantization — for
+integer or re-read inputs carrying sub-lattice residue, with the
+tolerance chosen well above the lattice unit and well below the data's
+own precision.
+
 ## trueform v0.10.6
 
 A mesh fills its own holes. `tf::fill_holes` fills a mesh's boundary rims

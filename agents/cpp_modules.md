@@ -376,17 +376,19 @@ the construction rung
 - `input_lattice<Index, RealT, Int>` — where every original vertex of every
   operand stands on the lattice, built once over the union of the operands:
   the shared converter, the flat vertex space that names `(tag, id)` by one
-  integer, and — when a tolerance is given — the table the door
-  (`exact/door/`) placed every vertex into. Under a band the door first POOLS
-  (`exact/door/pool/`): faces whose quantized directions agree commit one
-  exact plane through their own original vertices, and a vertex whose name
-  joined a pool is placed on that plane instead of on its own faces'. A
-  tolerance of zero is the identity: no pool, no table, no face read, the
-  plain converter
+  integer, and — when a tolerance is given — the sparse table of the
+  vertices the door (`exact/door/`) moved (`moved_points`, `moved_tickets`)
+  and its `census()`. Under a band the planes pull first — faces whose
+  directions agree POOL (`exact/door/pool/`), and a face another form's vertex
+  stands within the band of commits a plane — each only when its corners land
+  within the band; then every vertex owing a committed plane drops exactly
+  onto it. A tolerance of zero is the identity: no pool, no table, no face
+  read, the plain converter
 - `input_lattice_reader<Index, RealT, Int, ApplyToForm>` — the one reader of an
   original vertex's position, bound to the caller's own forms: `(tag, id)` or a
-  flat id answers from the placed table when there is one and from the
-  converter over the input's own coordinate when there is not
+  flat id answers its moved row when the band moved it and the converter over
+  the input's own coordinate otherwise; the real-valued export of an unmoved
+  vertex is the input's own coordinate
 
 ---
 

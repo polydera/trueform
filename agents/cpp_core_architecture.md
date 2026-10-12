@@ -595,20 +595,27 @@ order with their corners in the stream's vertex language.
 - **`tf::intersect::graph::local_arrangement`**
   (`intersect/graph/local_arrangement.hpp`) — owns the intersections,
   the `plane_graph` (planes, frames, members, face descriptors,
-  windings; same-tag coplanar faces pooled ACROSS THEIR SHARED EDGES —
-  the walk of `pool_same_tag_planes`, whose pairs and the cross-tag
-  contact rows collapse in `build_plane_ids`'s one union-find — so one
-  connected geometric plane is one identity) and the definition tables
-  the splits are applied to.
+  windings; THE PLANE IDENTITY IS THE NAME — `name_plane_carriers`
+  gives every cut face the canonical name of the exact plane it stands
+  on, read through the same positions the pipeline reads, and equal
+  names are one carrier whatever the tags, with a collinear face's void
+  name equal to nothing; the graph keeps each plane's name) and the
+  definition tables the splits are applied to.
   Its `build` orchestrates the module's free functions:
   `detect_plane_crossings`, `close_plane_classes`,
   `collapse_plane_identities`, `order_plane_splits`,
   `discover_uncut_entrants`, `state_uncut_entrants`,
-  `respan_plane_defs`, `fuse_plane_defs`. The product is the post-split
+  `seat_entrant_planes`, `respan_plane_defs`, `seat_entrant_plane_edges`,
+  `fuse_plane_defs`. An entrant is named by the same law: a name a cut
+  plane holds seats it on that plane as one more member of the stack,
+  equal names among the entrants found one plane numbered past the
+  graph's, and the entrant's definitions move onto its plane's block.
+  The product is the post-split
   definition table, canon-major with a rebuilt plane CSR — no splits
   side table — plus the entrance tables (the source faces the cut world
-  never named: `entrants`, `entrant_descriptors`, `entrant_planes`,
-  `entrant_orientations`) and `merges()`, the rewrite rows the identity
+  never named: `entrants`, `entrant_descriptors`, `entrant_planes` — the
+  frames of the planes entrants founded — and `entrant_orientations`,
+  each in its seated plane's frame) and `merges()`, the rewrite rows the identity
   gate absorbed. THE GATE (`collapse_plane_identities`) compares the
   lattice position of every identity the cut world names — every
   definition endpoint, every class, every landing (a created point
@@ -715,19 +722,25 @@ order with their corners in the stream's vertex language.
   `tf::exact::input_lattice` is the operands' lattice view, built ONCE at
   the factory (`dispatch::make_graph`) over the union of the operands: the
   shared converter, the flat vertex space, and — under a tolerance — the
-  placed table the door (`exact/door/`) computed: every original vertex
-  moved at most the band onto a lattice point of the planes its own
-  incident faces state (the meet of three, the line of two, its own
-  tangent plane, each admitted by the certificate `admits_placement`) —
-  or, where the pool tier (`exact/door/pool/`) committed one for it, onto
-  the exact plane a run of same-direction faces gave up their own planes
-  for, a vertex reaching it by the same one-band solve — after which the
-  pipeline runs exactly at zero on the moved mesh. At tolerance zero no
-  table exists and nothing of the door executes. The door gives positions
-  only; identity is the gate's.
+  sparse table of the vertices the door (`exact/door/`) moved. The band is
+  a sparse set of pulls through committed planes: the pool tier
+  (`exact/door/pool/`) and the contacts `gather_vertex_contacts` admits
+  (a vertex within the band of another form's face) commit planes, a face
+  only when every corner lands within the band (`commit_contact_planes`),
+  and the vertices owing them drop exactly onto them (`place_vertices`) —
+  after which the pipeline runs exactly at zero on the moved mesh. An
+  existing identification outranks a new one: every exact contact the
+  input states between forms is remembered as a plane its vertices ride
+  (`hold_exact_contacts`; two crossing edges span one, and an edge's end
+  on another edge is a vertex on a closed face), verified exactly on the
+  moved mesh, and a vertex whose move undid one is pinned to its input
+  point. Every
+  vertex nothing pulled is read as at zero. At tolerance zero no table
+  exists and nothing of the door executes. The door gives positions only;
+  identity is the gate's; its refusals are counted in `census()`.
   `tf::exact::input_lattice_reader` is the ONE reader of an original's
-  position (the placed table when there is one, the converter otherwise),
-  and every tier reads originals through it.
+  position (its moved row when the band moved it, the converter
+  otherwise), and every tier reads originals through it.
 - **`tf::csg_graph`** (`csg/csg_graph.hpp`) = an arrangement_graph plus
   the classification tier (machinery in `csg/graph/`):
   `tf::csg::graph::triangle_component_labels` (cut CCL over the cells,
@@ -738,8 +751,9 @@ order with their corners in the stream's vertex language.
   pages radially ordered, admitted by the fence's `fan` verdict),
   `tf::csg::graph::make_arrangement_descriptor`,
   `make_domain_inclusions`, `compute_arrangement_domain_volumes`,
-  `seed_inclusion_bits` / `propagate_inclusion_bits`, and
-  `anchor_sheet_sides`. Consumers: `make_csg_mesh` (boolean
+  `seed_inclusion_bits` / `propagate_inclusion_bits` (volume columns),
+  and `make_sheet_sides` / `mark_sheet_wraps` / `propagate_sheet_sides`
+  (sheet columns, the law in `sheet_sides.hpp`). Consumers: `make_csg_mesh` (boolean
   expressions), `make_csg_domains`, `make_outer_shell`,
   `make_intersection_curves(csg_graph)`.
 - **`iso/`** (`tf::iso`, machinery in `iso/cut/`) — the scalar-field

@@ -348,8 +348,13 @@ The descriptor tier answers the volumetric questions:
 - `tf::csg::graph::compute_chosen_sides` — per component `1` / `0` / `-1`, the
   last meaning both sides have the same membership so the component contributes
   no boundary face;
-- sheets: `is_sheet()`, `sheet_folds()` (`{component, sheet tag, reversed}` per
-  coplanar fold) and `anchor_sheet_sides`;
+- sheets: `is_sheet()`, a coplanar fold read as a layer of
+  `crossings()`, and the sheet columns' one producer, `tf::csg::graph::sheet_sides`
+  (`csg/graph/sheet_sides.hpp`): a wall carrying the sheet states its two
+  domains, a fan where the sheet stands on one page wraps the sector holding
+  its continuation (`descriptor().fans.continuations`), and the rest is
+  copied across the walls that do not carry it. A domain the sheet does not
+  separate reads 0;
 - `domain_nesting_merges()` — repairs contact-free nested shells, consumed by
   `make_csg_domains` only and irrelevant to the boolean mesh read.
 
