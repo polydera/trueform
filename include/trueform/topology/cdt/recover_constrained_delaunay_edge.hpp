@@ -11,12 +11,14 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/small_vector.hpp"
 #include "./append_constrained_delaunay_crossing_point.hpp"
 #include "./clear_constrained_delaunay_constraint.hpp"
 #include "./compute_constrained_delaunay_crossing_parameters.hpp"
 #include "./constrained_delaunay_edge_constraint_provenance.hpp"
 #include "./constrained_delaunay_vertex_parameter.hpp"
 #include "./find_constrained_delaunay_edge.hpp"
+#include "./find_constrained_delaunay_meeting_landings.hpp"
 #include "./find_constrained_delaunay_obstruction.hpp"
 #include "./find_initial_constrained_delaunay_triangle.hpp"
 #include "./insert_constrained_delaunay_vertex.hpp"
@@ -126,6 +128,20 @@ auto recover_constrained_delaunay_edge(Owner &owner,
     const auto created = append_constrained_delaunay_crossing_point(
         owner, first_vertex, second_vertex, local_parameters.self);
     const Index crossing = created.vertex;
+    const Index meeting =
+        crossing != Owner::none ? crossing : created.coincident;
+    tf::small_vector<constrained_delaunay_meeting_landing<
+                         Index, typename Owner::constraint_provenance>,
+                     2>
+        landings;
+    if (meeting != Owner::none)
+      find_constrained_delaunay_meeting_landings(
+          owner, first_vertex, second_vertex, local_parameters.meeting,
+          crossed, owner.point(meeting), landings);
+    // A constraint the meeting stands on is released before the meeting
+    // enters, so the insertion's flips remove the face it would flatten.
+    for (const auto &landing : landings)
+      clear_constrained_delaunay_constraint(owner, landing.edge);
     if (crossing != Owner::none)
       insert_constrained_delaunay_vertex(owner, crossing, created.location);
 
@@ -144,12 +160,45 @@ auto recover_constrained_delaunay_edge(Owner &owner,
     // the coincident vertex fails the on-segment predicate for exactly one
     // of the two, every time it arises. Placing the meeting by parameter is
     // what makes it sayable without lying about either side.
-    const Index meeting =
-        crossing != Owner::none ? crossing : created.coincident;
     if (meeting != Owner::none && input_id != Owner::none &&
         other_id != Owner::none && input_id != other_id)
       owner._incremental_crossings.push_back(
           {meeting, input_id, other_id, self_parameter, other_parameter});
+
+    // A constraint the rounding reached passes through the meeting. Split
+    // there, every piece of this resolution meets it at a shared endpoint;
+    // left whole, a piece crosses it at a fresh rounding that lands across
+    // the next constraint, and the cascade never ends.
+    const auto land_meeting = [&]() {
+      for (const auto &landing : landings) {
+        const Param parameter = rebase_constrained_delaunay_parameter<Owner>(
+            constrained_delaunay_vertex_parameter(owner, landing.first,
+                                                  landing.second, meeting),
+            landing.provenance.t0, landing.provenance.t1);
+        if (parameter < Param(0)) {
+          if (!recover_constrained_delaunay_edge(
+                  owner, landing.first, landing.second, landing.is_boundary,
+                  landing.provenance.input_id, landing.provenance.t0,
+                  landing.provenance.t1, depth + 1, false))
+            return false;
+          continue;
+        }
+        if (landing.provenance.input_id != Owner::none)
+          owner._incremental_crossings.push_back(
+              {meeting, landing.provenance.input_id, Owner::none, parameter,
+               Param(0)});
+        if (!recover_constrained_delaunay_edge(
+                owner, landing.first, meeting, landing.is_boundary,
+                landing.provenance.input_id, landing.provenance.t0, parameter,
+                depth + 1, false) ||
+            !recover_constrained_delaunay_edge(
+                owner, meeting, landing.second, landing.is_boundary,
+                landing.provenance.input_id, parameter, landing.provenance.t1,
+                depth + 1, false))
+          return false;
+      }
+      return true;
+    };
 
     if (crossing == Owner::none) {
       const Index coincident = created.coincident;
@@ -162,7 +211,8 @@ auto recover_constrained_delaunay_edge(Owner &owner,
             first_param, second_param);
         if (parameter < Param(0))
           return false;
-        return recover_constrained_delaunay_edge(
+        return land_meeting() &&
+               recover_constrained_delaunay_edge(
                    owner, first_vertex, coincident, is_boundary, input_id,
                    first_param, parameter, depth + 1, false) &&
                recover_constrained_delaunay_edge(
@@ -180,7 +230,8 @@ auto recover_constrained_delaunay_edge(Owner &owner,
           find_constrained_delaunay_edge(owner, crossed_first, crossed_second);
       if (stale != Owner::none)
         clear_constrained_delaunay_constraint(owner, stale);
-      return recover_constrained_delaunay_edge(
+      return land_meeting() &&
+             recover_constrained_delaunay_edge(
                  owner, crossed_first, coincident, crossed_is_boundary,
                  other_id, other.t0, parameter, depth + 1, false) &&
              recover_constrained_delaunay_edge(
@@ -195,7 +246,8 @@ auto recover_constrained_delaunay_edge(Owner &owner,
         find_constrained_delaunay_edge(owner, crossed_first, crossed_second);
     if (stale != Owner::none)
       clear_constrained_delaunay_constraint(owner, stale);
-    return recover_constrained_delaunay_edge(
+    return land_meeting() &&
+           recover_constrained_delaunay_edge(
                owner, crossed_first, crossing, crossed_is_boundary, other_id,
                other.t0, other_parameter, depth + 1, false) &&
            recover_constrained_delaunay_edge(
