@@ -6,6 +6,8 @@ add_executable(trueform_arrangement_tests
   test_segment_arrangements.cpp
   test_self_arrangements.cpp
   test_tolerance_pulls.cpp
+  test_reseat_carve.cpp
+  test_identity_substrate.cpp
 )
 
 target_link_libraries(trueform_arrangement_tests PRIVATE trueform_test_common)
