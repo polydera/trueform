@@ -1,3 +1,114 @@
+## trueform v0.10.8
+
+Geodesic distances. `tf::make_geodesic_distances(polygons, seeds[, radius])`
+states the distance from the nearest seed at every vertex: a
+label-correcting front over the two-neighbour unfolding update, run in
+double and stated in the resolved output type, zero at a seed, infinity
+where the front never arrives or past the radius. A large front splits into
+one front per thread, and every distance carries the seed that stated it,
+so an unfolding reads one source and two seeds meeting head-on cannot lower
+each other; a needle face unfolds nothing, and no distance is shorter than
+the straight line. Python `geodesic_distances` and TypeScript
+`geodesicDistances` call it. On 28 closed Thingi10K meshes from 10k to 3.2M
+faces it runs 3x to 11x faster than MeshLib's surface distances and 30x to
+100x faster than the heat method, with a mean error against the exact
+reference of 0.5% to 0.7% where the alternatives read 3% and more.
+
+Dirichlet fields over a sparse Cholesky. `tf::make_dirichlet_field(polygons,
+corner_weights, fixed_ids, fixed_values, order)` holds one scalar at the
+fixed vertices and lets it vanish under the Laplacian elsewhere, harmonic
+(`L x = 0`) or biharmonic (`L M^-1 L x = 0`), over the cotangent weights by
+default or the per-corner weights the caller states; it factors in double,
+refines once against the true residual, and names its refusal
+(`refused_operator`, `refused_unanchored`, `refused_index`,
+`refused_indefinite`, `refused_residual`). Underneath it `tf::linalg` is
+new: a symmetric matrix by its lower triangle, `analyze_cholesky` once per
+pattern under approximate minimum degree, `factor_cholesky` multifrontal
+over supernodes with the subtree blocks in parallel, and `solve_cholesky`
+for many right-hand sides in one pass per direction, so one pattern serves
+many value sets and many fields. The fill's fairing and its chart residual
+solve through it. Python `dirichlet_field` and TypeScript `dirichletField`
+expose the field.
+
+The hole fill gains its chart tier. Between the exhaustive enumeration of a
+tiny rim and the Delaunay table of a general one, `tf::fill_holes` now
+charts a hole as a height field over its rim's plane: a trend, one sphere or
+quadratic fit or the consensus of subsample fits on a large collar, plus a
+biharmonic residual on graded samples the chart places through one quality
+refinement; an exactly planar rim the chart refuses is lidded in its plane.
+`hole_fill_config::split_rim` states whether a tier may split an original
+rim edge where its patch needs one, every such split a dyadic record in the
+one canonical table that `tf::make_filled_mesh` replays, and the result
+reports the chart's verdict whichever tier held the rim. Python
+`fill_holes` and `filled_mesh` and TypeScript `fillHoles` and `filledMesh`
+carry the family.
+
+The census is a diff on the standing arrangement. `make_csg_graph` runs to
+the census's fixed point: while the census convicts the graph, the
+sub-quantum identities its convictions name fuse by statements against the
+built world, welds into the identity substrate and carriers carved and
+re-seated in the caller's own id space, never by a rebuild. The identity
+substrate is the one authority over an arrangement's points and planes:
+every mint, weld and name enters through its verbs, every reader composes
+the two layers through one law, and a created identity's death is derived
+at exposure from what nothing references. `census()` records the rounds and
+statements, `{0, 0}` being the green path, and under verification a
+certified graph proves that every domain closes and every face is named.
+
+The tolerance band pools by quantization. Every exact plane is quantized,
+its direction onto a fixed chart whose pitch keeps two planes of one cell
+within a quarter band over the whole lattice and its intercept onto the
+band; equal keys are one pool across all forms, a key held by one plane
+pools nothing, and the pool's plane is the cell's integer direction, dense
+on the lattice, through the cell's centre. Every vertex of a pooled face
+stands on the pool's plane exactly; a vertex that cannot stand on every
+pool around it stays put and every pool at it releases its faces there, to
+a fixed point. The rounding is the whole relation, so pooling is transitive
+and never walks from a face to its neighbour. A rim vertex within the band
+of another form's face lands on that face's nearest feature, a corner, a
+point on an edge with its vertex-on-edge name, or a point of the committed
+plane; interior vertices never move, and a tolerance of zero is the
+identity. The house converter scales by a power of two, so a lattice
+coordinate is the input's mantissa shifted and nothing is rounded twice.
+Over 1000 pairs of the boolean corpus at a band of 1e-5 every check passes
+where 16 failed, in half the time.
+
+Folds and borders. A depth border between two cells fences a component
+only where the net winding per form changes across it, so a wall the band
+folded into layers that cancel makes no border and the domains it would
+have separated stay joined; a landing the projection puts on a constraint
+row is stated at the row's own parameter, never dropped, so a plane whose
+cut end rounded off its line resolves instead of refusing forever.
+
+Sheets and fragments. A sheet's free rim joins its two sides, the volumes
+that hold a sheet's free rim are read off its sides and named in every
+binding, a mirrored sheet's folded winding keeps its sides, and a sheet's
+winding moments fold over the form's own tree so a large batch of queries
+answers through the expansion. `tf::make_csg_open_fragments(graph)` returns,
+per form, the live triangles of every component whose two coarse sides are
+one domain, exactly what `make_csg_domains` leaves out under the same
+config, so cells and fragments together name every live face; it carries
+the same `return_source_ids` and `return_index_map` overloads.
+
+Topology asks what a boundary is. `tf::has_holes` is true when a boundary
+rim is a hole, a closed rim or an open one with an end that carries no edge
+three or more faces share; `tf::has_flaps` is true when a rim is a flap, an
+open rim each of whose ends hangs from such an edge. Every rim is one or the
+other, so a mesh without boundary edges has neither. `tf::nth_element`
+selects by pattern-defeating quickselect, and the orient2d and incircle
+filters now decide from rounded coordinate differences before falling to
+their wide rung, their bounds derived in their headers.
+
+The compiled facade. An integer array's `mean` and `norm` answer the
+binary64 they accumulate in rather than the integer they were asked about;
+the facade's builders build exactly the structures `make_csg_graph` builds;
+and the MSVC build is clean again: lambdas state their captures, front
+tile sizes are runtime locals, and the selection's pre-C++11 path passes
+its pivot. The census machinery costs nothing where it does not fire: the
+exposure's descriptor pass runs in parallel over slots, a stock read pays
+no seat tail, and a layer that retires nothing chases no key, so the boolean
+corpus measures at parity with 0.10.7 per pair.
+
 ## trueform v0.10.7
 
 The domain decomposition is deterministic at any thread count. A
