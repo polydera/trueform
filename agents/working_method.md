@@ -51,7 +51,10 @@ concrete phase shapes in `cpp_execution_patterns.md`.
   licenses hedging, retreat, cushioning, or flattery. Answer with the verdict
   and the evidence.
 - Surface every design fork. Never silently extend shared semantics, broaden an
-  authority, or add a mode merely to make a new consumer work.
+  authority, or add a mode merely to make a new consumer work. Within the
+  laws, a fork resolves under correct-then-fastest; only a fork that a
+  missing measurement leaves undecidable escalates, and it escalates with
+  the deciding measurement named.
 - Report verdict first, mechanism second, evidence third. Admit an error
   directly and state the correction without ceremony.
 
@@ -102,7 +105,29 @@ concrete phase shapes in `cpp_execution_patterns.md`.
 For CSG failures, apply the more specific forward-tracing procedure in
 `csg_pipeline_debugging.md`.
 
-## 3. Build an oracle that can fail
+## 3. Generalize the fix into the lacking law
+
+Every defect is worked at three layers, in order, and the work is not
+finished until the third is named:
+
+1. **The case.** Understand the specific failing case and why it is
+   wrong: the smallest deterministic repro, the violated invariant,
+   stated in the pipeline's own stage names.
+2. **The fix.** Fix that case at its authoritative producer, proven by
+   the case's own gate — red first, then green.
+3. **The lacking law.** Generalize: name what the algorithm lacked that
+   permitted the whole class — the missing invariant, election,
+   channel, or statement — and target that. The case fix is the law's
+   witness, never its substitute. A named law enters the owning header
+   once, and every other instance of the class is swept in the same
+   change; a fix whose law cannot be named is a symptom patch and
+   stays recorded as unfinished work.
+
+Layer 2 without layer 3 is how the same defect returns wearing a
+different repro. Layer 3 without layers 1-2 is how a plausible law
+lands unproven. The order is the method.
+
+## 4. Build an oracle that can fail
 
 - Correctness runs use deterministic inputs. Require byte identity when output
   order is contractual; canonicalize only when unordered aggregation is an
@@ -113,6 +138,12 @@ For CSG failures, apply the more specific forward-tracing procedure in
 - A new gate is proven red first: run it against the reverted or suppressed
   mechanism and observe it fail. A gate that has never failed is a tautology
   until shown otherwise.
+- A gate asserts the product's verdict, per input, inside the gate's own
+  script. An exit code is not a verdict, and one verified input does not
+  speak for the others.
+- A red is adjudicated defect-versus-instrument before any fix dispatches.
+  An instrument gap gets the narrowest lawful channel, and the repaired
+  gate is proven red again by sabotage.
 - Test the violated invariant directly: signed quantities when orientation
   matters, required count changes, cross-carrier set equality, exact ownership
   pairs, and absence of orphaned identities.
@@ -134,7 +165,7 @@ For CSG failures, apply the more specific forward-tracing procedure in
 - Start with the narrowest gate that exercises the changed invariant, then
   broaden to the affected library and binding surfaces.
 
-## 4. Preserve exact refactor behavior
+## 5. Preserve exact refactor behavior
 
 An exact refactor preserves more than output:
 
@@ -149,13 +180,17 @@ An exact refactor preserves more than output:
 Any intended change to those properties is a separate reviewed change with its
 own proof and, when performance can move, its own measurement.
 
+A refactor claiming no behavior change lands with byte-equality proof
+against the pre-change tree — product dumps or a corpus sweep, one claim
+per stage, so a divergence is attributable to the step that caused it.
+
 Classes own state, lifetime, invariants, and phase wiring. Reusable algorithmic
 work is expressed as free operations where its inputs and outputs can be stated
 directly. A refactor is not finished merely because a monolith was split; the
 new structure must expose coherent library operations without adding modes,
 allocations, or abstraction machinery.
 
-## 5. Land in proven stages
+## 6. Land in proven stages
 
 - Keep speculative probes and task artifacts outside the library until the
   mechanism is proven.
@@ -175,7 +210,7 @@ allocations, or abstraction machinery.
   Rewrite it as a timeless invariant or work pattern; leave campaign state in
   task memory.
 
-## 6. Delegate without splitting authority
+## 7. Delegate without splitting authority
 
 - One agent owns the mechanism, invariant, and final design judgment.
 - Delegate bounded independent surveys, mechanical file work, and orthogonal
@@ -184,7 +219,7 @@ allocations, or abstraction machinery.
 - Verify delegated findings against the code and rerun the relevant gates.
   Reviewer output is evidence to check, not authority by itself.
 
-## 7. Review at the right altitude
+## 8. Review at the right altitude
 
 Before accepting a solution, ask:
 
@@ -199,7 +234,7 @@ Before accepting a solution, ask:
 A result that works but is slower, allocation-heavier, structurally foreign, or
 dependent on reconstructed geometry is not finished.
 
-## 8. Implement stated designs in data, at their stated shape
+## 9. Implement stated designs in data, at their stated shape
 
 When a design is stated, its uniformities are the optimization. Implement
 them whole: if your version needs apparatus the design never named —
@@ -221,7 +256,7 @@ nothing by guessing: one measured ladder settles what repeated
 tune-and-bench rounds cannot, and the measuring instrument itself is
 validated before its numbers are believed.
 
-## 9. Dig to green, then distill
+## 10. Dig to green, then distill
 
 A system broken in compounding ways cannot be designed out of from first
 principles: every experiment's evidence is contaminated by the other

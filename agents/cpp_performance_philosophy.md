@@ -4,6 +4,76 @@ These laws explain why Trueform does not look like conventional geometry code.
 They govern design choices; concrete phase shapes and primitive selection live
 in `cpp_execution_patterns.md`.
 
+## 0. The ledger comes first
+
+Before any algorithm is designed, its ledger is written — on paper, before
+code:
+
+1. **The labors.** What work the task truly requires — what is taken, what
+   is moved where, stated the farmer's way: the sorts, the shuffles, the
+   copies between arrays.
+2. **The floor.** Each labor's minimal cost: what must be touched at least
+   once, and nothing else. The design is judged against this floor, never
+   against the previous design.
+3. **The arrays.** How the labors partition into flat data and passes.
+4. **The deductions.** For each labor: is its result already implied — by
+   the input (an input face is given; nothing about it is ever checked),
+   by an invariant (what an insertion maintained is never re-proven), by
+   structure (the position is the join key, the name is the identity, the
+   implicit graph already holds the adjacency — the CSG tier does this
+   everywhere)? Every labor so implied is crossed out: deleted, not
+   optimized. This step is usually the largest saving and the one most
+   often skipped.
+5. **The speed.** Only the surviving labors take the execution shapes:
+   precompute in parallel, offsets once, process in bulk.
+
+A design whose ledger is missing, whose cost exceeds the floor without a
+named reason, or whose average path performs a crossed-out labor is
+rejected at review. The ledger states its facts in the laws below: one
+authority per fact (§5), outputs transformed rather than producers rerun
+(§6), the map latent in the data (§4).
+
+## 0b. The diff law — an operation on a built world is a diff
+
+A built world is implicit structures: flat buffers, offsets, tickets,
+append-only identity. An operation on it is therefore a diff, written in
+the world's own statements — never a second world, a rebuild, or a layer
+translating between two.
+
+Derive every such operation the same way:
+
+1. **State the global form first.** The batch pass — full rebuild, full
+   sweep — is the authority on what must happen. Keep it: it is the
+   specification, the oracle, and usually the first implementation.
+2. **Ask what it actually does, by hand.** Name the concrete actions on
+   the data as a farmer would: this point is created, that point moves
+   there, this face becomes three loops, that loop dies.
+3. **Find the primitive working set.** The system already performs small
+   operations on its implicit structures mid-stream: create an identity,
+   merge two identities (a move is create + merge), state a loop,
+   invalidate by index, append past the end, mark dirty. These
+   primitives — not the phases that first used them — are the
+   vocabulary. A mechanism is never limited to its first use case or its
+   first name, and a missing primitive is almost always a missing name
+   in an id space, not a missing mechanism; widening the name space is
+   the lawful fix.
+4. **Express the global operation as a composition of the primitives.**
+   That composition is the minimal diff. Cost collapses to the event's
+   own size by construction: what the diff does not touch was never
+   visited, because the implicit structures absorb these statements the
+   way they absorb every other statement.
+5. **Gate by equivalence.** Same actions, same product: the batch form
+   stays as the oracle the diff form must reproduce.
+
+The banned failure mode is using the global machinery as the execution
+when it is only the specification — rebuilding a world to apply a diff,
+stabilizing or translating identities to carry products between two
+worlds, adding a resumption phase where the standing wave already
+accepts statements. When a proposal contains rounds, rebuilds,
+translators, or a second world, return to step 2. The ledger's
+deductions step (§0) prices this law: the largest deduction is always
+the work the primitives make unnecessary.
+
 ## 1. Data shape is part of the algorithm
 
 Own data once in flat buffers. Recover semantic structure through lightweight
@@ -169,3 +239,24 @@ the face that was never cut, must pay zero for structures they will not use.
 The same law forbids re-materializing what an existing structure already
 answers. The source mesh is the authority for uncut geometry; a stream copy of
 it is a second producer with a memory-bandwidth bill.
+
+## 15. Images are formed once
+
+An operand a hot loop would convert on every call — a lattice image, a
+difference, a projection — is formed once per carrier in the gather that
+reaches it and read thereafter. The gather owns images; the reader owns
+arithmetic.
+
+## 16. A summary reads the product
+
+A stage that only states a summary of a product reads that product itself. It
+never builds another stage's machinery to answer: a seam angle reads the patch
+and the faces at its rim, not a fairing stencil; a count reads the records, not
+a solve.
+
+## 17. One quantum per input
+
+A tier never mints its own lattice. The quantum is the input converter's,
+passed to every tier that decides exactly, so one input stands on one lattice
+across the whole computation. What that lattice can resolve is a headroom law
+stated once in the owning header, never recovered by a per-tier stretch.

@@ -547,11 +547,12 @@ and the unified created-points table.
 ```
 forms
   → tf::polygon_intersections                exact intersection identity
-  → tf::intersect::graph::local_arrangement  plane graph + split/identity tables
+  → tf::intersect::graph::local_arrangement  plane graph + split tables
   → tf::arrangement::plane_arrangement       one triangulation per plane carrier,
       over tf::arrangement::plane_world<P>   built on the prepared world
   → cells → piece incidence → piece fences   the arrangement's own structure
-  = tf::arrangement_graph
+  = tf::arrangement_graph                    owns the identity substrate both
+                                             tiers state into
   + classification (components, radial fans, descriptor, domains)
   = tf::csg_graph
 ```
@@ -599,29 +600,53 @@ order with their corners in the stream's vertex language.
   gives every cut face the canonical name of the exact plane it stands
   on, read through the same positions the pipeline reads, and equal
   names are one carrier whatever the tags, with a collinear face's void
-  name equal to nothing; the graph keeps each plane's name) and the
-  definition tables the splits are applied to.
+  name equal to nothing; the names live in the identity substrate,
+  `identity_substrate::plane_name` answering every plane either tier
+  holds) and the definition tables the splits are applied to. THE LINE
+  LAW (`make_plane_face_frame`): a face's carrier is the support of its
+  corners (`plane_face_support`) and nothing else, for every tier that
+  founds a plane on a face; its name and its frame are two readings of
+  that one support, so a void name and a line frame are one verdict, and
+  a face whose corners are collinear is a line carrier whatever its
+  definitions hold.
   Its `build` orchestrates the module's free functions:
   `detect_plane_crossings`, `close_plane_classes`,
   `collapse_plane_identities`, `order_plane_splits`,
   `discover_uncut_entrants`, `state_uncut_entrants`,
   `seat_entrant_planes`, `respan_plane_defs`, `seat_entrant_plane_edges`,
-  `fuse_plane_defs`. An entrant is named by the same law: a name a cut
-  plane holds seats it on that plane as one more member of the stack,
-  equal names among the entrants found one plane numbered past the
-  graph's, and the entrant's definitions move onto its plane's block.
+  `fuse_plane_defs`. An entrant is named by the same law, and THE
+  SEATING LAW (`seat_named_planes`) is the one seater of every tier that
+  admits faces — the local arrangement's entrants
+  (`seat_entrant_planes`), the plane arrangement's promotion
+  (`seat_plane_promoted_faces`) and the carve: a name a standing plane
+  holds seats the face on that plane as one more member of the stack,
+  equal names among the rest found one plane numbered past the standing
+  ones in the order of their smallest face, a void name is a plane of its
+  own, and the entrant's definitions move onto its plane's block.
   The product is the post-split
   definition table, canon-major with a rebuilt plane CSR — no splits
   side table — plus the entrance tables (the source faces the cut world
   never named: `entrants`, `entrant_descriptors`, `entrant_planes` — the
   frames of the planes entrants founded — and `entrant_orientations`,
-  each in its seated plane's frame) and `merges()`, the rewrite rows the identity
-  gate absorbed. THE GATE (`collapse_plane_identities`) compares the
+  each in its seated plane's frame); the rewrite rows the identity gate
+  absorbed are written into the substrate's local tables. THE GATE
+  (`collapse_plane_identities`) compares the
   lattice position of every identity the cut world names — every
   definition endpoint, every class, every landing (a created point
   rounded onto its own carrier's end) and, when a band placed the
   inputs, every original vertex — and whatever occupies one position is
-  one identity; it is the one producer of merges. THE
+  one coincidence of THE ELECTION
+  (`intersect/graph/elect_identity_components.hpp` —
+  `elect_identity_component` for one coincidence,
+  `elect_identity_components` over sparse relations — the one law every
+  tier's identity statement is made by: the gate's, the plane waves'
+  closure, the Steiner election, the carve's and the census's). The rank
+  leads the key — `0` a standing created identity, `1` a fresh statement,
+  `2` an original — so the smallest key speaks the coincidence: a standing
+  created identity survives, otherwise the coincidence mints, and
+  originals never survive. Which candidates one coincidence joins is the
+  caller's statement. The gate is the build's writer of the local layer;
+  the census and the carve are its others. THE
   ENTRANCE LAW, one mechanism for both tiers
   (`discover_uncut_entrants` = `discover_weld_entrants` +
   `discover_split_entrants`, filtered only by the asking tier's own
@@ -632,7 +657,34 @@ order with their corners in the stream's vertex language.
   found through the source mesh's vertex membership and edge link. A
   collapsed face enters as a line carrier and emits nothing; its
   neighbours are stitched on the survivor. `assert_promotion_is_complete`
-  states the invariant under `!NDEBUG`.
+  states the invariant under `tf::core::verification`.
+- **The carve** (`arrangement/reseat/`, `tf::arrangement::reseat`) —
+  when the gate fuses identities onto a position some carrier of the
+  fused identity does not hold, that carrier is cut at the position
+  inside the one build (`carve_world`). The carve's pieces, the faces
+  it reaches and their neighbours form a delta world. The carve states
+  only what it creates: a corner the delta holds speaks the world's own
+  name for it — its merged name, or its identified class's anchor — and
+  is never elected again, so a coincidence the world holds stays the
+  gate's; a seat or a class the delta created speaks the created identity
+  standing at its lattice position, and only where none stands does it
+  mint, the originals there retiring into the mint (the gate's survivor
+  rule). Every face holding a retired original enters before the carve
+  is stated. The statement lands in the local arrangement before any
+  plane tier reads it
+  (`restate_carve`): mints as direct created identities, welds as merge
+  rows (an identity only the replaced rows named is dead by definition,
+  stated nowhere), pieces in the entrance tables with
+  their source sides (`source_side`), retired faces out of their planes' live members, and
+  the rows merged in key order in the entrance's own shape
+  (`restate_plane_defs`). A carve that cannot be stated is refused in
+  the census (`reseat_refusal`) and the world stands as built. A plane
+  diff over a carve carries a block only as far as the carve left it: a
+  local row of a face the carve replaced drops, the rows the carve
+  founded on that carrier join the block by reference, and a plane-tier
+  identity only the dropped rows named is left unreferenced — dead by
+  definition, stated nowhere and derived only by the exposure accounting
+  (`account_created_identities`).
 - **THE TWO POLES AND THE WAVE'S GRAIN LAWS.** The engine serves two polar
   policies — the LA-backed boolean world (few dense carriers, real tables)
   and the virtual mesh world (`arrangement/mesh/`, not exported: one face is
@@ -652,18 +704,83 @@ order with their corners in the stream's vertex language.
   of 3-4 boundary sides fans without a CDT (`find_plane_carrier_fan` — the
   guard is the exact turn), on the boolean path too, soundly: a later
   statement re-enters it through the wave.
+- **`tf::arrangement::identity_substrate`**
+  (`arrangement/identity/identity_substrate.hpp`) — the one authority
+  over an arrangement's identities, of its points AND of its planes. AN
+  IDENTITY IS MINTED, WELDED OR NAMED ONLY THROUGH IT: its two
+  layers are private — `L` (`local_identity_tables`: the name statements,
+  classes, created classes, direct points, the closed rewrite rows, and
+  the name of every plane the local tier holds) and `P`
+  (`plane_identity_tables`: the waves' created classes, names and
+  parameters, direct points, closed rewrite rows, and the names of the
+  planes the promotion founded; neither layer states a death) — every table reads through
+  it as it stands (`local_merges()`, `plane_merges()`, …), and every
+  statement enters through a verb that states its law at the call: the
+  local tier's `clear_local`, `name_local_planes`, `seat_local_planes`,
+  `seat_local_entrant_planes`, `state_local_names`, `close_local_classes`,
+  `collapse_local_identities` (the gate), `mint_local_points`,
+  `weld_local`; the plane tier's `clear_plane`,
+  `mint_plane_classes`, `mint_plane_points` with `state_plane_point`,
+  `weld_plane`, `seat_promoted_planes`, `seat_founded_planes`,
+  `carry_plane`. Each verb writes its table where
+  the pre-authority site wrote it — the same pass, primitive and grain.
+  Neither
+  tier holds a table: the graph owns the substrate, the local arrangement
+  states `L` through it, the plane arrangement reads `L` and states `P`,
+  and `arrangement_graph::identities()` is the read surface. ONE
+  RELATION, TWO CLOSED LAYERS: `composed_target(source, id)` is THE ONE
+  closed-rewrite read — `P∘L`, the local layer first and the plane layer
+  on what it left, `-1` for a key neither retires; the carve names every
+  corner through it, and an answer past the currency the carve writes in
+  refuses the carve (`reseat_refusal::name_foreign`); `local_target` / `plane_target` answer one layer alone for
+  that layer's own passes. `L`'s writers (the gate, the census, the
+  carve) target originals and the local tier's created identities only;
+  `P`'s rows may target anything; a weld's target is live and one key
+  holds one target (`assert_welds_are_lawful`); `P` is closed over `L`
+  for every key a plane product can hold, so a plane reader reads `P`
+  alone (`assert_plane_layer_is_closed`). ONE PLANE SPACE:
+  `plane_name(id)` answers the local tier's name below its extent and the
+  promotion's past it, `plane_names()` every plane in plane order, so
+  every reader seating a face sees every plane either tier holds. Every
+  created identity is live, retired or vanished, a death being what
+  nothing references at either tier —
+  `account_created_identities` states each identity's account, and
+  `assert_created_identities_are_accounted` checks it on a complete plane
+  product under `tf::core::verification`.
+  THE ONE POSITION LAW (`tf::intersect::graph::final_identity_point`): a
+  key speaks what its layer's chase states, except a key retired into an
+  identity whose statement encloses the read, which speaks its
+  pre-mutation source; each tier evaluates at its own layer — the local
+  arrangement's `point_of` through `L`, the plane arrangement through
+  `P` — and the exposure composes them (`composed_identity_point`, at
+  `P∘L`), so one identity has one answer per layer and no second law.
+  THE RENUMBERING LAW (`arrangement/identity/extent_shift.hpp`): a plane
+  value numbers created identities, planes and faces as `[world extent |
+  promoted suffix]`, and a diff's world appends at its own end of each,
+  so between a prior value and the next the suffix slides by the append
+  count — one monotone renumbering, `extent_shift` per space
+  (`forward`, `inverse`, `gap`), the three in `diff_extents`, produced
+  once by `make_diff_extents`. The gap numbers below every forwarded
+  suffix id, so a round's own statements outrank the standing world at
+  their coincidences. A diff carries `P` across the shift
+  (`carry_plane`, over `carry_plane_identities`) and composes every row
+  the statement moved in `L` into `P`'s evidence (`compose_local_moves`):
+  forward, then append.
 - **`tf::arrangement::plane_world<Policy>`**
   (`arrangement/planes/plane_world.hpp`) —
   the ONE carrier the plane arrangement's seam speaks: the tables and
   their canonical groups, the carrier space (`n_planes`, `n_faces`,
   `frame`, `member_count`, `member`, `plane_of_face`, `descriptor`,
-  `descriptors`, `face_orientation`), the identity space
+  `descriptors`, `face_orientation`, and at the entrance grain
+  `plane_name` — answered from the substrate — and `source_side`), the
+  identity space
   (`vertex_offsets`, `face_offsets`, `n_created_points`, `point_of`,
   `intersection_points`), the split statement a promoted side inherits
-  (`merges`, `split_roots`, `split_survivors`) and the `graph`. The
+  (`merges` — the local layer `L` — `split_roots`, `split_survivors`)
+  and the `graph`. The
   production policy (`tf::arrangement::plane_local_arrangement_policy`,
   built by `tf::arrangement::make_plane_world`) BORROWS a
-  `local_arrangement`;
+  `local_arrangement` and the substrate's local tables;
   composition is compile time. ONE POLICY STATES BOTH MODES: a stock
   build carries an EMPTY promoted extension, so its suffix branch is
   never taken, and the promotion is a NEW VALUE of the same type built
@@ -684,11 +801,20 @@ order with their corners in the stream's vertex language.
   seen again against the promoted tables. A weld is an identity substitution this tier owns: a plane
   whose rows only changed identity keeps the triangulation it has — one
   that refused holds none, so a substitution reaching its rows puts it
-  back in the wave. Product:
+  back in the wave. It owns no identity table: it reads `L` through the
+  world and writes `P`. A face this tier promotes — the refinement's
+  promotion and the wave entrance alike — is seated by name through
+  `seat_plane_promoted_faces`, on a standing plane its name holds or on
+  one the promotion founds, so `promoted_plane_of()` names its plane; a
+  founded plane `n_base_planes() + j` is framed by `promoted_frames()[j]`
+  and named by the plane layer's `plane_names[j]`. `build_diff` is the
+  census round: the prior value carried onto the restated world across
+  the renumbering and rewaved from the statements' raw evidence. Product:
   `triangles()` (corners are FLAT identities), `slot_parents()` (per
   slot the canonical piece, `-1` for a filler diagonal),
   `corner_subs()`, the coplanar stacks (`coplanar_of`,
-  `coplanar_descriptors`, `stacked`), `promoted_descriptors()`, and —
+  `coplanar_descriptors`, `stacked`), `promoted_descriptors()` with
+  `promoted_plane_of()` and `promoted_frames()`, and —
   when `record_triangle_cells()` was asked before the build —
   `triangle_cells()`. `triangulation_type::refined_cdt` runs the same
   machinery through `build_refined`.
@@ -707,11 +833,14 @@ order with their corners in the stream's vertex language.
   cell incidences meet at it. It fences without a fan when the input
   edge is non-manifold
   (`tf::intersect::graph::plane_edge_non_manifold_flag`) or the cells
-  it bounds differ in depth. Everything else is `crossable`.
+  it bounds differ in depth AND in crossing — the net winding per form
+  of the sheets covering them — so a fold's own layers, which cancel,
+  make no border. Everything else is `crossable`.
 - **`created_points()`** — the unified table on the exact integer
   lattice: the local arrangement's points first, then everything the
-  plane arrangement materialized. Created vertex ids index it directly;
-  identity = `{tag, id}` pairs with created ids past the last tag.
+  plane arrangement materialized, each where the composed layer `P∘L`
+  states it (`composed_identity_point`). Created vertex ids index it
+  directly; identity = `{tag, id}` pairs with created ids past the last tag.
 - **Exact substrate** (`exact/`):
   `tf::exact::resolve_int_type` picks the lattice int from the input
   real; `tf::exact::vertex_converter` converts/deconverts. No predicate
@@ -722,22 +851,28 @@ order with their corners in the stream's vertex language.
   `tf::exact::input_lattice` is the operands' lattice view, built ONCE at
   the factory (`dispatch::make_graph`) over the union of the operands: the
   shared converter, the flat vertex space, and — under a tolerance — the
-  sparse table of the vertices the door (`exact/door/`) moved. The band is
-  a sparse set of pulls through committed planes: the pool tier
-  (`exact/door/pool/`) and the contacts `gather_vertex_contacts` admits
-  (a vertex within the band of another form's face) commit planes, a face
-  only when every corner lands within the band (`commit_contact_planes`),
-  and the vertices owing them drop exactly onto them (`place_vertices`) —
-  after which the pipeline runs exactly at zero on the moved mesh. An
-  existing identification outranks a new one: every exact contact the
-  input states between forms is remembered as a plane its vertices ride
-  (`hold_exact_contacts`; two crossing edges span one, and an edge's end
-  on another edge is a vertex on a closed face), verified exactly on the
-  moved mesh, and a vertex whose move undid one is pinned to its input
-  point. Every
-  vertex nothing pulled is read as at zero. At tolerance zero no table
-  exists and nothing of the door executes. The door gives positions only;
-  identity is the gate's; its refusals are counted in `census()`.
+  sparse table of the vertices the door (`exact/door/`) moved. The band
+  quantizes every exact plane (`exact/door/pool/pool_input_planes.hpp`):
+  its direction onto a fixed chart whose pitch keeps two planes of one cell
+  within a quarter band over the whole lattice, its intercept onto the band;
+  equal keys are one pool across all forms, a key held by one plane pools
+  nothing, and the pool's plane is the cell's integer direction, dense on
+  the lattice, through the cell's centre offset. The rounding is the whole
+  relation, so pooling is transitive and never walks from a face to its
+  neighbour. Every vertex of a pooled face stands on the pool's plane
+  exactly; a vertex that cannot stand on every pool around it stays put and
+  every pool at it releases its faces there, to a fixed point
+  (`commit_target_planes`). It lands every RIM vertex —
+  on an edge one face holds — within it of another form's face exactly on
+  that face's nearest feature: the corner's point, the lattice point
+  nearest its projection onto an edge plus a vertex-on-edge name
+  (`edge_names`, stated by `state_rim_edge_names`), or a lattice point on
+  the face's committed plane (`find_rim_targets`, `commit_target_planes`,
+  `place_door_vertices`). A meeting the input states is kept, interior
+  vertices never move, and a vertex nothing pulled is read as at zero. At
+  tolerance zero no table exists and nothing of the door executes. The
+  door gives positions and edge names only; identity is the gate's; its
+  refusals are counted in `census()`.
   `tf::exact::input_lattice_reader` is the ONE reader of an original's
   position (its moved row when the band moved it, the converter
   otherwise), and every tier reads originals through it.
@@ -755,7 +890,14 @@ order with their corners in the stream's vertex language.
   and `make_sheet_sides` / `mark_sheet_wraps` / `propagate_sheet_sides`
   (sheet columns, the law in `sheet_sides.hpp`). Consumers: `make_csg_mesh` (boolean
   expressions), `make_csg_domains`, `make_outer_shell`,
-  `make_intersection_curves(csg_graph)`.
+  `make_intersection_curves(csg_graph)`. The build runs to the census's
+  fixed point (`tf::csg::census_graph_over`): while
+  `tf::csg::graph::make_census_conviction` convicts the graph, the fusions
+  it states enter the standing graph as a diff, never a rebuild —
+  `local_arrangement::restate_census`, then
+  `tf::arrangement_graph::state_census_diff`, whose welds are the wave's
+  evidence on exactly the planes the statement touched. `census()` records
+  `{rounds, stated}`; `{0, 0}` is the green path.
 - **`iso/`** (`tf::iso`, machinery in `iso/cut/`) — the scalar-field
   pipeline, driven by field crossings rather than by polygon
   intersections, reached only by `tf::embedded_isocurves` and

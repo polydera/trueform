@@ -590,6 +590,22 @@ the input semantics; do not treat configuration as a
 performance-only knob. Contour-crossing resolution is not a choice: the
 arrangement derives it from arity and from `within`.
 
+A tolerance does two things to the input and nothing else: faces it could
+have made of one plane — neighbours within its tilt, and faces of
+different forms within it of one another — pool onto one committed plane
+their vertices ride (a vertex that cannot stand on every pool around it
+keeps the largest), and a rim vertex (on an edge one face holds) within it of another
+form's face lands exactly on that face's nearest corner, edge or interior.
+A meeting the input already states is kept, and interior vertices never
+move. The graph's `lattice()` reports what happened:
+`census().effective_tolerance` is the band that acted (a request below one
+lattice unit acts at one), `moved_points()` / `moved_tickets()` the moved
+vertices, `edge_names()` the `{vertex, face, slot}` edge landings, and the
+census counts `rim_vertices`, `on_face`, the
+`corner_`/`edge_`/`face_targets` with their `_refused` counts,
+`target_planes` / `target_planes_refused`, `released_pool_faces`,
+`ride_refused` and `moved`.
+
 Build one CSG graph for repeated extraction:
 
 ```cpp

@@ -29,7 +29,7 @@ forms
   -> tf::polygon_intersections                point NAMES and contact records
   -> tf::intersect::graph::local_arrangement   planes, frames, members, the
                                                post-split definition tables,
-                                               merges, entrants
+                                               entrants
   -> tf::arrangement::plane_world<Policy>     the one carrier the plane tier
                                                reads; one world states both
                                                modes and promotion is a VALUE
@@ -37,12 +37,14 @@ forms
                                                carrier, plus the recovery wave
   -> cells -> piece incidence -> piece fences  the arrangement's own structure
   =  tf::arrangement_graph                     the exposed stream, the created
-                                               points, failed()
+                                               points, failed(), and the
+                                               identity substrate both tiers
+                                               state into
   +  classification                            components, radial fans,
                                                descriptor, domains, sheets
   =  tf::csg_graph
-  -> make_csg_mesh / make_csg_domains / make_outer_shell /
-     make_intersection_curves
+  -> make_csg_mesh / make_csg_domains / make_csg_open_fragments /
+     make_outer_shell / make_intersection_curves
 ```
 
 One fact, one producer. The table below is the routing rule: read the fact
@@ -53,7 +55,10 @@ where it is produced, never re-derive it downstream.
 | Point identity (a canonical NAME, not a coordinate) | `tf::polygon_intersections` | `n_vertex_points()`, `vertex_anchor`, `home_edge`, `exact_parameter` |
 | Which faces share a geometric plane | the plane graph inside `local_arrangement` | `world().frame/member_count/member/plane_of_face/descriptors` |
 | Every constraint of every plane, splits already applied | `local_arrangement` | `world().edge_defs()`, `canon_group()`, `plane_edges(plane)` |
-| Retired identities | the identity gate | `world().merges()` (closed — one search) |
+| Retired identities | the local tier's writers — the gate, the census, the carve (`L`) — and the plane waves (`P`) | `identities().composed_target(source, id)` — `P∘L`, one search per layer |
+| Dead created identities | nobody: at both tiers a dead identity is one nothing references, stated nowhere | `account_created_identities` derives them |
+| A plane's identity (its canonical NAME) | whoever founded the plane, seated by `seat_named_planes` | `identities().plane_name(plane)` |
+| Where a created identity stands | the position law per layer, composed at exposure | `created_points()` (`composed_identity_point`) |
 | The triangles, and the piece each slot belongs to | `plane_arrangement` | `arrangement().triangles()`, `slot_parents()` |
 | Which carriers hold no product | `plane_arrangement` | `failed()` |
 | 2-cells and their piece boundary | `make_plane_arrangement_cells` / `make_plane_piece_incidence` | `cells()`, `piece_incidence()` |
@@ -88,8 +93,10 @@ constraint set — `world().plane_edges(plane)` empty for a world-owned plane, o
 to the local tier.
 
 A plane whose exact frame is a LINE (`world().frame(plane).plane_n` all zero)
-bounds no area, so it emits no triangle. That is its product, not an absent
-one: it runs the same triangulation as every other carrier, states the
+— a face's frame is the support of its corners (`make_plane_face_frame`), so a
+face whose corners are collinear is a line carrier whatever its definitions
+hold — bounds no area, so it emits no triangle. That is its product, not an
+absent one: it runs the same triangulation as every other carrier, states the
 crossings and welds its constraint set holds, and appears in `failed()` on the
 same terms — only when its constraint set refused every round.
 
@@ -110,7 +117,7 @@ for one.
 
 ## Step 1: the censuses say which stage did the work
 
-Three counters are published and cost nothing to read. They do not prove
+Four counters are published and cost nothing to read. They do not prove
 correctness; they say where to look and whether a suspected path ran at all.
 
 | Census | Surface | Read it for |
@@ -118,11 +125,17 @@ correctness; they say where to look and whether a suspected path ran at all.
 | `tf::intersect::graph::plane_census` | `graph.world().census()` | `crossings_ee` / `crossings_ve` / `collinear_pairs` (what detection found), `classes`, `same_root_collapses` / `cross_root_merges` (what the identity gate absorbed), `splits_out_of_span` / `splits_on_endpoint`, `defs_in` / `defs_out` |
 | `tf::arrangement::plane_arrangement_census` | `graph.arrangement().census()` | `refusals` and `rounds` (did the recovery wave run, and how far), `crossings` / `landings` / `collisions` / `splits`, `created`, `triangles` / `dead_triangles`, `failed_planes` |
 | `tf::arrangement::plane_refinement_census` | `graph.arrangement().refinement_census()` | `promoted_planes`, `affected_planes`, `rings_run`, `ring_boundary_splits`, `physical_delivery_rows`, `refused_planes` |
+| `tf::csg_graph::census_record` | `graph.census()` | `rounds` / `stated` (did the census convict, and how many welds its fixed point stated) |
 
 `rounds == 1` with `refusals == 0` means the preserve-mode CDT ended every
 plane's work and no recovery wave ran — a defect there is not a recovery
 defect. `refused_planes` nonzero with `failed()` empty is the refinement
 declining, not a hole.
+
+`census().rounds == 0` means the graph is the first build. Past zero, the
+census's fusions entered the standing graph as a diff — `restate_census`, then
+`state_census_diff`, whose welds are the wave's evidence on the planes the
+statement touched — so the arrangement read is the diff round's, not a rebuild.
 
 Two counters record an anomaly with no consumer, and are not failures:
 `plane_census::names_truncated` (a crossing name of more than three planes) and
@@ -180,9 +193,19 @@ radial tier consume later:
 | `plane_edge_whole_side_flag` | the boundary instance covers its original edge whole |
 | `plane_edge_radial_flag` (+`_reversed`) | the instance carries its producing pair's carrier-line orientation |
 
-`merges()` is the closed rewrite table: one search states what a retired
-identity speaks now. Consumers holding an old id are merge-blind by design — do
-not add a second resolution of a merge anywhere downstream.
+A retired identity speaks `identities().composed_target(source, id)`: the
+local layer `L` (`identities().local_merges()`) read first and the plane layer
+`P` (`identities().plane_merges()`) on what it left, both closed
+(`arrangement/identity/identity_substrate.hpp`). That is the one resolution of a
+merge; the world keeps no identity table of its own, and consumers holding
+an old id are merge-blind by design — do not add a second one downstream.
+Every created identity is live, retired or vanished: a mint states a birth,
+a weld a relabel, and an identity nothing references is dead by definition
+at both tiers. Under `tf::core::verification`,
+`assert_created_identities_are_accounted` checks that on the complete product,
+and `tf::arrangement::account_created_identities` states each identity's
+account — including the breaks (`emitted_dead`, `unaccounted`) — when a
+trace needs it per id.
 
 `entrants()` with `entrant_descriptors()`, `entrant_planes()` and
 `entrant_orientations()` are the source faces the cut world never named but a
@@ -200,9 +223,14 @@ new is stated.
 One world states both modes. The production policy holds the base value; the
 promotion is a NEW VALUE of the same type with extents frozen at one barrier,
 so a reader holding the base value keeps the base extents by construction.
-`n_base_faces()` / `n_base_planes()` divide the world's own carriers from what
-refinement promoted; `promoted_descriptors()` states row `i` for face
-`n_base_faces() + i` on plane `n_base_planes() + i`.
+`n_base_faces()` / `n_base_planes()` / `n_base_created()` divide the world's
+own carriers and identities from what this tier appended. Promoted face
+`n_base_faces() + i` is stated by row `i` of `promoted_descriptors()` and seated
+by name on `promoted_plane_of()[i]` — a standing plane its name holds, or one
+the promotion founded; founded plane `n_base_planes() + j` is framed by
+`promoted_frames()[j]`. A diff value renumbers only the suffix past these
+extents (`arrangement/identity/extent_shift.hpp`), so a prior id is compared
+with the next value's only through that shift.
 
 Instruments on the product:
 
@@ -356,7 +384,11 @@ The descriptor tier answers the volumetric questions:
   copied across the walls that do not carry it. A domain the sheet does not
   separate reads 0;
 - `domain_nesting_merges()` — repairs contact-free nested shells, consumed by
-  `make_csg_domains` only and irrelevant to the boolean mesh read.
+  the domain reads only and irrelevant to the boolean mesh read.
+- `tf::make_csg_open_fragments` — per form, the components whose two coarse
+  sides are one domain: the peel `compute_domain_partition` applies, read
+  from the other side under the same membership. A live face no cell names
+  but a fragment does bounds nothing in this graph; it is not lost.
 
 ## Step 7: raw output through provenance
 

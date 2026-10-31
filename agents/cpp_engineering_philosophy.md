@@ -366,7 +366,8 @@ only when it is inseparable from the owner's invariant.
 
 ### 6.1 Int32 Coordinate Space
 
-Float coordinates are converted to int32 using 99% of INT_MAX range:
+Float coordinates are converted to int32 by the largest power-of-two scale
+within 99% of INT_MAX range:
 ```cpp
 auto converter = tf::make_pt_converter<tf::exact::int32>(polygons);
 auto int_point = converter(float_point);

@@ -35,6 +35,8 @@ All have `build()` method + `make_*()` free function equivalents.
 | `split_non_manifold_vertices(polygons)` | polygons | `polygons_buffer` | One vertex per fan: the fan holding the vertex's smallest face keeps its id, every other takes a minted copy of the coordinates and its corners are rewired onto it. Faces keep their ids, arity and winding; the points are the input's then the mints in id order. An edge 3+ faces carry is crossed by no fan and separating the fans it holds apart would tear it into boundary copies, so a vertex any of whose edges carries 3+ faces is left untouched and `make_non_manifold_vertices` still names it. `tf::return_index_map` adds the point map: per output point the input point it copies, an original itself |
 | `is_manifold(polygons)` | polygons | `bool` | True when every vertex's faces are one fan, which also says every edge carries at most two of them. Winding is `orient_faces_consistently`'s fact and never enters this one |
 | `is_closed(polygons)` | polygons | `bool` | True if no boundary edges (watertight) |
+| `has_holes(polygons)` | polygons | `bool` | True if a boundary rim is a hole: a closed rim, or an open one with an end that carries no edge 3+ faces share. A sheet's free rim is a hole, the answer standing against the expectation of a closed solid |
+| `has_flaps(polygons)` | polygons | `bool` | True if a boundary rim is a flap: an open rim each of whose ends carries an edge 3+ faces share, the attachment its faces hang from. Every rim is a hole or a flap, so a mesh with no boundary edges has neither |
 | `euler_characteristic(polygons)` | polygons | `int` | V - E + F, each undirected edge counted once through the manifold edge link's representative, so boundary and non-manifold edges count like interior ones |
 | `connect_edges_to_paths(edges)` | edges | `offset_block_buffer<Index, Index>` | Assemble edges into continuous paths |
 | `make_boundary_paths(polygons)` | polygons | `offset_block_buffer<Index, Index>` | Boundary edges assembled into paths by `find_eulerian_paths`, so a vertex the boundary reaches twice is traversed rather than split and a pinched boundary comes back as one figure eight. The vertex-path read; for the rim as a carrier ask `make_boundary_rims` |
@@ -169,6 +171,9 @@ Dual-tree searches use TBB `task_group` with `parallelism_depth` (default 6). Ca
 | `make_sharp_edges(polygons, angle)` | `blocked_buffer<Index, 2>` | Edges exceeding dihedral threshold |
 | `compute_face_quality(polygons)` | `face_quality<T>` | Per-face quality as flat buffers: `quality`, `min_angle`, `max_angle`, `aspect_ratio`. The corner angles (unsigned, in `[0, pi]`, so a reflex corner reads its explement) and the aspect ratio (longest side over shortest) hold at any arity; `quality` is the triangle measure `tf::triangle_quality` states, and a face that is not a triangle reads `-1` |
 | `compute_dihedral_angles(polygons)` | `dihedral_angles<Index, T>` | Every edge two faces share, once through the manifold edge link's representative: `edges` blocked in vertex pairs beside an aligned `angles` buffer, face-major. The angle is between the face normals, so a flat surface reads `0`; a boundary or non-manifold edge joins no pair and is not stated. Missing link or normals are built for the call |
+| `make_geodesic_distances<OCT>(polygons, seeds[, radius])` | `buffer<RealOut>` | Geodesic distance from the nearest seed: a label-correcting front over the two-neighbour unfolding update (`geometry/geodesic/`), run in double and stated in the resolved output type (the mesh's own by default); zero at a seed, infinity unreached or past `radius`; split into one front per thread past 200 points, its determinism contract stated at the entry against `geometry::geodesic_revision_tolerance`; a finite radius forms only the triangle images its front reaches; stored coordinates, membership and vertex link read where tagged |
+| `make_dirichlet_field<OCT>(polygons, corner_weights, fixed_ids, fixed_values, order)` | `dirichlet_field_result<RealOut> {buffer<RealOut> field, dirichlet_field_status status}` | One scalar held at `fixed_ids` and vanishing under `dirichlet_order::harmonic` (`L x = 0`) or `biharmonic` (`L M^-1 L x = 0`) elsewhere, over the Laplacian the per-corner weights state (`tf::none` = cotangent); sparse Cholesky in double, refined once against the true residual, the field stated in the resolved output type; `status` names the refusal (`refused_operator`, `refused_unanchored`, `refused_index`, `refused_indefinite`, `refused_residual`) |
+| `geometry::laplacian_system` and its passes (`geometry/laplacian/`) | — | The weighted Laplacian (`-w` off the diagonal, PSD) and barycentric mass; `assemble_laplacian_system` over a membership-tagged triangle mesh and a stated edge weight, each row gathered on its own; `laplacian_form` the explicit free rows of `k_s L + k_b L M^-1 L + tau M` (`make_laplacian_form_pattern`, `state_laplacian_form_values`) over a free map whose out-of-range positions are fixed rows, `laplacian_is_anchored` the definiteness proof, `state_dirichlet_load` and `solve_dirichlet_form` the factor-once multi-field solve; the field, the fill's fairing and its chart residual read them |
 | `make_curve_frames(curve, T, N, B)` | void (output params) | Parallel transport frames |
 | `chamfer_error(A, B, outlier_pct)` | `RealT` | Mean nearest-neighbor distance |
 
@@ -261,7 +266,7 @@ every default; there is no flag left to turn it off with.
 | Function / Structure | Return | Description |
 |----------|--------|-------------|
 | `make_arrangement_graph<Int>(operands, config)` | `arrangement_graph<Policy, Int>` | The build. Operands: a range of forms, one form (its self arrangement, `within` implied), or two forms of possibly different types. Completes any missing tree / face membership / manifold edge link in parallel |
-| `arrangement_graph<Policy, Int>` | — | The arrangement of a set of forms, everything below classification: exposed triangle stream, cells, piece incidence, piece fences, coplanar stacks, `created_points()` |
+| `arrangement_graph<Policy, Int>` | — | The arrangement of a set of forms, everything below classification: exposed triangle stream, cells, piece incidence, piece fences, coplanar stacks, `created_points()`, and `identities()` — the identity substrate both tiers state into |
 | `arrangement_config` | — | `{intersect_config intersect, triangulation_type triangulation}`; implicitly constructible from either alone. Contour crossings are resolved unconditionally; under `sos` no contact is ever coplanar, so coplanar walls do not pool |
 
 ### Arrangement Products
@@ -301,11 +306,25 @@ geometry, so the shape change is loud at the call site.
 
 | Structure | Purpose |
 |-----------|---------|
-| `plane_world<Policy>` | The one carrier the plane arrangement's seam speaks; `make_plane_world(local_arrangement)` borrows the production world |
-| `plane_arrangement<Index, Int>` | One triangulation per plane carrier: triangles, slot parents, corner subs, coplanar stacks, optional per-triangle cells |
+| `plane_world<Policy>` | The one carrier the plane arrangement's seam speaks; `make_plane_world(local_arrangement, identity_substrate)` borrows the production world and the substrate's local layer |
+| `plane_arrangement<Index, Int>` | One triangulation per plane carrier: triangles, slot parents, corner subs, coplanar stacks, optional per-triangle cells. Owns no identity table: reads the local layer, states the plane layer through the substrate's verbs. A promoted face is seated by name (`seat_plane_promoted_faces`, for the refinement's promotion and the wave entrance alike): `promoted_plane_of()` names its plane, standing or founded. `build_diff` is the census round's value, carried across the renumbering |
+| `seat_plane_promoted_faces(world, descriptors, face_frames, ...)` | THE SEATING LAW (`tf::intersect::graph::seat_named_planes`) against every plane the world holds: per face its plane and winding, per founded plane its frame and name |
 | `make_plane_arrangement_cells(arrangement)` | `plane_arrangement_cells<Index>` — the 2-cells numbered densely across the planes |
 | `make_plane_piece_incidence(arrangement, cells)` | `plane_piece_incidence<Index>` — piece <-> cell incidence from both sides |
 | `make_plane_piece_fences(arrangement, world, incidence, cells)` | `plane_piece_fences` — per piece: `fan` and `crossable`, the one producer of both verdicts |
+
+### Identity Substrate (`arrangement/identity/`, `tf::arrangement`)
+
+| Symbol | Purpose |
+|--------|---------|
+| `identity_substrate<Index, Int>` | The one authority over an arrangement's identities: its layers `L` (`local_identity_tables`) and `P` (`plane_identity_tables`) are private, every table reads through it (`local_merges()`, `plane_merges()`, …) and every statement enters through a verb (`name_local_planes`, `state_local_names`, `close_local_classes`, `collapse_local_identities`, `mint_local_points`, `weld_local`, `seat_local_planes`, `seat_local_entrant_planes`; `mint_plane_classes`, `mint_plane_points` / `state_plane_point`, `weld_plane`, `seat_promoted_planes`, `seat_founded_planes`, `carry_plane`). `composed_target(source, id)` is the one closed-rewrite read (`P∘L`, `-1` for a key neither retires), the carve refusing an answer past its own currency (`reseat_refusal::name_foreign`); `local_target` / `plane_target` answer one layer; `plane_name(id)` / `plane_names()` answer every plane either tier holds |
+| `composed_identity_point(identities, world, arrangement, get_mesh_point, tag, id)` | Where `(tag, id)` stands at `P∘L`: the one position law (`tf::intersect::graph::final_identity_point`) composed across both layers |
+| `extent_shift<Index>` / `diff_extents<Index>` / `make_diff_extents(prior, n_prior_created, world)` | The one renumbering between a plane value and the next — created identities, planes and faces, each `[world extent \| promoted suffix]`: `forward`, `inverse`, `gap`, `lifted(n_flat)` |
+| `carry_plane_identities(prior, created, ...)` (behind `identity_substrate::carry_plane`) / `compose_local_moves(...)` | A diff's plane layer carried across the shift, then the rows the statement moved in `L` composed into its evidence: forward, then append |
+| `account_created_identities(identities, triangles, named, n_flat, n_created)` | Per created identity its account: `live`, `retired`, `vanished`, or the break (`emitted_dead`, `unaccounted`) |
+| `assert_created_identities_are_accounted` / `assert_plane_layer_is_closed` / `assert_welds_are_lawful` | Verification checks: the completeness accounting and `P` closed over `L` on a published product, and the weld's law on a closed layer (one target per key, live targets, the layer's currency) |
+| `mint_plane_classes(...)` | Behind `identity_substrate::mint_plane_classes`: a wave's births joined to the plane layer's classes, only a minting class persisting |
+| `tf::intersect::graph::elect_identity_component(s)` | THE ELECTION (`intersect/graph/elect_identity_components.hpp`): rank `0` standing created, `1` fresh, `2` original leads the key; the smallest key speaks a coincidence, a standing identity survives, otherwise it mints, originals never survive; the caller states which candidates one coincidence joins |
 
 ---
 
@@ -362,11 +381,11 @@ the construction rung
 | `signed_area_2x(polygon)` | `T2` | Polygon signed area × 2 |
 | `signed_area_sign(polygon)` | `int` | +1 (CCW), -1 (CW), 0 |
 | `projection_axes(p0, p1, p2)` / `projection_axes<Int>(normal)` | `pair<int,int>` | Best 2D projection axes, from three points or from an exact normal |
-| `plane_support<Int>` | struct | The points a carrier stands on: `offer(p)` takes points in the caller's own order and keeps the first, the first distinct, and the first off their line, with the accepted cross as `normal`. The one producer of that scan; `make_supported_plane_frame` (offer-shaped), `tf::intersect::graph::plane_face_support` (face-shaped) and `make_face_plane` read it |
+| `plane_support<Int>` | struct | The points a carrier stands on: `offer(p)` takes points in the caller's own order and keeps the first, the first distinct, and the first off their line, with the accepted cross as `normal`. The one producer of that scan; `make_supported_plane_frame` (the frame, its one reading), `tf::intersect::graph::plane_face_support` (face-shaped; `make_plane_face_frame` reads it for every tier that founds a plane on a face, so a collinear-corner face is a line carrier in all of them) and `make_face_plane` read it |
 | `classify_segments(a0, a1, b0, b1, ...)` | `optional<pair<contacts>>` | Full segment-segment contact classification |
 
 ### Coordinate Conversion
-- `pt_converter<Int, RealT, Dims>` — real → the `Int` lattice (99% of its max range)
+- `pt_converter<Int, RealT, Dims>` — real → the `Int` lattice, scaled by the largest power of two within 99% of its max range
 - `vertex_converter<Int, RealT, Dims>` — pt_converter + per-mesh globally unique vertex IDs
 - `resolve_int_type<Int, Coord>` — the standing law: `tf::none_t` becomes int32
   for float, int64 for double, `Coord` itself for an integral `Coord`. Every
@@ -378,17 +397,34 @@ the construction rung
   the shared converter, the flat vertex space that names `(tag, id)` by one
   integer, and — when a tolerance is given — the sparse table of the
   vertices the door (`exact/door/`) moved (`moved_points`, `moved_tickets`)
-  and its `census()`. Under a band the planes pull first — faces whose
-  directions agree POOL (`exact/door/pool/`), and a face another form's vertex
-  stands within the band of commits a plane — each only when its corners land
-  within the band; then every vertex owing a committed plane drops exactly
-  onto it. A tolerance of zero is the identity: no pool, no table, no face
+  and its `census()`, plus the edge landings (`edge_names`). A band does
+  two things: faces it could have made of one plane POOL
+  (`exact/door/pool/pool_input_planes.hpp`: every exact plane quantized,
+  direction onto a fixed chart and intercept onto the band, equal keys one
+  pool across all forms, a key held by one plane pooling nothing) onto one
+  committed plane the lattice is dense on, which their vertices ride — a
+  vertex that cannot stand on every pool around it stays put and every pool
+  at it releases its faces there — and a
+  RIM vertex — on an edge one face holds — within the band of another
+  form's face lands on that face's nearest feature (`find_rim_targets`):
+  the corner's point, the lattice point nearest its projection onto an
+  edge plus a `{vertex, face, slot}` name the intersection build states as
+  a vertex-on-edge record (`state_rim_edge_names`), or a lattice point on
+  the face's committed plane (`commit_target_planes`); `place_door_vertices`
+  places every vertex once. A rim vertex exactly on the face, or whose rim
+  edges already cross the other form's edges, is kept; interior vertices
+  never move. A tolerance of zero is the identity: no pool, no table, no face
   read, the plain converter
 - `input_lattice_reader<Index, RealT, Int, ApplyToForm>` — the one reader of an
   original vertex's position, bound to the caller's own forms: `(tag, id)` or a
   flat id answers its moved row when the band moved it and the converter over
   the input's own coordinate otherwise; the real-valued export of an unmoved
   vertex is the input's own coordinate
+- `input_lattice_tail_reader<Index, RealT, Int, ApplyToForm>` — the reader of
+  a record face's corners, made by `input_lattice::tail_reader`: an id past its
+  form's own points is a seat answered from the caller's per-tag tail, every
+  other id the one reader's answer; a read through a form's own faces never
+  names a seat and takes the plain reader
 
 ---
 
@@ -509,7 +545,27 @@ the deciding type has to travel through.
 
 ---
 
-## 13. csg/
+## 13. linalg/
+
+Sparse symmetric positive definite solves. Umbrella `trueform/linalg.hpp`;
+the steps are `tf::linalg` under `linalg/cholesky/`. Native only.
+
+| Symbol | Purpose |
+|--------|---------|
+| `symmetric_lower<Index>` | A symmetric matrix by its lower triangle: rows of ascending columns `j <= i`, diagonal last; an entry's position in `columns` is its ticket |
+| `cholesky_pattern<Index>` | The factor's structure, read once per pattern: the elimination order and its inverse, the permuted lower carrier with its `lower_slot` tickets, the supernodes with their rows, tree and value offsets, and the schedule (`block_offsets`, `frontier_first()`) |
+| `cholesky_factor` | One value set's factor: one dense block per supernode where the pattern places it |
+| `cholesky_scratch<Index>` | The caller-owned workspace every step walks on |
+| `analyze_cholesky(matrix, scratch, pattern)` | Fills the pattern from the matrix's pattern alone, under approximate minimum degree composed with a postorder; `false` where the index type cannot name the factor's values |
+| `factor_cholesky(pattern, values, scratch, factor)` | One value set, multifrontal over the supernodes with dense tiled kernels, the subtree blocks in parallel and then the frontier; refuses a pivot that is not positive or not finite; its determinism is stated in the header |
+| `solve_cholesky(pattern, factor, rhs, r, scratch)` | `r` interleaved right-hand sides in place, one pass over the factor per direction: each supernode's lanes gathered into one run and its block walked in storage order, the backward solve taking the frontier and then the subtree blocks in parallel; its determinism is stated in the header |
+| `linalg::refine_once` | One refinement step, accepted where every row's componentwise backward error is within `cholesky_residual_tolerance` |
+| `linalg::analyze_cholesky_order` | The pattern under a stated elimination order, which `analyze_cholesky` calls under minimum degree |
+| `linalg::make_symmetric_adjacency` / `order_minimum_degree` / `make_elimination_tree` / `postorder_tree` / `make_permuted_lower` / `count_cholesky_columns` / `make_supernodes` / `make_supernode_rows` / `partition_elimination_tree` / `factor_supernode_run` / `factor_supernode` / `extend_add_update` / `factor_front_columns` / `factor_diagonal_tile` / `solve_panel_rows` / `subtract_tile_product` / `solve_lower` / `solve_upper` / `eliminate_column` / `back_substitute_column` / `column_dot` | The steps |
+
+---
+
+## 14. csg/
 
 Build one arrangement of N operands, answer arbitrarily many boolean
 expressions against it. This supersedes chained `make_boolean` calls for
@@ -522,6 +578,7 @@ anything N-ary or multi-query.
 | `tf::csg::selection(tags[, expr])` / `tf::csg::inside(tags, expr)` | `csg::selection_t` | What `make_csg_mesh` emits of the named forms: the expression's boundary (`selection`, exactly one side in the region, wound outward), the surface inside its region (`inside`, both sides in it, stored winding), or the embedded read (no expression). `selection_kind { boundary, inside }`; `make_csg_domains` takes a `boundary` selection only |
 | `make_csg_mesh(graph, expr)` | `polygons_buffer` | Boolean result mesh; overloads: no-expr (full arrangement mesh), `tf::return_source_ids` (+ tag/face labels), `tf::return_index_map` (+ `mesh_arrangement_index_map`) |
 | `make_csg_domains(graph[, expr][, domain_config])` | `(cells, ids)` | One watertight mesh per kept domain; same `return_source_ids` / `return_index_map` overload set (`csg_domains_index_map`) |
+| `make_csg_open_fragments(graph[, domain_config])` | `(fragments, tags)` | Per form, the live triangles of every component whose two coarse sides are one domain — exactly what `make_csg_domains` leaves out under the same `config` — wound as stored, so cells and fragments together name every live face. Same `return_source_ids` / `return_index_map` overload set; the index map's `inclusion` holds no row, a fragment bounding no domain. A staged hand-off passes the fragments on beside the cells, each keeping its form's sheet or volume declaration |
 | `make_outer_shell(graph)` | `polygons_buffer` | Structural read: the boundary between the unbounded universe and everything the forms enclose (the most-negative-volume domain is the universe). Takes NO domain flags — both are settled facts before the read. The `polygons` overload repairs a mesh to its outer shell by building its own one-form `csg_graph` and answering the same read, so the shell never round-trips through floats |
 | `make_intersection_curves(graph)` | `curves_buffer` | Cross-tag seam polylines read off the graph (coincident walls excluded) |
 
@@ -556,3 +613,62 @@ Topology additions backing this: `constrained_delaunay_triangulator`
 labels, preserved or arranged constraint modes), `cdt_refiner`
 (Ruppert refinement with recorded dyadic constraint splits),
 `triangulation_type`, `make_cdt(..., split_constraints)`.
+
+---
+
+## 15. fill/
+
+Hole filling. Umbrella `trueform/fill.hpp`; the machinery is `tf::fill`
+under `fill/holes/`.
+
+### Public Surface
+
+| Function / Structure | Return | Description |
+|----------|--------|-------------|
+| `fill_holes<Int>(polygons, rims[, config])` | `hole_fill_result<Index, RealT>` | One group per rim of `tf::make_boundary_rims`; the form needs face membership (tag it or it is built). A carrying face must be a triangle; a tagged frame does not enter |
+| `make_filled_mesh<Index>(polygons, result)` | `polygons_buffer` | The replay: faces no split reached copied at their own arity, plan faces replaced by their plans, patches appended; points = input then the minted lane read flat. A triangle input stays triangles, anything else comes back dynamic |
+| `hole_fill_config` | — | `{double min_quality = 0.3, bool fairing = true, bool split_rim = true}` |
+| `hole_fill_result<Index, RealT>` | — | Per group: `group_offsets`, `triangles` / `minted_points` (offset blocks), `status`, `charted`, `refined`, `faired`, `seam_max_angle`, `offending` (`(rim, edge)`, `(-1, -1)` none). Global: `splits` (canonical, `hole_split{face, v0 < v1, point, parameter}` over `hole_split_scale`), `plan_faces` ascending + `plan_triangles` |
+| `hole_fill_status` | — | `filled`, `refused_open`, `refused_invalid_rim`, `refused_host_face`, `refused_protection_depth`, `refused_table`, `refused_resource`, `refused_rim_split` |
+| `hole_chart_status` | — | `not_attempted`, `admitted`, `rim_plane`, then the refusals `no_area`, `steep`, `folded`, `collar_arity`, `uncovered`, `unsampled`, `unsolved`, `forbidden_chord`, `resource`, `out_of_lattice` |
+| `hole_refine_status` / `hole_fair_status` | — | `not_attempted`, `floor_met`, `stalled`, `budget_exhausted` / `not_attempted`, `faired`, `fairing_off`, `fairing_refused` |
+
+A corner below the input's point count is an input vertex; at or above it,
+it names `minted_points` read flat in group order. A refused group
+publishes nothing and names its offending rim edge.
+
+### The Ladder
+
+One rim is one group, validated by preflight and then handed down: TINY
+(at most five vertices, exhaustive enumeration) -> CHART, continue-or-lid
+(the hole as a height field over the rim's Newell plane: a trend — one
+sphere or quadratic, a consensus of subsample fits on a large collar —
+plus a biharmonic residual on the graded samples' triangulation joined to
+ring 1; under any chart refusal a rim lying exactly in one plane is lidded
+in it as `rim_plane`) -> TABLE (the rim's sites tetrahedralized, a
+two-stage table states the least-bottleneck then least-area patch, refined
+toward `min_quality` and faired). The chart's verdict is reported whichever
+tier held the rim. `split_rim` lets a tier split an original rim edge where
+its patch needs one; every split is a dyadic record in the one canonical
+table, its carrying faces get plans, and `make_filled_mesh` replays both,
+so the stitched mesh is watertight. Without it no original edge is touched
+and a rim fillable only by a split refuses `refused_rim_split`.
+
+THE QUANTUM LAW: the chart decides on the mesh's own lattice — the quantum
+the fill's input converter states (`tf::fill::hole_lattice_unit`), one for
+the whole fill as one lattice serves an arrangement. Its headroom law is
+stated once in `fill/holes/hole_chart.hpp`; a collar past the lattice
+refuses `out_of_lattice`.
+
+### The Tiers (`fill/holes/`, `tf::fill`)
+
+| Symbol | Purpose |
+|--------|---------|
+| `fill_hole_rims` | The driver: overlap rejection, per-rim tiers in parallel, canonical split merge, face plans, fairing |
+| `preflight_hole_rim` / `state_hole_rim_cycle` | Rim validation and rooting |
+| `fill_tiny_hole` | Exhaustive enumeration, at most five vertices |
+| `fill_chart_hole` | The chart tier: `make_hole_rim_collar`, `hole_chart`, `fit_hole_trend`, `sample_hole_chart`, `solve_hole_chart_residual`, `place_hole_chart_samples`, `emit_hole_chart_patch`; `make_hole_lid_patch` for `rim_plane` |
+| `fill_table_hole` | The table tier: Delaunay sites, `protect_hole_rim`, `solve_hole_table`, `refine_hole_patch` |
+| `make_hole_face_plans` | The carrying faces' plans over the surviving split set |
+| `fair_hole_patches` | The fairing stencil, solved over `tf::geometry`'s laplacian system (`geometry/laplacian/`) |
+| `hole_patch_seam_angle` | The seam lane |

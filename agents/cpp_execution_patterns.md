@@ -474,10 +474,17 @@ Exact vertices carry coordinate and identity as separate facts. SoS ordering is
 defined by identity. Shared split points are carried as parameters on an
 authoritative edge and materialized consistently by each carrier.
 
-Do not assume one generic robust-predicate strategy. Trueform chooses direct
-wide-integer evaluation, bounded exact arithmetic, or a certified floating
-filter based on operand width, reuse, and measurement. Every path must preserve
-the exact sign.
+Do not assume one generic robust-predicate strategy. Behind its filter,
+Trueform chooses direct wide-integer evaluation or bounded exact arithmetic
+based on operand width, reuse, and measurement. Every path must preserve the
+exact sign.
+
+Every exact predicate carries a floating filter whose error bound is derived in
+its owning header. The filter refuses on nearness to zero, never on input
+range: wide operands form their difference images once and widen the bound. A
+predicate whose exact path runs on more than a sliver of calls is mis-gated
+until a measurement shows otherwise, and a claim that the filter costs more
+than it saves is a measurement owed, not a fact.
 
 Primary exemplars:
 

@@ -61,7 +61,20 @@ Check your own C++ against this list before presenting it:
   `tf::make_indirect_range(ids, range)` — or the record is too heavy to
   move; it is a defect only where a compact by-value record was available;
 - no fact has two producers. When a refactor turns a member into a parameter,
-  the member stays the authority and every call site passes it;
+  the member stays the authority and every call site passes it. A
+  single-producer claim is scoped: it covers exactly the facts whose
+  producers were traced, and silence about a tier is not a claim about
+  that tier;
+- every parameter is declared at the most constrained type known: when every
+  caller passes a `tf::buffer<Index>`, the signature says
+  `tf::buffer<Index>`, never `typename T` — a template parameter exists only
+  where callers genuinely differ, so every consumer of a type is one grep
+  away;
+- an extraction of a shared mechanism is one-to-one in functionality AND
+  performance: the sites are studied first, and the one function reproduces
+  what was true at each — the same passes, primitives, grains, allocation
+  and capacity behavior — or the sites stay split and the refusal is
+  reported;
 - local state structs carried by a parallel primitive are value-initialized;
 - new work added to a hot path has a consumer and a measurement, or it does not
   land;
@@ -69,6 +82,8 @@ Check your own C++ against this list before presenting it:
   anything in a nested namespace lives in a nested directory;
 - classes stay thin: each self-contained step is a free function in the
   module's nested namespace, one operation per header.
+- a serial sort or serial pass over a carrier-sized table is a defect unless
+  the phase rules name it.
 
 ## Read first
 
@@ -137,7 +152,10 @@ identity does not.
 
 ## Required reasoning before hot-path changes
 
-Answer these questions before proposing machinery:
+The ledger comes first — `agents/cpp_performance_philosophy.md` §0: the
+labors, the floor, the arrays, the deductions, the speed, written on
+paper before code. Then answer these questions before proposing
+machinery:
 
 1. What carrier owns the question: form, tree leaf, face, loop, region, edge,
    component, triangle, or block?
@@ -152,6 +170,10 @@ Answer these questions before proposing machinery:
 9. Can existing output be remapped, compacted, or substituted instead of
    recomputed?
 10. What is the measured threshold below which the serial kernel is faster?
+11. Is this operation a diff against a built world? Then: what are its
+    actions by hand, which existing primitives express them, and what is
+    the minimal diff — before any rebuild, translator, or second world is
+    priced (`agents/cpp_performance_philosophy.md` §0b).
 
 ## Parallel-state rule
 
@@ -197,6 +219,10 @@ carries state through its parallel primitive.
   allocate or clear a disproportionate global domain. Require a matching
   Trueform work shape and measurement; bounded reusable identity remains dense.
 - Topological identity and coordinate equality are different facts.
+- The point algebra: every point movement is a mint, a weld (a relabel), or
+  a mint followed by a weld. A mint at a position where an identity already
+  stands elects that identity. Silent renames, sentinel rows, and side
+  tables beside the identity producer are the defect class, not caution.
 
 ## Phase rules
 
@@ -307,6 +333,12 @@ cmake -B build -DTF_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel --target trueform_tests
 ctest --test-dir build --output-on-failure
 ```
+
+The library checks its own contracts in one vocabulary: `tf::core::verify`
+under `if constexpr (tf::core::verification)` (`core/config/verify.hpp`).
+`TF_VERIFY` defaults from `NDEBUG`, so a Release build checks nothing; the
+same suite configured with `-DCMAKE_CXX_FLAGS=-DTF_VERIFY=1` is the checked
+Release gate, and both run before a change lands.
 
 ### Writing tests
 
