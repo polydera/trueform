@@ -11,12 +11,12 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/config/verify.hpp"
 #include "../../core/point.hpp"
 #include "../../core/small_vector.hpp"
 #include "../tree/winding_block.hpp"
 #include "./solid_angle.hpp"
 #include "./winding_tree.hpp"
-#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <type_traits>
@@ -68,7 +68,8 @@ auto winding_traverse(const Winding &winding, const Polygons &polygons,
     for (std::size_t s = 0; s < n_sub; ++s)
       stack.push_back(Index(std::size_t(first) + s));
   };
-  assert(tickets[0] >= 0 && "a non-leaf root owns a child block");
+  if constexpr (tf::core::verification)
+    tf::core::verify(tickets[0] >= 0, "a non-leaf root owns a child block");
   stack.clear();
   push_blocks(0);
   while (stack.size()) {

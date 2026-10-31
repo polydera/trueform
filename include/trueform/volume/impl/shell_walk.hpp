@@ -14,13 +14,13 @@
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "./grid_lines.hpp"
 #include "./mask_ids.hpp"
 #include "./parity_inside.hpp"
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <cmath>
 #include <cstddef>
 
@@ -50,8 +50,9 @@ auto shell_walk(const band_discovery &discovery,
       [&](std::ptrdiff_t si) {
         const auto i = shell_ids[std::size_t(si)];
         const auto bi = std::lower_bound(ids.begin(), ids.end(), i);
-        // the shell is part of the measured set, so the search must hit
-        assert(bi != ids.end() && *bi == i);
+        if constexpr (tf::core::verification)
+          tf::core::verify(bi != ids.end() && *bi == i,
+                           "the shell is part of the measured set");
         const double f = std::sqrt(double(measured[std::size_t(bi - ids.begin())]));
         const auto c = grid_coords(dims, i);
         for (int axis = 0; axis < 3; ++axis)

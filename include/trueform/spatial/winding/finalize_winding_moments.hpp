@@ -14,11 +14,11 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../tree/winding_block.hpp"
 #include "./raw_winding_moment.hpp"
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -37,8 +37,10 @@ auto finalize_winding_moments(tf::buffer<winding_block<RealT>> &blocks,
                               const raw_winding_moment *raw, const Nodes &nodes)
     -> void {
   const auto n = nodes.size();
-  assert(n <= std::size_t(std::numeric_limits<std::int32_t>::max()) &&
-         "block tickets are int32");
+  if constexpr (tf::core::verification)
+    tf::core::verify(
+        n <= std::size_t(std::numeric_limits<std::int32_t>::max()),
+        "block tickets are int32");
   tickets.allocate(n);
   std::int32_t n_blocks = 0;
   for (std::size_t i = 0; i < n; ++i) {

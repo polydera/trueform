@@ -11,7 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include <cassert>
+#include "../../core/config/verify.hpp"
 
 namespace tf::spatial {
 
@@ -27,8 +27,9 @@ template <typename Nodes, typename Ids, typename Moments> struct winding_tree {
 
 template <typename TreeLike, typename Moments>
 auto make_winding_tree(const TreeLike &tree, const Moments &moments) {
-  assert(moments.size() == tree.nodes().size() &&
-         "the winding moments were built over a different tree");
+  if constexpr (tf::core::verification)
+    tf::core::verify(moments.size() == tree.nodes().size(),
+                     "the winding moments were built over a different tree");
   return winding_tree<decltype(tree.nodes()), decltype(tree.ids()), Moments>{
       tree.nodes(), tree.ids(), moments};
 }

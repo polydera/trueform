@@ -11,9 +11,9 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/algorithm/nth_element.hpp"
 #include "../../core/point.hpp"
 #include "../../core/vector.hpp"
-#include "../../core/external/miniselect/pdqselect.h"
 #include "./dual_contour_cells.hpp"
 
 #include <algorithm>
@@ -231,7 +231,7 @@ inline auto fit_sample_plane(const tf::point<double, 3> *p, const double *v,
   double dev[k_pool_sample_cap];
   for (int k = 0; k < n_own; ++k)
     dev[k] = own_dev[k] = plane_deviation(first, p[own[k]], v[own[k]]);
-  miniselect::pdqselect_branchless(dev, dev + n_own / 2, dev + n_own);
+  tf::nth_element(dev, dev + n_own / 2, dev + n_own);
   const double half = std::max(dev[n_own / 2], floor_band);
   int kept[k_pool_sample_cap];
   int n_kept = 0;
@@ -254,7 +254,7 @@ inline auto fit_sample_plane(const tf::point<double, 3> *p, const double *v,
     dev[k] = r;
   }
   out.residual = std::sqrt(sq / n_held);
-  miniselect::pdqselect_branchless(dev, dev + n_held / 2, dev + n_held);
+  tf::nth_element(dev, dev + n_held / 2, dev + n_held);
   out.spread = dev[n_held / 2];
   out.ok = true;
 }
