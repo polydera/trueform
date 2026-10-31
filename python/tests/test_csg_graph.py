@@ -498,6 +498,28 @@ def test_inside_reads_a_sheet_within_a_solid():
     assert len(mf) == 8 and len(imap.face_labels) == 8
 
 
+@pytest.mark.parametrize("real_dtype", REAL_DTYPES)
+@pytest.mark.parametrize("index_dtype", INDEX_DTYPES)
+def test_sheet_rim_volumes_name_the_volumes_holding_a_free_rim(
+        real_dtype, index_dtype):
+    box = make_box((0, 0, 0), real_dtype=real_dtype, index_dtype=index_dtype)
+    dividing = tf.Mesh(*tf.make_plane_mesh(
+        2.0, 2.0, dtype=real_dtype, index_dtype=index_dtype))
+    divided = tf.CsgGraph([dividing, box], sheets=[0])
+    assert divided.sheet_rim_volumes.shape == (0, 2)
+    assert divided.number_of_sheet_conflicts == 0
+
+    # a half-unit sheet at the box's mid-height: its whole rim is inside
+    floating = tf.Mesh(*tf.make_plane_mesh(
+        0.5, 0.5, dtype=real_dtype, index_dtype=index_dtype))
+    held = tf.CsgGraph([floating, box], sheets=[0])
+    pairs = held.sheet_rim_volumes
+    assert pairs.dtype == index_dtype
+    assert pairs.tolist() == [[0, 1]]
+    assert held.sheet_rim_volumes is pairs
+    assert held.number_of_sheet_conflicts == 0
+
+
 def test_inside_validation():
     a = make_box((0, 0, 0))
     b = make_box((0.4, 0.3, 0.2))

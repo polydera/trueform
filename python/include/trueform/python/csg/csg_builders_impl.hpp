@@ -26,7 +26,7 @@ auto build_range_csg_graph(Forms forms,
                            tf::range<const int *, tf::dynamic_size> sheets,
                            tf::arrangement_config config)
     -> range_csg_graph_t<Forms> {
-  return tf::csg::csg_graph_over<tf::none_t>(
+  return tf::csg::census_graph_over<tf::none_t>(
       build_range_arrangement(std::move(forms), config), sheets);
 }
 

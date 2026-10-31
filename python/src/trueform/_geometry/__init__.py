@@ -31,6 +31,7 @@ from .make_tube_mesh import make_tube_mesh
 from .measurements import signed_volume, volume, area, mean_edge_length
 from .laplacian_smoothed import laplacian_smoothed
 from .taubin_smoothed import taubin_smoothed
+from .surface_fields import DirichletField, DirichletFieldStatus, geodesic_distances, dirichlet_field
 
 __all__ = [
     "fit_rigid_alignment",
@@ -58,4 +59,8 @@ __all__ = [
     "mean_edge_length",
     "laplacian_smoothed",
     "taubin_smoothed",
+    "DirichletField",
+    "DirichletFieldStatus",
+    "geodesic_distances",
+    "dirichlet_field",
 ]

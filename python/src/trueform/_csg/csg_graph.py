@@ -134,6 +134,7 @@ class CsgGraph:
         self._within = within
         self._triangulation = triangulation
         self._created_points = None
+        self._sheet_rim_volumes = None
 
         suffix = build_suffix(meta)
         cls = getattr(_trueform.csg, f"CsgGraph_{suffix}", None)
@@ -192,6 +193,27 @@ class CsgGraph:
         if self._created_points is None:
             self._created_points = self._wrapper.created_points()
         return self._created_points
+
+    @property
+    def sheet_rim_volumes(self):
+        """
+        The ``(sheet, volume)`` operand-index pairs whose volume holds a
+        free rim of the sheet, ascending, shape (K, 2) in the graph's index
+        dtype. Every domain such a volume joins across the rim reads no
+        side of that sheet; a sheet that divides every volume it meets
+        names nothing.
+        """
+        if self._sheet_rim_volumes is None:
+            self._sheet_rim_volumes = self._wrapper.sheet_rim_volumes()
+        return self._sheet_rim_volumes
+
+    @property
+    def number_of_sheet_conflicts(self):
+        """
+        How many (sheet, domain) pairs two volumes the sheet separates
+        state opposite sides of; such a domain reads no side of the sheet.
+        """
+        return int(self._wrapper.number_of_sheet_conflicts())
 
     def intersection_curves(self):
         """

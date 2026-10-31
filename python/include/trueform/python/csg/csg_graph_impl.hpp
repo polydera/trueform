@@ -23,6 +23,8 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 #include <trueform/core/algorithm/parallel_transform.hpp>
+#include <trueform/core/blocked_buffer.hpp>
+#include <trueform/core/checked.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/csg/expression.hpp>
@@ -156,6 +158,20 @@ public:
                                                         RealT(p[2])};
                            });
     return make_numpy_array(std::move(out));
+  }
+
+  auto sheet_rim_volumes() {
+    const auto &pairs = _graph.sheet_rim_volumes();
+    tf::blocked_buffer<Index, 2> out;
+    out.allocate(pairs.size());
+    tf::parallel_transform(
+        tf::make_range(pairs), tf::make_range(out),
+        [](const auto &pair) { return pair; }, tf::checked);
+    return make_numpy_array(std::move(out));
+  }
+
+  auto number_of_sheet_conflicts() const -> Index {
+    return _graph.n_sheet_conflicts();
   }
 
   auto intersection_curves() {
@@ -307,6 +323,8 @@ auto register_csg_graph(nanobind::module_ &m, const char *name) -> void {
            nanobind::arg("mode"), nanobind::arg("tolerance"),
            nanobind::arg("triangulation"))
       .def("created_points", &G::created_points)
+      .def("sheet_rim_volumes", &G::sheet_rim_volumes)
+      .def("number_of_sheet_conflicts", &G::number_of_sheet_conflicts)
       .def("intersection_curves", &G::intersection_curves)
       .def("outer_shell", &G::outer_shell)
       .def("mesh", &G::mesh, nanobind::arg("program"),

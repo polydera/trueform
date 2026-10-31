@@ -4,6 +4,7 @@ set(BINDING_TOP_HEADERS
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/clean.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/core.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/csg.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/trueform/python/fill.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/geometry.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/intersect.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/io.hpp
@@ -19,6 +20,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/arrangement/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/clean/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/core/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/csg/headers.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/fill/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/geometry/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/intersect/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/io/headers.cmake)
@@ -36,6 +38,7 @@ set(BINDING_HEADERS
   ${HEADERS_CLEAN}
   ${HEADERS_CORE}
   ${HEADERS_CSG}
+  ${HEADERS_FILL}
   ${HEADERS_GEOMETRY}
   ${HEADERS_INTERSECT}
   ${HEADERS_IO}

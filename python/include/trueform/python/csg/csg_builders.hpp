@@ -22,13 +22,16 @@
 #include <trueform/arrangement/arrangement_config.hpp>
 #include <trueform/arrangement/arrangement_graph.hpp>
 #include <trueform/arrangement/policy/arrangement_range_policy.hpp>
+#include <trueform/arrangement/policy/arrangement_reseat_policy.hpp>
 
 namespace tf::py {
 
 template <typename Forms>
-using range_csg_graph_t =
-    tf::csg_graph<tf::arrangement::arrangement_range_policy<Forms, tf::none_t>,
-                  tf::none_t, tf::arrangement_graph>;
+using range_csg_graph_t = tf::csg_graph<
+    tf::arrangement::reseat_policy_t<
+        tf::arrangement::arrangement_range_policy<Forms, tf::none_t>,
+        tf::none_t>,
+    tf::none_t, tf::arrangement_graph>;
 
 /// N operands. The graph stores the range, so the forms behind it must
 /// outlive the graph.

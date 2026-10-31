@@ -16,6 +16,7 @@
 #include "trueform/python/clean.hpp"
 #include "trueform/python/core.hpp"
 #include "trueform/python/csg.hpp"
+#include "trueform/python/fill.hpp"
 #include "trueform/python/geometry.hpp"
 #include "trueform/python/intersect.hpp"
 #include "trueform/python/io.hpp"
@@ -40,6 +41,7 @@ NB_MODULE(_trueform, m) {
   tf::py::register_clean(m);
   tf::py::register_core(m);
   tf::py::register_csg(m);
+  tf::py::register_fill(m);
   tf::py::register_geometry_module(m);
   tf::py::register_intersect(m);
   tf::py::register_io(m);

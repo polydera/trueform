@@ -14,6 +14,7 @@ set(MODULE_GEOMETRY_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/make_tube_mesh.cpp
   ${CMAKE_CURRENT_LIST_DIR}/measurements.cpp
   ${CMAKE_CURRENT_LIST_DIR}/quality.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/surface_fields.cpp
   ${CMAKE_CURRENT_LIST_DIR}/taubin_smoothed.cpp
   ${CMAKE_CURRENT_LIST_DIR}/triangulated.cpp
 )

@@ -1,11 +1,8 @@
 examples/src/alignment.cpp:123 10.5: default-capture generic lambda decomposes 'tup' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 examples/src/alignment.cpp:306 10.5: default-capture generic lambda decomposes 'tup' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-include/trueform/arrangement/planes/make_plane_weld_entrant_tables.hpp:73 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/clean/index_map/segments.hpp:76 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/core/algorithm/parallel_copy_by_map_with_nones.hpp:36 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/core/centroid.hpp:124 10.1: local constexpr 'Dims' referenced in lambda
-include/trueform/csg/graph/compute_bundle_tag_index.hpp:123 10.5: default-capture generic lambda decomposes 't' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-include/trueform/csg/graph/compute_bundle_tag_index.hpp:84 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/csg/graph/evaluate_per_domain.hpp:38 10.5: default-capture generic lambda decomposes 't' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/csg/graph/make_csg_domain_partition.hpp:132 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/csg/graph/make_csg_partition.hpp:86 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
@@ -23,8 +20,6 @@ include/trueform/geometry/make_sharp_edges.hpp:50 10.5: default-capture generic 
 include/trueform/geometry/taubin_smoothed.hpp:65 10.5: default-capture generic lambda decomposes 'tup' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/intersect/graph/build_plane_csr.hpp:42 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/intersect/graph/build_plane_csr.hpp:60 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-include/trueform/intersect/graph/name_plane_carriers.hpp:120 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-include/trueform/intersect/graph/state_uncut_entrants.hpp:83 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/intersect/identity/form_point_identities.hpp:94 10.5: default-capture generic lambda decomposes 'bufs' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/intersect/segments/dedup_segment_vertex_points.hpp:81 10.5: default-capture generic lambda decomposes 'bufs' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/io/obj/make_obj_vertex_triplets.hpp:72 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
@@ -55,7 +50,6 @@ include/trueform/topology/sidedness/aggregate_votes.hpp:105 10.5: default-captur
 include/trueform/topology/sidedness/aggregate_votes.hpp:138 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/topology/sidedness/emit_votes.hpp:72 10.5: default-capture generic lambda decomposes 'buffers' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/topology/vertex_link.hpp:123 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-vtk/examples/laplacian_smoothing.cpp:310 10.5: default-capture generic lambda decomposes 'tup' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:34 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:52 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:74 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list

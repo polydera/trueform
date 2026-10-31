@@ -33,6 +33,7 @@ auto register_geometry_module(nanobind::module_ &m) -> void {
   register_measurements(geometry_module);
   register_laplacian_smoothed(geometry_module);
   register_taubin_smoothed(geometry_module);
+  register_surface_fields(geometry_module);
 }
 
 } // namespace tf::py

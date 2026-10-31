@@ -24,6 +24,7 @@ from ._spatial.winding_number import winding_number
 from ._spatial.closest_point import closest_metric_point_pair, closest_metric_point, closest_point_pair
 from ._intersect import intersection_curves, self_intersection_curves, has_self_intersections
 from ._iso import isocontours, isobands
+from ._fill import HoleFill, HoleFillStatus, HoleChartStatus, HoleRefineStatus, HoleFairStatus, fill_holes, filled_mesh
 from ._arrangement import mesh_arrangements, polygon_arrangements
 from ._csg import CsgGraph, Expr, op, outer_shell, boolean_union, boolean_intersection, boolean_difference
 from ._clean import cleaned
@@ -35,6 +36,7 @@ from ._geometry import fit_rigid_alignment, fit_similarity_alignment, fit_obb_al
 from ._geometry import normals, point_normals, principal_curvatures, face_quality, dihedral_angles, shape_index, ensure_positive_orientation
 from ._geometry import make_sphere_mesh, make_cylinder_mesh, make_box_mesh, make_plane_mesh, make_tube_mesh
 from ._geometry import signed_volume, volume, area, mean_edge_length, laplacian_smoothed, taubin_smoothed
+from ._geometry import DirichletField, DirichletFieldStatus, geodesic_distances, dirichlet_field
 from ._remesh import decimated, isotropic_remeshed, simplified
 from ._volume import Volume, isosurface, mesh_sdf, resampled_volume, sphere_sdf, volume_boolean, volume_slice_contours
 
@@ -63,6 +65,13 @@ __all__ = [
     'winding_number',
     'isocontours',
     'isobands',
+    'HoleFill',
+    'HoleFillStatus',
+    'HoleChartStatus',
+    'HoleRefineStatus',
+    'HoleFairStatus',
+    'fill_holes',
+    'filled_mesh',
     'intersection_curves',
     'self_intersection_curves',
     'has_self_intersections',
@@ -132,6 +141,10 @@ __all__ = [
     'mean_edge_length',
     'laplacian_smoothed',
     'taubin_smoothed',
+    'DirichletField',
+    'DirichletFieldStatus',
+    'geodesic_distances',
+    'dirichlet_field',
     # Remesh
     'decimated',
     'isotropic_remeshed',

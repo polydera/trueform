@@ -46,6 +46,8 @@ void register_laplacian_smoothed(nanobind::module_ &m);
 
 void register_taubin_smoothed(nanobind::module_ &m);
 
+void register_surface_fields(nanobind::module_ &m);
+
 void register_geometry_module(nanobind::module_ &m);
 
 } // namespace tf::py
