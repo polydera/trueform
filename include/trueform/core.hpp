@@ -86,6 +86,8 @@
 #include "./core/curve.hpp"                       // IWYU pragma: export
 #include "./core/curves.hpp"                      // IWYU pragma: export
 #include "./core/curves_buffer.hpp"               // IWYU pragma: export
+#include "./core/determinant_of.hpp"              // IWYU pragma: export
+#include "./core/determinant_of_rotation.hpp"     // IWYU pragma: export
 #include "./core/distance.hpp"                    // IWYU pragma: export
 #include "./core/dot.hpp"                         // IWYU pragma: export
 #include "./core/edges.hpp"                       // IWYU pragma: export

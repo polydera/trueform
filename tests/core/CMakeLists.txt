@@ -2,6 +2,7 @@ add_executable(trueform_core_tests
   test_compact_ids_and_make_map.cpp
   test_generate_offset_blocks.cpp
   test_classify.cpp
+  test_determinant_of.cpp
   test_closest_metric_point_pair.cpp
   test_intersects.cpp
   test_least_squares_parallel.cpp
@@ -9,6 +10,7 @@ add_executable(trueform_core_tests
   test_ray_cast.cpp
   test_blocked_buffer.cpp
   test_buffer.cpp
+  test_nth_element.cpp
   test_ranges.cpp
   test_tetrahedra.cpp
   test_transformed.cpp

@@ -31,6 +31,7 @@
 #include "./algorithm/mask_to_map.hpp"
 #include "./algorithm/max.hpp"
 #include "./algorithm/min.hpp"
+#include "./algorithm/nth_element.hpp"
 #include "./algorithm/parallel_copy.hpp"
 #include "./algorithm/parallel_copy_blocked.hpp"
 #include "./algorithm/parallel_copy_by_map_with_nones.hpp"
