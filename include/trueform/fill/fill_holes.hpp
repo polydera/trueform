@@ -31,20 +31,25 @@ namespace tf {
 ///
 /// One rim is one group, and a group is filled on its own: its cycle is
 /// validated and rooted, then handed down a ladder of tiers — exhaustive
-/// enumeration for a rim of at most five vertices, the constrained Delaunay
-/// refiner in the rim's own plane where it has one, and otherwise the
-/// Delaunay tetrahedralization of its sites, over which a two-stage table
-/// states the patch of least bottleneck angle and, under that, least area.
+/// enumeration for a rim of at most five vertices, then the hole read as a
+/// height field over the plane its rim spans, continuing the surface around
+/// it — or, where the chart refuses and the rim lies exactly in one plane,
+/// lidding the hole in that plane — and otherwise the Delaunay
+/// tetrahedralization of its sites, over which a two-stage table states the
+/// patch of least bottleneck angle and, under that, least area. The chart's
+/// verdict is reported per group whichever tier held the rim.
 /// Rims run in parallel against each other, and inside one rim its facet
 /// statement and the table's band stages fan out again; a small rim stays
 /// serial under their own cutoffs.
 ///
-/// Every tier works on the exact lattice the input converts to, on a scale
-/// that makes each dyadic split of an original edge a lattice point of its
-/// own. A tier that needs such a split publishes it into one canonical split
-/// table, and the carrying triangles those splits reach are published beside
-/// it as face plans — the one authority on what those faces become, which
-/// @ref tf::make_filled_mesh replays.
+/// The chart never splits the rim, so its patch names the host's own
+/// vertices along the whole seam. The other tiers work on the exact lattice
+/// the input converts to, on a scale that makes each dyadic split of an
+/// original edge a lattice point of its own. A tier that needs such a split
+/// publishes it into one canonical split table, and the carrying triangles
+/// those splits reach are published beside it as face plans — the one
+/// authority on what those faces become, which @ref tf::make_filled_mesh
+/// replays.
 ///
 /// A carrying face must be a TRIANGLE; a rim edge carried by anything else
 /// refuses its group. The fill works in the form's own coordinates and a

@@ -165,8 +165,7 @@ TEST_CASE("fill: the product does not depend on how many workers ran it",
   }
 }
 
-TEST_CASE("fill: a planar rim the split scale can state is filled in its own "
-          "plane",
+TEST_CASE("fill: a hole in a plane fills through the chart",
           "[fill][entry]") {
   const auto plane = tf::make_plane_mesh<entry_index>(4.0f, 4.0f, 4, 4);
   const auto holed = hole_punched_mesh(plane, {10, 11, 12, 13});
@@ -177,11 +176,14 @@ TEST_CASE("fill: a planar rim the split scale can state is filled in its own "
                                ? 0
                                : 1;
   REQUIRE(result.status[hole] == tf::hole_fill_status::filled);
+  REQUIRE(result.charted[hole] == tf::hole_chart_status::admitted);
   REQUIRE(result.refined[hole] != tf::hole_refine_status::not_attempted);
   REQUIRE(result.triangles[hole].size() >= rims.vertices[hole].size() - 2);
+  for (const auto &p : result.minted_points[hole])
+    REQUIRE(p[2] == 0.0f);
 }
 
-TEST_CASE("fill: a planar rim with arbitrary coordinates is filled in its "
+TEST_CASE("fill: a planar rim whose collar folds under it is lidded in its "
           "own plane",
           "[fill][entry]") {
   const std::vector<tf::point<entry_real, 3>> loop{
@@ -193,10 +195,14 @@ TEST_CASE("fill: a planar rim with arbitrary coordinates is filled in its "
   REQUIRE(rims.size() == 1);
   const auto result = tf::fill_holes(mesh.polygons(), rims);
   REQUIRE(result.status[0] == tf::hole_fill_status::filled);
+  REQUIRE(result.charted[0] == tf::hole_chart_status::rim_plane);
   REQUIRE(result.refined[0] != tf::hole_refine_status::not_attempted);
   REQUIRE(result.triangles[0].size() >= rims.vertices[0].size() - 2);
+  for (const auto &p : result.minted_points[0])
+    REQUIRE(p[2] == 0.0f);
   const auto filled = tf::make_filled_mesh(mesh.polygons(), result);
   REQUIRE(tf::is_closed(filled.polygons()));
+  REQUIRE(tf::is_manifold(filled.polygons()));
 }
 
 TEST_CASE("fill: fairing moves what the refinement minted and leaves the "

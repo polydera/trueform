@@ -14,6 +14,7 @@
 #include "../../core/points.hpp"
 #include "../hole_split.hpp"
 #include "./hole_rim.hpp"
+#include "./hole_split_position.hpp"
 #include "./hole_table.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -56,10 +57,8 @@ auto expand_hole_rim_splits(
         Index(scratch.dt.n_sites() + wave - 1));
     scratch.sites.push_back(scratch.appended_sites[wave - 1]);
     scratch.corners.push_back(Index(-1));
-    const auto &from = points[std::size_t(edge.v0)];
-    const auto &to = points[std::size_t(edge.v1)];
-    scratch.positions.push_back(
-        from + (to - from) * (RealT(parameter) / RealT(tf::hole_split_scale)));
+    scratch.positions.push_back(tf::fill::hole_split_position(
+        points, edge.v0, edge.v1, int(parameter)));
   }
 }
 

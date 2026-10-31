@@ -19,10 +19,10 @@
 #include "../../topology/face_membership_like.hpp"
 #include "../hole_fill_result.hpp"
 #include "../hole_fill_status.hpp"
+#include "./hole_fairing_scratch.hpp"
 #include "./hole_fairing_stencil.hpp"
-#include "./hole_seam_angle.hpp"
+#include "./hole_patch_seam_angle.hpp"
 #include "./solve_hole_fairing.hpp"
-#include "./solve_hole_fairing_axis.hpp"
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -40,7 +40,9 @@ namespace tf::fill {
 /// without a second pass over it.
 ///
 /// The seam is stated for every group that holds a patch — off, refused or
-/// faired alike — because it measures the patch that stands, not the solve.
+/// faired alike — because it measures the patch that stands, not the solve;
+/// it reads the patch and the host at its rim alone, so a group that does not
+/// fair builds no stencil.
 template <typename Policy, typename MembershipPolicy, typename Index,
           typename RealT>
 auto fair_hole_patches(const tf::polygons<Policy> &polygons,
@@ -54,7 +56,7 @@ auto fair_hole_patches(const tf::polygons<Policy> &polygons,
     tf::fill::hole_fairing_scratch<Index> solve;
     tf::buffer<tf::point<double, 3>> faired;
     tf::buffer<tf::point<RealT, 3>> staged;
-    tf::buffer<std::array<Index, 3>> seam;
+    tf::fill::hole_seam_scratch<Index> seam;
   };
 
   tf::parallel_for_each(
@@ -63,20 +65,18 @@ auto fair_hole_patches(const tf::polygons<Policy> &polygons,
                                                           local_t &local) {
         if (result.status[group] != tf::hole_fill_status::filled)
           return;
-        const bool complete = tf::fill::build_hole_fairing_stencil(
-            polygons, fm, n_points, result.triangles[group], result.plan_faces,
-            result.plan_triangles, result.minted_points.data_buffer(),
-            local.solve.gather, local.stencil);
-
         auto state = tf::hole_fair_status::not_attempted;
-        if (asks[group]) {
-          if (!fairing)
-            state = tf::hole_fair_status::fairing_off;
-          else if (!complete ||
-                   !tf::fill::solve_hole_fairing(local.stencil, local.solve,
-                                                 local.faired))
-            state = tf::hole_fair_status::fairing_refused;
-          else {
+        if (asks[group] && !fairing)
+          state = tf::hole_fair_status::fairing_off;
+        else if (asks[group]) {
+          state = tf::hole_fair_status::fairing_refused;
+          if (tf::fill::build_hole_fairing_stencil(
+                  polygons, fm, n_points, result.triangles[group],
+                  result.plan_faces, result.plan_triangles,
+                  result.minted_points.data_buffer(), local.solve.gather,
+                  local.stencil) &&
+              tf::fill::solve_hole_fairing(local.stencil, local.solve,
+                                           local.faired)) {
             local.staged.clear();
             bool holds = true;
             for (const auto &point : local.faired) {
@@ -85,26 +85,23 @@ auto fair_hole_patches(const tf::polygons<Policy> &polygons,
                 holds = holds && std::isfinite(stated[axis]);
               local.staged.push_back(stated);
             }
-            if (!holds)
-              state = tf::hole_fair_status::fairing_refused;
-            else {
+            if (holds) {
               for (std::size_t k = 0; k < local.stencil.free_ids.size(); ++k) {
-                const std::size_t slot =
-                    std::size_t(local.stencil.free_ids[k]);
+                const std::size_t slot = std::size_t(local.stencil.free_ids[k]);
                 const Index name = local.stencil.names[slot];
                 result.minted_points
                     .data_buffer()[std::size_t(name - n_points)] =
                     local.staged[k];
-                local.stencil.positions[slot] =
-                    local.staged[k].template as<double>();
               }
               state = tf::hole_fair_status::faired;
             }
           }
         }
         result.faired[group] = state;
-        result.seam_max_angle[group] =
-            RealT(tf::fill::hole_seam_angle(local.stencil, local.seam));
+        result.seam_max_angle[group] = RealT(tf::fill::hole_patch_seam_angle(
+            polygons, fm, n_points, result.triangles[group], result.plan_faces,
+            result.plan_triangles, result.minted_points.data_buffer(),
+            local.seam));
       },
       local_t{});
 }

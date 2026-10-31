@@ -22,6 +22,7 @@
 #include "./hole_cycle_is_simple.hpp"
 #include "./hole_face_carries_edge.hpp"
 #include "./hole_metric.hpp"
+#include "tbb/parallel_sort.h"
 #include <algorithm>
 #include <cstddef>
 
@@ -85,7 +86,7 @@ auto validate_hole_rim(const tf::polygons<Policy> &polygons,
   scratch.order.allocate(std::size_t(n));
   for (Index k = 0; k < n; ++k)
     scratch.order[std::size_t(k)] = k;
-  std::sort(scratch.order.begin(), scratch.order.end(),
+  tbb::parallel_sort(scratch.order.begin(), scratch.order.end(),
             [&vertices](Index a, Index b) {
               const Index va = vertices[std::size_t(a)];
               const Index vb = vertices[std::size_t(b)];

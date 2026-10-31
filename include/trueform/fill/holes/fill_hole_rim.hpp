@@ -19,11 +19,14 @@
 #include "../hole_fill_config.hpp"
 #include "../hole_fill_status.hpp"
 #include "../hole_split.hpp"
-#include "./fill_planar_hole.hpp"
+#include "./fill_chart_hole.hpp"
 #include "./fill_table_hole.hpp"
 #include "./fill_tiny_hole.hpp"
+#include "./hole_lattice.hpp"
 #include "./hole_patch.hpp"
 #include "./hole_table.hpp"
+#include "./make_hole_chart_patch.hpp"
+#include "./name_hole_chart_rim.hpp"
 #include "./preflight_hole_rim.hpp"
 #include "./refine_hole_patch.hpp"
 #include "./validate_hole_rim.hpp"
@@ -38,7 +41,8 @@ struct hole_fill_scratch {
   tf::fill::hole_rim_scratch<Index, Int> preflight;
   tf::fill::hole_rim<Index, Int, RealT> rim;
   tf::fill::hole_tiny_scratch<Index, Int> tiny;
-  tf::fill::hole_planar_scratch<Index, Int> planar;
+  tf::fill::hole_chart_scratch<Index, Int, RealT> chart;
+  tf::fill::hole_chart_rim_names<Index, RealT> chart_names;
   tf::fill::hole_table_scratch<Index, Int, RealT> complex;
   tf::fill::hole_table<Index> table;
   tf::fill::hole_patch_scratch<Index> shape;
@@ -49,14 +53,15 @@ struct hole_fill_scratch {
 /// Fill one rim, walking the ladder until a tier holds it.
 ///
 /// The tiers are tried in the order of what they can prove: a rim of at most
-/// five positions by exhaustive enumeration, then an exactly planar rim
-/// through the refiner in its own plane, then the general rim over the
+/// five positions by exhaustive enumeration, then the rim read as a height
+/// field over the plane it spans, then the general rim over the
 /// tetrahedralization of its sites. A tier that declines leaves nothing
-/// behind, so the next one starts on an empty product.
+/// behind, so the next one starts on an empty product; `charted` states what
+/// the chart made of the rim whichever tier then held it.
 ///
 /// A tier that states a COARSE patch hands it to the refinement driver, which
-/// shapes it toward the configured floor and states how it left; the planar
-/// tier refines inside its own producer and states that reason instead.
+/// shapes it toward the configured floor and states how it left; the chart
+/// samples itself in its own refinement and states that reason instead.
 /// `fairs` says which of the two happened, because only a patch this tier
 /// refined is one it also fairs.
 template <typename Policy, typename MembershipPolicy, typename Index,
@@ -70,6 +75,7 @@ auto fill_hole_rim(const tf::polygons<Policy> &polygons,
                    tf::buffer<std::array<Index, 3>> &triangles,
                    tf::buffer<tf::point<RealT, 3>> &minted,
                    tf::buffer<tf::hole_split<Index>> &splits,
+                   tf::hole_chart_status &charted,
                    tf::hole_refine_status &refined, bool &fairs,
                    Index &offending) -> tf::hole_fill_status {
   const auto verdict =
@@ -100,14 +106,17 @@ auto fill_hole_rim(const tf::polygons<Policy> &polygons,
     return tf::hole_fill_status::filled;
   }
 
-  if (tf::fill::fill_planar_hole(polygons, fm, scratch.rim, config, converter,
-                                 n_points, scratch.planar, triangles, minted,
-                                 splits, refined))
+  charted = tf::fill::fill_chart_hole(
+      polygons, fm, scratch.rim, n_points,
+      tf::fill::hole_lattice_unit(converter), config.split_rim, scratch.chart,
+      scratch.chart_names, triangles, minted, splits, refined);
+  if (charted == tf::hole_chart_status::admitted ||
+      charted == tf::hole_chart_status::rim_plane)
     return tf::hole_fill_status::filled;
 
   const auto status = tf::fill::fill_table_hole(
-      polygons, fm, n_points, scratch.complex, scratch.table, scratch.rim,
-      triangles, minted, splits, offending);
+      polygons, fm, n_points, config.split_rim, scratch.complex, scratch.table,
+      scratch.rim, triangles, minted, splits, offending);
   if (status == tf::hole_fill_status::filled)
     shaped();
   return status;

@@ -14,6 +14,7 @@
 #include "../../core/buffer.hpp"
 #include "../../core/range.hpp"
 #include "./hole_segments_meet.hpp"
+#include "tbb/parallel_sort.h"
 #include <algorithm>
 #include <cstddef>
 
@@ -68,7 +69,7 @@ auto hole_cycle_is_simple(const tf::range<Iterator, tf::dynamic_size> &cycle,
     const Int b = cycle[std::size_t(next(k))][sweep_axis];
     sweep.spans[std::size_t(k)] = {std::min(a, b), std::max(a, b), k};
   }
-  std::sort(sweep.spans.begin(), sweep.spans.end(),
+  tbb::parallel_sort(sweep.spans.begin(), sweep.spans.end(),
             [](const tf::fill::hole_cycle_span<Index, Int> &a,
                const tf::fill::hole_cycle_span<Index, Int> &b) {
               return a.lo != b.lo ? a.lo < b.lo : a.edge < b.edge;

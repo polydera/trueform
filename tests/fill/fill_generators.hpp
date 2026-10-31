@@ -13,6 +13,7 @@
 #include <trueform/core/range.hpp>
 #include <trueform/reindex/by_mask.hpp>
 #include <trueform/topology/boundary_rims.hpp>
+#include <cmath>
 #include <cstddef>
 #include <vector>
 
@@ -90,4 +91,55 @@ auto hole_turned_rim(const tf::boundary_rims<Index> &rims, Index rim,
         faces[std::size_t(reverse ? Index((at + n - 1) % n) : at)]);
   }
   return hole_single_rim(turned_vertices, turned_faces);
+}
+
+/**
+ * @brief The unit sphere outside its cap above polar angle `polar_deg`, as a
+ *        band of `rings` rings stepping by one rim edge. The cap's rim is
+ *        vertices `[0, n)`, winding with the band, and is exactly planar
+ *        unless `wobble` lifts rim vertex `k` by `wobble * sin(3 phi_k)`.
+ */
+template <typename Index, typename Real>
+auto hole_sphere_band_mesh(int n, double polar_deg, int rings,
+                           double wobble = 0.0)
+    -> tf::polygons_buffer<Index, Real, 3, 3> {
+  const double pi = 3.14159265358979323846;
+  const double t0 = polar_deg * pi / 180.0;
+  const double dt = 2.0 * pi * std::sin(t0) / n;
+  tf::polygons_buffer<Index, Real, 3, 3> mesh;
+  mesh.points_buffer().allocate(std::size_t(n * (rings + 1)));
+  for (int j = 0; j <= rings; ++j)
+    for (int k = 0; k < n; ++k) {
+      const double t = t0 + j * dt, p = 2.0 * pi * k / n;
+      const double lift = j == 0 ? wobble * std::sin(3.0 * p) : 0.0;
+      mesh.points()[std::size_t(j * n + k)] = tf::point<Real, 3>{
+          Real(std::sin(t) * std::cos(p)), Real(std::sin(t) * std::sin(p)),
+          Real(std::cos(t) + lift)};
+    }
+  mesh.faces_buffer().allocate(std::size_t(2 * n * rings));
+  std::size_t face = 0;
+  for (int j = 0; j < rings; ++j)
+    for (int k = 0; k < n; ++k) {
+      const int inner = j * n, outer = (j + 1) * n, next = (k + 1) % n;
+      mesh.faces()[face][0] = Index(inner + k);
+      mesh.faces()[face][1] = Index(outer + k);
+      mesh.faces()[face++][2] = Index(outer + next);
+      mesh.faces()[face][0] = Index(inner + k);
+      mesh.faces()[face][1] = Index(outer + next);
+      mesh.faces()[face++][2] = Index(inner + next);
+    }
+  return mesh;
+}
+
+/**
+ * @brief The one rim of `rims` that holds `vertex`, alone.
+ */
+template <typename Index>
+auto hole_rim_holding(const tf::boundary_rims<Index> &rims, Index vertex)
+    -> tf::boundary_rims<Index> {
+  for (std::size_t rim = 0; rim < rims.size(); ++rim)
+    for (auto at : rims.vertices[rim])
+      if (at == vertex)
+        return hole_turned_rim(rims, Index(rim), Index(0), false);
+  return tf::boundary_rims<Index>{};
 }

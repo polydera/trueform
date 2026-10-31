@@ -18,10 +18,11 @@ namespace tf {
 /// @ingroup fill
 /// @brief The dyadic depth every hole-filling split parameter is stated at.
 ///
-/// It is the scale the whole arc shares: the protection tier halves a
-/// subedge at most this many times, the planar refiner's own split depth is
-/// the same, and the lattice a group works on carries exactly this many bits
-/// of scale, so every split point is an exact lattice point.
+/// It is the scale the whole fill shares: the protection tier halves a
+/// subedge at most this many times, the refiner the chart samples with splits
+/// a constraint at most this deep, and the lattice a group works on carries
+/// exactly this many bits of scale, so every split point is an exact lattice
+/// point.
 inline constexpr int hole_split_depth = 6;
 
 /// @ingroup fill

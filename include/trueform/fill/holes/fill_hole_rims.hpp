@@ -71,6 +71,7 @@ auto fill_hole_rims(const tf::polygons<Policy> &polygons,
     tf::buffer<Index> mint_sizes;
     tf::buffer<Index> split_sizes;
     tf::buffer<tf::hole_fill_status> status;
+    tf::buffer<tf::hole_chart_status> charted;
     tf::buffer<tf::hole_refine_status> refined;
     tf::buffer<char> fairs;
     tf::buffer<Index> offending;
@@ -92,6 +93,7 @@ auto fill_hole_rims(const tf::polygons<Policy> &polygons,
         local.mint_sizes.clear();
         local.split_sizes.clear();
         local.status.clear();
+        local.charted.clear();
         local.refined.clear();
         local.fairs.clear();
         local.offending.clear();
@@ -101,6 +103,7 @@ auto fill_hole_rims(const tf::polygons<Policy> &polygons,
           local.group_triangles.clear();
           local.group_minted.clear();
           local.group_splits.clear();
+          auto charted = tf::hole_chart_status::not_attempted;
           auto refined = tf::hole_refine_status::not_attempted;
           bool fairs = false;
           Index offending = Index(-1);
@@ -112,7 +115,7 @@ auto fill_hole_rims(const tf::polygons<Policy> &polygons,
             status = tf::fill::fill_hole_rim(
                 mesh, fm, boundary, rim, converter, config, n_points,
                 local.scratch, local.group_triangles, local.group_minted,
-                local.group_splits, refined, fairs, offending);
+                local.group_splits, charted, refined, fairs, offending);
           }
           if (status != tf::hole_fill_status::filled) {
             local.group_triangles.clear();
@@ -131,6 +134,7 @@ auto fill_hole_rims(const tf::polygons<Policy> &polygons,
           for (const auto &split : local.group_splits)
             local.splits.push_back(split);
           local.status.push_back(status);
+          local.charted.push_back(charted);
           local.refined.push_back(refined);
           local.fairs.push_back(char(fairs));
           local.offending.push_back(offending);
@@ -162,6 +166,7 @@ auto fill_hole_rims(const tf::polygons<Policy> &polygons,
           out.minted_points.offsets_buffer().push_back(
               Index(out.minted_points.data_buffer().size()));
           out.status.push_back(local.status[g]);
+          out.charted.push_back(local.charted[g]);
           out.refined.push_back(local.refined[g]);
           out.faired.push_back(tf::hole_fair_status::not_attempted);
           out.seam_max_angle.push_back(RealT(-1));

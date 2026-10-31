@@ -39,7 +39,7 @@ template <typename Policy, typename MembershipPolicy, typename Index,
           typename Int, typename RealT>
 auto fill_table_hole(const tf::polygons<Policy> &polygons,
                      const tf::face_membership_like<MembershipPolicy> &fm,
-                     Index n_points,
+                     Index n_points, bool split_rim,
                      tf::fill::hole_table_scratch<Index, Int, RealT> &complex,
                      tf::fill::hole_table<Index> &table,
                      tf::fill::hole_rim<Index, Int, RealT> &rim,
@@ -47,8 +47,8 @@ auto fill_table_hole(const tf::polygons<Policy> &polygons,
                      tf::buffer<tf::point<RealT, 3>> &minted,
                      tf::buffer<tf::hole_split<Index>> &splits,
                      Index &offending) -> tf::hole_fill_status {
-  const auto protection =
-      tf::fill::protect_hole_rim(polygons.points(), complex, rim, offending);
+  const auto protection = tf::fill::protect_hole_rim(
+      polygons.points(), split_rim, complex, rim, offending);
   if (protection != tf::hole_fill_status::filled)
     return protection;
 

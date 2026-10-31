@@ -20,6 +20,7 @@
 #include "../../topology/half_edges.hpp"
 #include "./hole_metric.hpp"
 #include "./hole_rim.hpp"
+#include "tbb/parallel_sort.h"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -87,7 +88,7 @@ auto build_hole_patch(const tf::fill::hole_rim<Index, Int, RealT> &rim,
   for (const auto &triangle : triangles)
     for (int corner = 0; corner < 3; ++corner)
       scratch.names.push_back(triangle[std::size_t(corner)]);
-  std::sort(scratch.names.begin(), scratch.names.end());
+  tbb::parallel_sort(scratch.names.begin(), scratch.names.end());
   scratch.names.erase_till_end(
       std::unique(scratch.names.begin(), scratch.names.end()));
 
@@ -124,7 +125,7 @@ auto build_hole_patch(const tf::fill::hole_rim<Index, Int, RealT> &rim,
                                   local[std::size_t((first + 1) % 3)],
                                   local[std::size_t((first + 2) % 3)]});
   }
-  std::sort(scratch.normalized.begin(), scratch.normalized.end());
+  tbb::parallel_sort(scratch.normalized.begin(), scratch.normalized.end());
 
   scratch.faces.clear();
   for (const auto &triangle : scratch.normalized)
@@ -151,7 +152,7 @@ auto emit_hole_patch(const tf::fill::hole_patch<Index, RealT> &patch,
                                   named[std::size_t((first + 1) % 3)],
                                   named[std::size_t((first + 2) % 3)]});
   }
-  std::sort(scratch.normalized.begin(), scratch.normalized.end());
+  tbb::parallel_sort(scratch.normalized.begin(), scratch.normalized.end());
   out.clear();
   for (const auto &triangle : scratch.normalized)
     out.push_back(triangle);

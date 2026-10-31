@@ -35,7 +35,7 @@ namespace tf::fill {
 /// Each end is named the same way everywhere: its flat identity, and the
 /// carrying triangle it inherits — `-1` for an original vertex and for a
 /// minted point the host never carried. This is the one producer of the
-/// verdict; the rim, the planar product and a refined patch all ask it.
+/// verdict; the rim, the chart's product and a refined patch all ask it.
 template <typename FacesPolicy, typename MembershipPolicy, typename Index>
 auto hole_chord_is_forbidden(
     const tf::faces<FacesPolicy> &faces,

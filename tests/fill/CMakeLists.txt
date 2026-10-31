@@ -5,6 +5,8 @@ add_executable(trueform_fill_tests
   test_hole_face_plans.cpp
   test_hole_refinement.cpp
   test_hole_fairing.cpp
+  test_hole_chart.cpp
+  test_hole_chart_tier.cpp
   test_fill_holes.cpp
 )
 

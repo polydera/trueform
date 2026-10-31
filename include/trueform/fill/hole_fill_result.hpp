@@ -55,6 +55,8 @@ template <typename Index, typename RealT> struct hole_fill_result {
   tf::offset_block_buffer<Index, tf::point<RealT, 3>> minted_points;
   /// Per group, what its fill produced.
   tf::buffer<tf::hole_fill_status> status;
+  /// Per group, how the chart tier read its hole.
+  tf::buffer<tf::hole_chart_status> charted;
   /// Per group, how its patch left refinement.
   tf::buffer<tf::hole_refine_status> refined;
   /// Per group, how its patch left fairing.

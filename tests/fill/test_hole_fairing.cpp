@@ -3,31 +3,37 @@
  * @brief Tests for the fairing operator, its solve and the seam it publishes
  *
  * Tests for:
- * - tf::fill::assemble_hole_fairing_system
- * - tf::fill::apply_hole_fairing_operator
- * - tf::fill::hole_fairing_form / hole_fairing_form_diagonal
- * - tf::fill::hole_fairing_is_anchored
+ * - tf::geometry::assemble_laplacian_system over the cotangent weights
+ * - tf::geometry::make_laplacian_form_pattern / state_laplacian_form_values
+ * - tf::geometry::laplacian_is_anchored
  * - tf::fill::solve_hole_fairing
  *
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
+#include <algorithm>
+#include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
+#include <cstddef>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/cross.hpp>
 #include <trueform/core/dot.hpp>
 #include <trueform/core/point.hpp>
-#include <trueform/fill/holes/apply_hole_fairing_operator.hpp>
-#include <trueform/fill/holes/hole_fairing_is_anchored.hpp>
+#include <trueform/core/polygons.hpp>
+#include <trueform/fill/holes/hole_fairing_frame.hpp>
+#include <trueform/fill/holes/hole_fairing_scratch.hpp>
 #include <trueform/fill/holes/hole_fairing_stencil.hpp>
-#include <trueform/fill/holes/hole_fairing_system.hpp>
 #include <trueform/fill/holes/hole_metric.hpp>
 #include <trueform/fill/holes/solve_hole_fairing.hpp>
-#include <trueform/fill/holes/solve_hole_fairing_axis.hpp>
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
+#include <trueform/geometry/laplacian/assemble_laplacian_system.hpp>
+#include <trueform/geometry/laplacian/laplacian_form.hpp>
+#include <trueform/geometry/laplacian/laplacian_is_anchored.hpp>
+#include <trueform/geometry/laplacian/laplacian_system.hpp>
+#include <trueform/geometry/laplacian/make_laplacian_form_pattern.hpp>
+#include <trueform/geometry/laplacian/state_laplacian_form_values.hpp>
+#include <trueform/topology/face_membership.hpp>
+#include <trueform/topology/policy/face_membership.hpp>
 #include <vector>
 
 namespace {
@@ -65,8 +71,7 @@ auto fair_stencil_of(const std::vector<tf::point<double, 3>> &positions,
   for (std::size_t k = 0; k < positions.size(); ++k)
     stencil.free_of[k] = fair_index(-1);
   for (auto vertex : free_vertices) {
-    stencil.free_of[std::size_t(vertex)] =
-        fair_index(stencil.free_ids.size());
+    stencil.free_of[std::size_t(vertex)] = fair_index(stencil.free_ids.size());
     stencil.free_ids.push_back(vertex);
   }
   return stencil;
@@ -88,10 +93,10 @@ struct fair_dense {
 
 auto fair_dense_of(const std::vector<tf::point<double, 3>> &positions,
                    const std::vector<fair_triangle> &triangles) -> fair_dense {
-  fair_dense dense{positions.size(),
-                   std::vector<double>(positions.size() * positions.size(),
-                                       0.0),
-                   std::vector<double>(positions.size(), 0.0)};
+  fair_dense dense{
+      positions.size(),
+      std::vector<double>(positions.size() * positions.size(), 0.0),
+      std::vector<double>(positions.size(), 0.0)};
   for (const auto &triangle : triangles) {
     const auto p0 = positions[std::size_t(triangle[0])];
     const auto p1 = positions[std::size_t(triangle[1])];
@@ -144,9 +149,8 @@ auto fair_close(double a, double b) -> bool {
 /// points, and the host fan at one rim vertex whose middle triangle touches
 /// the rim at that vertex alone.
 const std::vector<tf::point<double, 3>> fair_fan_positions{
-    {-2.0, 0.0, 0.0},  {0.0, -2.0, 0.0}, {2.0, 0.0, 0.0},
-    {0.0, 2.0, 0.0},   {-0.5, 0.0, 0.5}, {0.5, 0.0, 0.5},
-    {-2.0, -2.0, -0.5}, {0.0, -4.0, -0.5}};
+    {-2.0, 0.0, 0.0}, {0.0, -2.0, 0.0}, {2.0, 0.0, 0.0},    {0.0, 2.0, 0.0},
+    {-0.5, 0.0, 0.5}, {0.5, 0.0, 0.5},  {-2.0, -2.0, -0.5}, {0.0, -4.0, -0.5}};
 const std::vector<fair_triangle> fair_fan_patch{
     {0, 1, 4}, {1, 5, 4}, {1, 2, 5}, {2, 3, 5}, {3, 4, 5}, {3, 0, 4}};
 const std::vector<fair_triangle> fair_fan_host{{1, 0, 6}, {1, 6, 7}, {1, 7, 2}};
@@ -161,19 +165,33 @@ auto fair_fan_triangles(bool with_middle) -> std::vector<fair_triangle> {
 
 const std::vector<fair_index> fair_fan_free{4, 5};
 
+/**
+ * @brief The cotangent operator of a stencil, over the face membership its
+ *        triangles state.
+ */
+auto fair_assemble(const tf::fill::hole_fairing_stencil<fair_index> &stencil,
+                   tf::geometry::laplacian_assembly_scratch &assembly,
+                   tf::geometry::laplacian_system<fair_index> &system) -> bool {
+  const auto polygons = tf::make_polygons(stencil.triangles, stencil.positions);
+  tf::face_membership<fair_index> membership;
+  membership.build(polygons);
+  return tf::geometry::assemble_laplacian_system(
+      polygons | tf::tag(membership), tf::geometry::cotangent_weights{},
+      assembly, system);
+}
+
 } // namespace
 
-TEST_CASE("fill: the matrix-free action answers what a dense assembly does",
+TEST_CASE("fill: the form's explicit rows answer what a dense assembly does",
           "[fill][fairing]") {
   const auto triangles = fair_fan_triangles(true);
   const auto stencil =
       fair_stencil_of(fair_fan_positions, triangles, fair_fan_free);
   const auto dense = fair_dense_of(fair_fan_positions, triangles);
 
-  tf::fill::hole_fairing_assembly_scratch<fair_index> assembly;
-  tf::fill::hole_fairing_system<fair_index> system;
-  REQUIRE(tf::fill::assemble_hole_fairing_system(
-      stencil.triangles, stencil.positions, assembly, system));
+  tf::geometry::laplacian_assembly_scratch assembly;
+  tf::geometry::laplacian_system<fair_index> system;
+  REQUIRE(fair_assemble(stencil, assembly, system));
   REQUIRE(system.size() == dense.n);
   for (std::size_t i = 0; i < dense.n; ++i) {
     REQUIRE(fair_close(system.mass[i], dense.mass[i]));
@@ -181,58 +199,88 @@ TEST_CASE("fill: the matrix-free action answers what a dense assembly does",
   }
 
   const double tether = 0.037;
-  const std::vector<double> state{0.37, -0.91};
-  tf::buffer<double> in;
-  for (auto value : state)
-    in.push_back(value);
-  tf::fill::hole_fairing_form_scratch form;
-  tf::buffer<double> acted;
-  tf::fill::apply_hole_fairing_operator(
-      system, tf::fill::hole_fairing_stiffness, tf::fill::hole_fairing_bending,
-      tether, stencil.free_ids, in, form, acted);
-
-  std::vector<double> extended(dense.n, 0.0);
-  for (std::size_t k = 0; k < fair_fan_free.size(); ++k)
-    extended[std::size_t(fair_fan_free[k])] = state[k];
-  const auto dense_acted = fair_dense_form(dense, extended);
-  for (std::size_t k = 0; k < fair_fan_free.size(); ++k) {
-    const std::size_t row = std::size_t(fair_fan_free[k]);
-    REQUIRE(fair_close(acted[k], dense_acted[row] +
-                                     tether * dense.mass[row] * state[k]));
-  }
-
-  for (std::size_t axis = 0; axis < 3; ++axis) {
-    tf::buffer<double> coordinate;
-    std::vector<double> reference(dense.n, 0.0);
-    for (std::size_t k = 0; k < dense.n; ++k) {
-      coordinate.push_back(fair_fan_positions[k][axis]);
-      reference[k] = fair_fan_positions[k][axis];
-    }
-    tf::buffer<double> stated;
-    tf::fill::hole_fairing_form(system, tf::fill::hole_fairing_stiffness,
-                                tf::fill::hole_fairing_bending, coordinate,
-                                form, stated);
-    const auto dense_stated = fair_dense_form(dense, reference);
-    for (std::size_t k = 0; k < fair_fan_free.size(); ++k) {
-      const std::size_t row = std::size_t(fair_fan_free[k]);
-      REQUIRE(fair_close(-stated[row], -dense_stated[row]));
-    }
-  }
-
-  for (std::size_t k = 0; k < fair_fan_free.size(); ++k) {
-    const std::size_t row = std::size_t(fair_fan_free[k]);
+  tf::geometry::laplacian_form<fair_index> form;
+  tf::geometry::make_laplacian_form_pattern(system, stencil.free_ids,
+                                            stencil.free_of, true, form);
+  tf::geometry::state_laplacian_form_values(
+      system, stencil.free_ids, stencil.free_of,
+      tf::fill::hole_fairing_stiffness, tf::fill::hole_fairing_bending, tether,
+      form);
+  const auto entry = [&dense](std::size_t i, std::size_t j) {
     double bend = 0.0;
-    for (std::size_t j = 0; j < dense.n; ++j)
-      bend += dense.at(row, j) * dense.at(row, j) / dense.mass[j];
-    const double expected =
-        tf::fill::hole_fairing_stiffness * dense.at(row, row) +
-                            tf::fill::hole_fairing_bending * bend +
-                            tether * dense.mass[row];
-    REQUIRE(fair_close(tf::fill::hole_fairing_form_diagonal(
-                           system, tf::fill::hole_fairing_stiffness,
-                           tf::fill::hole_fairing_bending, row) +
-                           tether * system.mass[row],
-                       expected));
+    for (std::size_t k = 0; k < dense.n; ++k)
+      bend += dense.at(i, k) * dense.at(k, j) / dense.mass[k];
+    return tf::fill::hole_fairing_stiffness * dense.at(i, j) +
+           tf::fill::hole_fairing_bending * bend;
+  };
+  for (std::size_t i = 0; i < fair_fan_free.size(); ++i) {
+    const std::size_t row = std::size_t(fair_fan_free[i]);
+    std::vector<double> stated(dense.n, 0.0);
+    std::vector<char> named(dense.n, 0);
+    for (auto at = form.free.row_offsets[i]; at < form.free.row_offsets[i + 1];
+         ++at) {
+      const std::size_t column = std::size_t(
+          fair_fan_free[std::size_t(form.free.columns[std::size_t(at)])]);
+      stated[column] = form.free.values[std::size_t(at)];
+      named[column] = 1;
+    }
+    for (auto at = form.fixed_offsets[i]; at < form.fixed_offsets[i + 1];
+         ++at) {
+      const std::size_t column =
+          std::size_t(form.fixed_columns[std::size_t(at)]);
+      stated[column] = form.fixed_values[std::size_t(at)];
+      named[column] = 1;
+    }
+    for (std::size_t j = 0; j < dense.n; ++j) {
+      const fair_index position = stencil.free_of[j];
+      if (position >= 0 && std::size_t(position) > i)
+        continue;
+      const double expected =
+          entry(row, j) + (j == row ? tether * dense.mass[row] : 0.0);
+      REQUIRE(fair_close(stated[j], expected));
+      if (!named[j])
+        REQUIRE(expected == 0.0);
+    }
+  }
+}
+
+TEST_CASE("fill: the fairing answers the dense solve of its form",
+          "[fill][fairing]") {
+  const auto triangles = fair_fan_triangles(true);
+  const auto stencil =
+      fair_stencil_of(fair_fan_positions, triangles, fair_fan_free);
+  tf::fill::hole_fairing_scratch<fair_index> scratch;
+  tf::buffer<tf::point<double, 3>> out;
+  REQUIRE(tf::fill::solve_hole_fairing(stencil, scratch, out));
+  REQUIRE(out.size() == 2);
+  // The bending term weighs by the mass, so the reference reads the stencil
+  // in the fairing's own frame.
+  tf::point<double, 3> centre{0.0, 0.0, 0.0};
+  double scale = 0.0;
+  REQUIRE(tf::fill::hole_fairing_frame(stencil.positions, centre, scale));
+  std::vector<tf::point<double, 3>> local;
+  for (const auto &p : fair_fan_positions)
+    local.push_back({(p[0] - centre[0]) / scale, (p[1] - centre[1]) / scale,
+                     (p[2] - centre[2]) / scale});
+  const auto dense = fair_dense_of(local, triangles);
+  const std::size_t a = std::size_t(fair_fan_free[0]);
+  const std::size_t b = std::size_t(fair_fan_free[1]);
+  for (std::size_t axis = 0; axis < 3; ++axis) {
+    std::vector<double> held(dense.n, 0.0);
+    for (std::size_t k = 0; k < dense.n; ++k)
+      if (stencil.free_of[k] < 0)
+        held[k] = local[k][axis];
+    const auto load = fair_dense_form(dense, held);
+    std::vector<double> unit_a(dense.n, 0.0), unit_b(dense.n, 0.0);
+    unit_a[a] = 1.0;
+    unit_b[b] = 1.0;
+    const auto col_a = fair_dense_form(dense, unit_a);
+    const auto col_b = fair_dense_form(dense, unit_b);
+    const double det = col_a[a] * col_b[b] - col_b[a] * col_a[b];
+    const double xa = (-load[a] * col_b[b] + load[b] * col_b[a]) / det;
+    const double xb = (-load[b] * col_a[a] + load[a] * col_a[b]) / det;
+    REQUIRE(std::abs(out[0][axis] - (xa * scale + centre[axis])) < 1e-9);
+    REQUIRE(std::abs(out[1][axis] - (xb * scale + centre[axis])) < 1e-9);
   }
 }
 
@@ -245,10 +293,9 @@ TEST_CASE("fill: a reference without the middle host triangle disagrees",
   const auto partial =
       fair_dense_of(fair_fan_positions, fair_fan_triangles(false));
 
-  tf::fill::hole_fairing_assembly_scratch<fair_index> assembly;
-  tf::fill::hole_fairing_system<fair_index> system;
-  REQUIRE(tf::fill::assemble_hole_fairing_system(
-      stencil.triangles, stencil.positions, assembly, system));
+  tf::geometry::laplacian_assembly_scratch assembly;
+  tf::geometry::laplacian_system<fair_index> system;
+  REQUIRE(fair_assemble(stencil, assembly, system));
 
   const std::vector<double> state{0.37, -0.91};
   std::vector<double> extended(dense.n, 0.0);
@@ -299,19 +346,17 @@ TEST_CASE("fill: a run of free vertices that reaches no fixed one takes the "
       {0, 2, 1}, {0, 1, 3}, {0, 3, 2}, {1, 2, 3}};
   const auto stencil = fair_stencil_of(corners, faces, {0, 1, 2, 3});
 
-  tf::fill::hole_fairing_assembly_scratch<fair_index> assembly;
-  tf::fill::hole_fairing_system<fair_index> system;
-  REQUIRE(tf::fill::assemble_hole_fairing_system(
-      stencil.triangles, stencil.positions, assembly, system));
+  tf::geometry::laplacian_assembly_scratch assembly;
+  tf::geometry::laplacian_system<fair_index> system;
+  REQUIRE(fair_assemble(stencil, assembly, system));
   tf::buffer<fair_index> stack;
   tf::buffer<char> seen;
-  REQUIRE_FALSE(tf::fill::hole_fairing_is_anchored(system, stencil.free_ids,
-                                                   stencil.free_of, stack,
-                                                   seen));
+  REQUIRE_FALSE(tf::geometry::laplacian_is_anchored(
+      system, stencil.free_ids, stencil.free_of, stack, seen));
 
   const auto anchored = fair_stencil_of(corners, faces, {3});
-  REQUIRE(tf::fill::hole_fairing_is_anchored(system, anchored.free_ids,
-                                             anchored.free_of, stack, seen));
+  REQUIRE(tf::geometry::laplacian_is_anchored(system, anchored.free_ids,
+                                              anchored.free_of, stack, seen));
 }
 
 TEST_CASE("fill: the tethered solve answers a translated stencil alike",
@@ -323,8 +368,8 @@ TEST_CASE("fill: the tethered solve answers a translated stencil alike",
   const tf::point<double, 3> shift{8.0, -16.0, 32.0};
   std::vector<tf::point<double, 3>> moved;
   for (const auto &corner : corners)
-    moved.push_back({corner[0] + shift[0], corner[1] + shift[1],
-                     corner[2] + shift[2]});
+    moved.push_back(
+        {corner[0] + shift[0], corner[1] + shift[1], corner[2] + shift[2]});
 
   const auto here = fair_stencil_of(corners, faces, {0, 1, 2, 3});
   const auto there = fair_stencil_of(moved, faces, {0, 1, 2, 3});
@@ -339,8 +384,8 @@ TEST_CASE("fill: the tethered solve answers a translated stencil alike",
     for (std::size_t axis = 0; axis < 3; ++axis) {
       REQUIRE(std::abs(right[k][axis] - (left[k][axis] + shift[axis])) <
               1e-9 * (1.0 + std::abs(shift[axis])));
-      moved_at_all = moved_at_all ||
-                     std::abs(left[k][axis] - corners[k][axis]) > 1e-12;
+      moved_at_all =
+          moved_at_all || std::abs(left[k][axis] - corners[k][axis]) > 1e-12;
     }
   }
   REQUIRE(moved_at_all);

@@ -28,8 +28,10 @@ namespace tf::fill {
 /// Recover the rim's edges by exact dyadic subdivision and retained insertion.
 /// Coincident split positions refuse a non-simple rim; host positions are
 /// interpolated on the original edge, preserving its face and parameter.
+/// Where `split_rim` forbids touching an original edge, the first rim edge
+/// the complex is missing refuses the rim instead.
 template <typename PointsPolicy, typename Index, typename Int, typename RealT>
-auto protect_hole_rim(const tf::points<PointsPolicy> &points,
+auto protect_hole_rim(const tf::points<PointsPolicy> &points, bool split_rim,
                       tf::fill::hole_table_scratch<Index, Int, RealT> &scratch,
                       tf::fill::hole_rim<Index, Int, RealT> &rim,
                       Index &offending) -> tf::hole_fill_status {
@@ -50,6 +52,10 @@ auto protect_hole_rim(const tf::points<PointsPolicy> &points,
         scratch.position_of_site[std::size_t(scratch.site_of_position[k])] =
             Index(k);
       return tf::hole_fill_status::filled;
+    }
+    if (!split_rim) {
+      offending = scratch.edge_query.missing[0];
+      return tf::hole_fill_status::refused_rim_split;
     }
 
     const auto status =

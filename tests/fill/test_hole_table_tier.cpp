@@ -330,7 +330,7 @@ auto table_solve_lanes(const table_case &instance,
   table_index offending = -1;
   return tf::fill::fill_table_hole(
       instance.mesh.polygons(), membership,
-      table_index(instance.mesh.points().size()), complex, table, rim,
+      table_index(instance.mesh.points().size()), true, complex, table, rim,
       triangles, minted, splits, offending);
 }
 
@@ -379,8 +379,8 @@ TEST_CASE("fill: the table states the exact lexicographic optimum",
     table_index offending = -1;
     const auto status = tf::fill::fill_table_hole(
         instance.mesh.polygons(), membership,
-        table_index(instance.mesh.points().size()), complex, table, rim,
-        triangles, minted, splits, offending);
+        table_index(instance.mesh.points().size()), true, complex, table,
+        rim, triangles, minted, splits, offending);
     if (status != tf::hole_fill_status::filled)
       continue;
 
@@ -429,7 +429,7 @@ TEST_CASE("fill: a protection split that lands on a site refuses the rim",
   tf::fill::hole_table_scratch<table_index, table_int, table_real> complex;
   table_index offending = -1;
   const auto status = tf::fill::protect_hole_rim(instance.mesh.points(),
-                                                 complex, rim, offending);
+                                                 true, complex, rim, offending);
   REQUIRE(status == tf::hole_fill_status::refused_invalid_rim);
   REQUIRE(offending == 0);
 }
@@ -448,7 +448,7 @@ TEST_CASE("fill: a rim edge still absent at the deepest split refuses",
   tf::fill::hole_table_scratch<table_index, table_int, table_real> complex;
   table_index offending = -1;
   const auto status = tf::fill::protect_hole_rim(instance.mesh.points(),
-                                                 complex, rim, offending);
+                                                 true, complex, rim, offending);
   REQUIRE(status == tf::hole_fill_status::refused_protection_depth);
   REQUIRE(offending == 0);
 }
@@ -482,8 +482,8 @@ TEST_CASE("fill: the presence scan states the edge table's own missing list",
       ++missing_seen;
 
     table_index offending = -1;
-    if (tf::fill::protect_hole_rim(instance.mesh.points(), complex, rim,
-                                   offending) != tf::hole_fill_status::filled)
+    if (tf::fill::protect_hole_rim(instance.mesh.points(), true, complex,
+                                   rim, offending) != tf::hole_fill_status::filled)
       continue;
     if (table_index(rim.size()) > before)
       ++split_seen;
@@ -611,8 +611,8 @@ TEST_CASE("fill: the facet a cell owns is the four-per-cell set",
 
     table_complex_t complex;
     table_index offending = -1;
-    if (tf::fill::protect_hole_rim(instance.mesh.points(), complex, rim,
-                                   offending) != tf::hole_fill_status::filled)
+    if (tf::fill::protect_hole_rim(instance.mesh.points(), true, complex,
+                                   rim, offending) != tf::hole_fill_status::filled)
       continue;
     REQUIRE(table_prepare_complex(complex, rim));
 

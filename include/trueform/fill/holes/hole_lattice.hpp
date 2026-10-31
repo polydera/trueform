@@ -60,4 +60,18 @@ auto hole_split_point(const tf::point<Int, 3> &a, const tf::point<Int, 3> &b,
           Coord(a[2]) * scale + t * (Coord(b[2]) - Coord(a[2]))};
 }
 
+/// The fill's lattice quantum: lattice units per unit of the mesh's own
+/// coordinates, as the input's converter states it — its scale, or one where
+/// the input already stands on its lattice.
+template <typename Converter>
+auto hole_lattice_unit(const Converter &converter)
+    -> decltype(double(converter.scale)) {
+  return double(converter.scale);
+}
+
+template <typename Converter, typename... Unused>
+auto hole_lattice_unit(const Converter &, const Unused &...) -> double {
+  return 1.0;
+}
+
 } // namespace tf::fill

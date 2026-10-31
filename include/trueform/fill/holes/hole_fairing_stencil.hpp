@@ -17,6 +17,7 @@
 #include "../../core/polygons.hpp"
 #include "../../topology/face_membership_like.hpp"
 #include "./hole_metric.hpp"
+#include "tbb/parallel_sort.h"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -84,8 +85,8 @@ auto build_hole_fairing_stencil(
       scratch.interior.push_back(a);
     }
   }
-  std::sort(scratch.sides.begin(), scratch.sides.end());
-  std::sort(scratch.interior.begin(), scratch.interior.end());
+  tbb::parallel_sort(scratch.sides.begin(), scratch.sides.end());
+  tbb::parallel_sort(scratch.interior.begin(), scratch.interior.end());
   scratch.interior.erase_till_end(
       std::unique(scratch.interior.begin(), scratch.interior.end()));
 
@@ -100,7 +101,7 @@ auto build_hole_fairing_stencil(
     }
     k = run;
   }
-  std::sort(scratch.boundary.begin(), scratch.boundary.end());
+  tbb::parallel_sort(scratch.boundary.begin(), scratch.boundary.end());
   scratch.boundary.erase_till_end(
       std::unique(scratch.boundary.begin(), scratch.boundary.end()));
 
@@ -111,7 +112,7 @@ auto build_hole_fairing_stencil(
     for (auto face : fm[std::size_t(vertex)])
       scratch.hosts.push_back(face);
   }
-  std::sort(scratch.hosts.begin(), scratch.hosts.end());
+  tbb::parallel_sort(scratch.hosts.begin(), scratch.hosts.end());
   scratch.hosts.erase_till_end(
       std::unique(scratch.hosts.begin(), scratch.hosts.end()));
 
@@ -140,7 +141,7 @@ auto build_hole_fairing_stencil(
   for (const auto &record : scratch.records)
     for (int corner = 0; corner < 3; ++corner)
       stencil.names.push_back(record[std::size_t(corner)]);
-  std::sort(stencil.names.begin(), stencil.names.end());
+  tbb::parallel_sort(stencil.names.begin(), stencil.names.end());
   stencil.names.erase_till_end(
       std::unique(stencil.names.begin(), stencil.names.end()));
   const auto local_of = [&stencil](Index name) {
@@ -157,7 +158,7 @@ auto build_hole_fairing_stencil(
     record = {local[std::size_t(first)], local[std::size_t((first + 1) % 3)],
               local[std::size_t((first + 2) % 3)], record[3]};
   }
-  std::sort(scratch.records.begin(), scratch.records.end());
+  tbb::parallel_sort(scratch.records.begin(), scratch.records.end());
   scratch.records.erase_till_end(
       std::unique(scratch.records.begin(), scratch.records.end()));
 
