@@ -29,6 +29,8 @@ await import("./test_arrangement.mjs");
 await import("./test_csg.mjs");
 await import("./test_domains.mjs");
 await import("./test_intersect.mjs");
+await import("./test_fill.mjs");
+await import("./test_surface_fields.mjs");
 await import("./test_iso.mjs");
 await import("./test_io_roundtrip.mjs");
 await import("./test_dtype_dispatch.mjs");

@@ -250,6 +250,156 @@ export function taubinSmoothed(m: Mesh, iterations: number, lambda: number = 0.5
   return new Mesh(native()[`taubin_smoothed_${dt}`](m._handle, iterations, lambda, kpb), dt);
 }
 
+// ============ Surface fields ============
+
+/** Options for {@link geodesicDistances}. */
+export interface GeodesicDistancesOptions {
+  /** The reach of the front (default: Infinity). */
+  radius?: number;
+}
+
+/** Options for {@link dirichletField}. */
+export interface DirichletFieldOptions {
+  /** `3 * numberOfFaces` weights; entry `3 f + c` weighs the edge of
+   *  face `f` opposite its corner `c`, summed over the faces an edge borders.
+   *  Absent, the cotangent weights stand. */
+  cornerWeights?: NDArrayFloat64;
+}
+
+/** The operator a {@link dirichletField} vanishes under (C++
+ *  `tf::dirichlet_order`): `harmonic` is `L x = 0`, `biharmonic` is
+ *  `L M^-1 L x = 0`. */
+export type DirichletOrder = "harmonic" | "biharmonic";
+
+/** What a {@link dirichletField} solve answered (C++
+ *  `tf::dirichlet_field_status`). `refusedOperator` is a corner weight that
+ *  is not finite, or a point whose lumped mass is not positive — one no face
+ *  has as a corner, or one whose every face is degenerate;
+ *  `refusedUnanchored` a connected run of free points reaching no fixed one;
+ *  `refusedIndex` an index type too narrow to name the factor;
+ *  `refusedIndefinite` a pivot that is not positive; `refusedResidual` an
+ *  answer whose true residual misses its acceptance. */
+export const DirichletFieldStatus = {
+  solved: 0,
+  refusedOperator: 1,
+  refusedUnanchored: 2,
+  refusedIndex: 3,
+  refusedIndefinite: 4,
+  refusedResidual: 5,
+} as const;
+
+/** What {@link dirichletField} solved (C++ `tf::dirichlet_field_result`). */
+export interface DirichletField {
+  /** [N] one value per point, in the mesh's dtype. The fixed values stand at
+   *  the fixed points whatever happened; a solved field states its answer
+   *  everywhere else, and a refused one states zero there. */
+  field: NDArrayFloat32 | NDArrayFloat64;
+  /** A {@link DirichletFieldStatus} value. */
+  status: number;
+}
+
+const DIRICHLET_ORDERS: Record<DirichletOrder, number> = { harmonic: 0, biharmonic: 1 };
+
+function requirePointIds(ids: NDArrayInt32, n: number, name: string, distinct: boolean): void {
+  if (!(ids instanceof NDArray) || ids.dtype !== "int32")
+    throw new TypeError(`${name} must be an int32 NDArray`);
+  if (ids.shape.length !== 1) throw new RangeError(`${name} must be one-dimensional`);
+  const data = ids.data as Int32Array;
+  const seen = distinct ? new Uint8Array(n) : null;
+  for (let k = 0; k < data.length; k++) {
+    const id = data[k]!;
+    if (id < 0 || id >= n) throw new RangeError(`${name}: point id out of range`);
+    if (seen) {
+      if (seen[id]) throw new RangeError(`${name}: point ids must be distinct`);
+      seen[id] = 1;
+    }
+  }
+}
+
+function requireValues(values: NDArrayFloat64, length: number, what: string): void {
+  if (!(values instanceof NDArray) || values.dtype !== "float64")
+    throw new TypeError(`dirichletField: ${what} must be a float64 NDArray`);
+  if (values.shape.length !== 1 || values.length !== length)
+    throw new RangeError(`dirichletField: ${what} must hold ${length} values`);
+}
+
+/** @internal */
+export function geodesicArgs(m: Mesh, seeds: NDArrayInt32, opts?: GeodesicDistancesOptions): unknown[] {
+  requirePointIds(seeds, m.numberOfPoints, "seeds", false);
+  const radius = opts?.radius ?? Infinity;
+  if (Number.isNaN(radius) || radius < 0)
+    throw new RangeError("geodesicDistances: radius must be non-negative and not NaN");
+  return [m._handle, seeds._handle, radius];
+}
+
+/** @internal The native name's stem and its arguments. */
+export function dirichletArgs(
+  m: Mesh, fixedIds: NDArrayInt32, fixedValues: NDArrayFloat64, order: DirichletOrder,
+  opts?: DirichletFieldOptions,
+): [string, unknown[]] {
+  requirePointIds(fixedIds, m.numberOfPoints, "fixedIds", true);
+  requireValues(fixedValues, fixedIds.length, "fixedValues");
+  const data = fixedValues.data as Float64Array;
+  for (let k = 0; k < data.length; k++)
+    if (!Number.isFinite(data[k])) throw new RangeError("dirichletField: fixedValues must be finite");
+  const stated = DIRICHLET_ORDERS[order];
+  if (stated === undefined)
+    throw new RangeError(`dirichletField: order must be "harmonic" or "biharmonic", got "${order}"`);
+  const ids = [fixedIds._handle, fixedValues._handle, stated];
+  if (opts?.cornerWeights === undefined) return ["dirichlet_field_cotangent", [m._handle, ...ids]];
+  requireValues(opts.cornerWeights, 3 * m.numberOfFaces, "cornerWeights");
+  return ["dirichlet_field", [m._handle, opts.cornerWeights._handle, ...ids]];
+}
+
+/** @internal */
+export function wrapDirichletField(raw: any, dtype: Mesh["dtype"]): DirichletField {
+  return { field: new NDArray(raw.field, dtype) as NDArrayFloat32 | NDArrayFloat64, status: raw.status };
+}
+
+/**
+ * The geodesic distance from the nearest seed to every point.
+ *
+ * A label-correcting front with the two-neighbour triangle-unfolding update:
+ * a seed's ring is reached at its Euclidean distance, and the front runs from
+ * there. On a planar mesh it is the straight line; on a curved one it beats
+ * the shortest edge path. Measured in the stored coordinates; the mesh's
+ * transformation does not enter.
+ *
+ * @param m - The mesh
+ * @param seeds - [S] the point ids the distance is measured from
+ * @returns [N] in the mesh's dtype: zero at a seed, Infinity where no front
+ *   reaches — another piece of the mesh, or past `radius` — and at most
+ *   `radius` otherwise
+ */
+export function geodesicDistances(
+  m: Mesh, seeds: NDArrayInt32, opts?: GeodesicDistancesOptions,
+): NDArrayFloat32 | NDArrayFloat64 {
+  const args = geodesicArgs(m, seeds, opts);
+  return new NDArray(native()[`geodesic_distances_${m.dtype}`](...args), m.dtype) as
+    NDArrayFloat32 | NDArrayFloat64;
+}
+
+/**
+ * The field held at `fixedIds` and harmonic (`L x = 0`) or biharmonic
+ * (`L M^-1 L x = 0`) at every other point, where `L` is the Laplacian the
+ * corner weights state and `M` the barycentric lumped mass. The free rows are
+ * solved by sparse Cholesky, refined once and accepted against their true
+ * residual; the result's `status` names what refused. Read in the stored
+ * coordinates.
+ *
+ * @param m - A triangle mesh
+ * @param fixedIds - [K] the distinct point ids the field is held at
+ * @param fixedValues - [K] the finite value at each of them
+ * @param order - `"harmonic"` or `"biharmonic"`
+ */
+export function dirichletField(
+  m: Mesh, fixedIds: NDArrayInt32, fixedValues: NDArrayFloat64, order: DirichletOrder,
+  opts?: DirichletFieldOptions,
+): DirichletField {
+  const [stem, args] = dirichletArgs(m, fixedIds, fixedValues, order, opts);
+  return wrapDirichletField(native()[`${stem}_${m.dtype}`](...args), m.dtype);
+}
+
 // ============ Registration / Alignment ============
 
 /** Options for ICP alignment. */

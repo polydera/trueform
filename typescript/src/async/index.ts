@@ -23,6 +23,7 @@ export {
   booleanUnion, booleanIntersection, booleanDifference,
 } from "../csg/async";
 export { meshArrangements, polygonArrangements } from "../arrangement/async";
+export { fillHoles, filledMesh } from "../fill/async";
 export { isocontours, isobands } from "../iso/async";
 export { intersectionCurves, selfIntersectionCurves, hasSelfIntersections } from "../intersect/async";
 export {
@@ -39,6 +40,7 @@ export {
   laplacianSmoothed, taubinSmoothed,
   fitRigidAlignment, fitIcpAlignment, fitObbAlignment, chamferError,
   computeNormals, computePointNormals,
+  geodesicDistances, dirichletField,
 } from "../geometry/async";
 export {
   isClosed, isOpen, isManifold, isNonManifold,

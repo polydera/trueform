@@ -106,6 +106,13 @@ export type {
   PolygonArrangementResult, PolygonArrangementResultWithCurves,
 } from "./arrangement/sync";
 
+// Fill operations
+export {
+  fillHoles, filledMesh, deleteHoleFill,
+  HoleFillStatus, HoleChartStatus, HoleRefineStatus, HoleFairStatus,
+} from "./fill/sync";
+export type { HoleFill, FillHolesOpts } from "./fill/sync";
+
 // Iso operations
 export { isocontours, isobands } from "./iso/sync";
 export type { IsobandsResult, IsobandsResultWithCurves } from "./iso/sync";
@@ -139,10 +146,12 @@ export {
   principalCurvatures, principalDirections, shapeIndex,
   laplacianSmoothed, taubinSmoothed,
   fitRigidAlignment, fitIcpAlignment, fitObbAlignment, chamferError,
+  geodesicDistances, dirichletField, DirichletFieldStatus,
 } from "./geometry/sync";
 export type {
   PrincipalCurvatures, PrincipalDirections, IcpOptions, ObbOptions, ChamferOptions,
   DihedralAnglesResult, FaceQualityResult,
+  GeodesicDistancesOptions, DirichletFieldOptions, DirichletField, DirichletOrder,
 } from "./geometry/sync";
 export type { MeshLike } from "./form/MeshLike";
 

@@ -23,7 +23,9 @@ import { assertSameDtype } from "../internal/dtype";
 import type {
   PrincipalCurvatures, PrincipalDirections, IcpOptions, ObbOptions, ChamferOptions, DtypeOptions,
   DihedralAnglesResult, FaceQualityResult,
+  GeodesicDistancesOptions, DirichletFieldOptions, DirichletField, DirichletOrder,
 } from "./sync";
+import { geodesicArgs, dirichletArgs, wrapDirichletField } from "./sync";
 
 import type { MeshLike } from "../form/MeshLike";
 
@@ -269,6 +271,33 @@ export async function taubinSmoothed(m: Mesh, iterations: number, lambda: number
   return dispatcher().run(
     () => native()[`dispatch_taubin_smoothed_${dt}`](m._handle, iterations, lambda, kpb),
     (raw) => new Mesh(raw, dt),
+  );
+}
+
+// ============ Surface fields (async) ============
+
+/** Geodesic distances from the nearest seed (async). */
+export async function geodesicDistances(
+  m: Mesh, seeds: NDArrayInt32, opts?: GeodesicDistancesOptions,
+): Promise<NDArrayFloat32 | NDArrayFloat64> {
+  const args = geodesicArgs(m, seeds, opts);
+  const dt = m.dtype;
+  return dispatcher().run(
+    () => native()[`dispatch_geodesic_distances_${dt}`](...args),
+    (raw) => new NDArray(raw, dt) as NDArrayFloat32 | NDArrayFloat64,
+  );
+}
+
+/** The Dirichlet field (async). */
+export async function dirichletField(
+  m: Mesh, fixedIds: NDArrayInt32, fixedValues: NDArrayFloat64, order: DirichletOrder,
+  opts?: DirichletFieldOptions,
+): Promise<DirichletField> {
+  const [stem, args] = dirichletArgs(m, fixedIds, fixedValues, order, opts);
+  const dt = m.dtype;
+  return dispatcher().run(
+    () => native()[`dispatch_${stem}_${dt}`](...args),
+    (raw) => wrapDirichletField(raw, dt),
   );
 }
 

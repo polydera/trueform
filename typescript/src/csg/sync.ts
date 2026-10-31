@@ -404,6 +404,7 @@ export class CsgGraph {
   };
 
   private _createdPoints: NDArrayFloat32 | NDArrayFloat64 | null = null;
+  private _sheetRimVolumes: NDArrayInt32 | null = null;
 
   /** @internal */
   constructor(
@@ -433,6 +434,30 @@ export class CsgGraph {
       ) as NDArrayFloat32 | NDArrayFloat64;
     }
     return this._createdPoints;
+  }
+
+  /**
+   * The `[sheet, volume]` operand-index pairs whose volume holds a free rim
+   * of the sheet, ascending, NDArray [K, 2]. Every domain such a volume
+   * joins across the rim reads no side of that sheet; a sheet that divides
+   * every volume it meets names nothing.
+   */
+  get sheetRimVolumes(): NDArrayInt32 {
+    if (this._sheetRimVolumes === null) {
+      this._sheetRimVolumes = new NDArray(
+        native()[`csg_sheet_rim_volumes_${this.dtype}`](this._handle),
+        "int32",
+      ) as NDArrayInt32;
+    }
+    return this._sheetRimVolumes;
+  }
+
+  /**
+   * How many (sheet, domain) pairs two volumes the sheet separates state
+   * opposite sides of; such a domain reads no side of the sheet.
+   */
+  get numberOfSheetConflicts(): number {
+    return native()[`csg_number_of_sheet_conflicts_${this.dtype}`](this._handle);
   }
 
   /**

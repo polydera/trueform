@@ -90,6 +90,10 @@ EMSCRIPTEN_BINDINGS(trueform_csg_graph_float32) {
                        &sync_csg_domains_with_index_map<Real>);
   emscripten::function("csg_created_points_float32",
                        &sync_csg_created_points<Real>);
+  emscripten::function("csg_sheet_rim_volumes_float32",
+                       &sync_csg_sheet_rim_volumes<Real>);
+  emscripten::function("csg_number_of_sheet_conflicts_float32",
+                       &sync_csg_number_of_sheet_conflicts<Real>);
   emscripten::function("csg_intersection_curves_float32",
                        &sync_csg_intersection_curves<Real>);
 

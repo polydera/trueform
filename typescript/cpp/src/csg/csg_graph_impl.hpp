@@ -20,6 +20,8 @@
 #include "trueform/ts/core/wasm_ndarray.hpp"
 
 #include <trueform/core/algorithm/parallel_transform.hpp>
+#include <trueform/core/buffer.hpp>
+#include <trueform/core/checked.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/transformation.hpp>
 #include <trueform/csg/csg_graph.hpp>
@@ -271,6 +273,21 @@ public:
     return wasm_ndarray<Real>::from_buffer(std::move(out), {n, 3});
   }
 
+  auto sheet_rim_volumes() const -> wasm_ndarray<std::int32_t> {
+    const auto &pairs = _data->graph.sheet_rim_volumes();
+    tf::buffer<std::int32_t> out;
+    out.allocate(pairs.size() * 2);
+    tf::parallel_transform(
+        tf::make_range(pairs), tf::make_blocked_range<2>(tf::make_range(out)),
+        [](const auto &pair) { return pair; }, tf::checked);
+    auto n = static_cast<int>(pairs.size());
+    return wasm_ndarray<std::int32_t>::from_buffer(std::move(out), {n, 2});
+  }
+
+  auto number_of_sheet_conflicts() const -> int {
+    return int(_data->graph.n_sheet_conflicts());
+  }
+
   auto intersection_curves() const -> wasm_curves<Real> {
     return wasm_curves<Real>::from_curves_buffer(
         tf::make_intersection_curves(_data->graph));
@@ -489,6 +506,17 @@ auto sync_csg_domains_with_index_map(wasm_csg_graph<Real> &g,
 template <typename Real>
 auto sync_csg_created_points(wasm_csg_graph<Real> &g) -> wasm_ndarray<Real> {
   return g.created_points();
+}
+
+template <typename Real>
+auto sync_csg_sheet_rim_volumes(wasm_csg_graph<Real> &g)
+    -> wasm_ndarray<std::int32_t> {
+  return g.sheet_rim_volumes();
+}
+
+template <typename Real>
+auto sync_csg_number_of_sheet_conflicts(wasm_csg_graph<Real> &g) -> int {
+  return g.number_of_sheet_conflicts();
 }
 
 template <typename Real>

@@ -351,6 +351,34 @@ for (const dtype of ["float32", "float64"]) {
       lab.mesh.delete(); lab.tagLabels.delete(); lab.faceLabels.delete();
       graph.delete(); plane.delete(); box.delete();
     });
+
+    test("names the volumes that hold a sheet's free rim", () => {
+      const tf = getTf();
+      const opts = { dtype };
+      const box = tf.boxMesh(1, 1, 1, undefined, undefined, undefined, opts);
+      const dividing = tf.planeMesh(2, 2, 2, 2, opts);
+      const divided = tf.csgGraph([dividing, box], { sheets: [0] });
+      const none = divided.sheetRimVolumes;
+      assert(none.shape[0] === 0 && none.shape[1] === 2,
+        `a dividing sheet names nothing, got [${none.shape}]`);
+      assert(divided.numberOfSheetConflicts === 0, "no conflicts");
+
+      // a half-unit sheet at the box's mid-height: its whole rim is inside
+      const floating = tf.planeMesh(0.5, 0.5, 1, 1, opts);
+      const held = tf.csgGraph([floating, box], { sheets: [0] });
+      const pairs = held.sheetRimVolumes;
+      assert(pairs.dtype === "int32", "pairs are int32");
+      assert(pairs.shape[0] === 1 && pairs.shape[1] === 2,
+        `one pair, got [${pairs.shape}]`);
+      assert(JSON.stringify(Array.from(pairs.data)) === "[0,1]",
+        "(sheet 0, box 1)");
+      assert(held.sheetRimVolumes === pairs, "cached on the graph");
+      assert(held.numberOfSheetConflicts === 0, "no conflicts");
+
+      none.delete(); pairs.delete();
+      divided.delete(); held.delete();
+      dividing.delete(); floating.delete(); box.delete();
+    });
   });
 }
 

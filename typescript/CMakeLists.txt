@@ -43,6 +43,8 @@ add_executable(trueform_wasm
     cpp/src/arrangement/mesh_arrangement_float64.cpp
     cpp/src/arrangement/polygon_arrangement_float32.cpp
     cpp/src/arrangement/polygon_arrangement_float64.cpp
+    cpp/src/fill/fill_float32.cpp
+    cpp/src/fill/fill_float64.cpp
     cpp/src/iso/isobands_float32.cpp
     cpp/src/iso/isobands_float64.cpp
     cpp/src/iso/isocontours_float32.cpp
@@ -73,6 +75,8 @@ add_executable(trueform_wasm
     cpp/src/geometry/curvature_float64.cpp
     cpp/src/geometry/smoothing_float32.cpp
     cpp/src/geometry/smoothing_float64.cpp
+    cpp/src/geometry/surface_fields_float32.cpp
+    cpp/src/geometry/surface_fields_float64.cpp
     cpp/src/geometry/registration_float32.cpp
     cpp/src/geometry/registration_float64.cpp
     cpp/src/geometry/edges_float32.cpp
