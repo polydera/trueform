@@ -43,6 +43,9 @@
 #include "./geometry/compute_point_normals.hpp"        // IWYU pragma: export
 #include "./geometry/compute_principal_curvatures.hpp" // IWYU pragma: export
 #include "./geometry/compute_shape_index.hpp"          // IWYU pragma: export
+#include "./geometry/dirichlet_field_result.hpp"       // IWYU pragma: export
+#include "./geometry/dirichlet_field_status.hpp"       // IWYU pragma: export
+#include "./geometry/dirichlet_order.hpp"              // IWYU pragma: export
 #include "./geometry/ensure_positive_orientation.hpp"  // IWYU pragma: export
 #include "./geometry/fit_icp_alignment.hpp"            // IWYU pragma: export
 #include "./geometry/fit_knn_alignment.hpp"            // IWYU pragma: export
@@ -55,6 +58,8 @@
 #include "./geometry/make_box_mesh.hpp"                // IWYU pragma: export
 #include "./geometry/make_curve_frames.hpp"            // IWYU pragma: export
 #include "./geometry/make_cylinder_mesh.hpp"           // IWYU pragma: export
+#include "./geometry/make_dirichlet_field.hpp"         // IWYU pragma: export
+#include "./geometry/make_geodesic_distances.hpp"      // IWYU pragma: export
 #include "./geometry/make_plane_mesh.hpp"              // IWYU pragma: export
 #include "./geometry/make_sharp_edges.hpp"              // IWYU pragma: export
 #include "./geometry/make_sphere_mesh.hpp"             // IWYU pragma: export

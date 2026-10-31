@@ -28,6 +28,7 @@ add_subdirectory(geometry)
 add_subdirectory(intersect)
 add_subdirectory(arrangement)
 add_subdirectory(iso)
+add_subdirectory(linalg)
 add_subdirectory(csg)
 add_subdirectory(fill)
 add_subdirectory(exact)
@@ -46,6 +47,7 @@ set(TF_TEST_TARGETS
   trueform_arrangement_tests
   trueform_arrangement_planes_tests
   trueform_iso_tests
+  trueform_linalg_tests
   trueform_csg_tests
   trueform_fill_tests
   trueform_exact_tests

@@ -4,6 +4,9 @@ add_executable(trueform_geometry_tests
   test_alignment.cpp
   test_face_quality.cpp
   test_tube.cpp
+  test_dirichlet_field.cpp
+  test_dirichlet_s1.cpp
+  test_geodesic_distances.cpp
 )
 
 target_link_libraries(trueform_geometry_tests PRIVATE trueform_test_common)
