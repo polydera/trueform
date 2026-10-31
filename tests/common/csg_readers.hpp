@@ -27,9 +27,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <trueform/exact/resolve_int_type.hpp>
 #include <tuple>
 #include <type_traits>
-#include <utility>
 #include <utility>
 
 namespace tf::test {
@@ -58,6 +58,19 @@ using csg_domain_mesh_t = tf::polygons_buffer<
 template <typename Graph>
 using csg_domains_t = std::pair<tf::core::std_vector<csg_domain_mesh_t<Graph>>,
                                 csg_labels_t<Graph>>;
+
+/// A domain cell on the lattice the graph ran on: the integer the input real
+/// resolves to.
+template <typename Graph>
+using csg_lattice_domain_mesh_t = tf::polygons_buffer<
+    typename Graph::index_type,
+    tf::exact::resolve_int_type<tf::none_t, typename Graph::input_real_type>, 3,
+    (Graph::face_static_size == 3 ? std::size_t(3) : tf::dynamic_size)>;
+
+template <typename Graph>
+using csg_lattice_domains_t =
+    std::pair<tf::core::std_vector<csg_lattice_domain_mesh_t<Graph>>,
+              csg_labels_t<Graph>>;
 
 /// The whole arrangement mesh, no selection.
 template <typename Graph>
@@ -94,6 +107,11 @@ auto csg_mesh_with_index_map_of(const Graph &graph,
 template <typename Graph>
 auto csg_domains_of(const Graph &graph) -> csg_domains_t<Graph>;
 
+/// One watertight mesh per kept domain, on the lattice: the exact product,
+/// before any export rounding.
+template <typename Graph>
+auto csg_lattice_domains_of(const Graph &graph) -> csg_lattice_domains_t<Graph>;
+
 template <typename Graph>
 auto csg_domains_of(const Graph &graph, tf::domain_config config)
     -> csg_domains_t<Graph>;
@@ -105,6 +123,10 @@ auto csg_domains_of(const Graph &graph, const tf::csg::selection_t &selection)
 template <typename Graph>
 auto csg_domains_of(const Graph &graph, const tf::csg::selection_t &selection,
                     tf::domain_config config) -> csg_domains_t<Graph>;
+
+/// Per form, the surface every domain leaves out.
+template <typename Graph>
+auto csg_open_fragments_of(const Graph &graph) -> csg_domains_t<Graph>;
 
 template <typename Graph>
 using csg_domains_index_map_t =

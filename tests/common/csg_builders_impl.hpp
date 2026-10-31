@@ -23,8 +23,9 @@ namespace tf::test {
 template <typename Form>
 auto build_self_csg_graph(const Form &form, tf::arrangement_config config)
     -> self_csg_graph_t<Form> {
-  return tf::csg::csg_graph_over<tf::none_t>(
-      build_self_arrangement(form, config), no_sheets());
+  return tf::csg::census_graph_over<tf::none_t>(
+      build_self_arrangement(form, config, tf::csg::census_near_request),
+      no_sheets());
 }
 
 template <typename Form0, typename Form1>
@@ -32,8 +33,10 @@ auto build_pair_csg_graph(const Form0 &form0, const Form1 &form1,
                           tf::range<const int *, tf::dynamic_size> sheets,
                           tf::arrangement_config config)
     -> pair_csg_graph_t<Form0, Form1> {
-  return tf::csg::csg_graph_over<tf::none_t>(
-      build_pair_arrangement(form0, form1, config), sheets);
+  return tf::csg::census_graph_over<tf::none_t>(
+      build_pair_arrangement(form0, form1, config,
+                             tf::csg::census_near_request),
+      sheets);
 }
 
 template <typename Forms>
@@ -41,8 +44,10 @@ auto build_range_csg_graph(Forms forms,
                            tf::range<const int *, tf::dynamic_size> sheets,
                            tf::arrangement_config config)
     -> range_csg_graph_t<Forms> {
-  return tf::csg::csg_graph_over<tf::none_t>(
-      build_range_arrangement(std::move(forms), config), sheets);
+  return tf::csg::census_graph_over<tf::none_t>(
+      build_range_arrangement(std::move(forms), config,
+                              tf::csg::census_near_request),
+      sheets);
 }
 
 } // namespace tf::test

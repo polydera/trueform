@@ -37,7 +37,9 @@
 
 #include "type_traits.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -287,6 +289,205 @@ TEMPLATE_TEST_CASE("csg_solids: stacked boxes weld across the band",
     REQUIRE(m.points().size() == 16u);
     REQUIRE_THAT(static_cast<double>(tf::signed_volume(m.polygons())),
                  Catch::Matchers::WithinAbs(2.0, 0.01));
+  }
+}
+
+// ============================================================================
+// A subdivided smaller box standing on a subdivided box, its bottom a hair
+// above the larger top: the two faces are hundreds of small triangles each,
+// nearly coplanar, and the band must pool them onto ONE plane so the union
+// is one solid and the domains are exactly the two boxes, no sliver between.
+// ============================================================================
+TEMPLATE_TEST_CASE("csg_solids: a subdivided smaller box on a subdivided box "
+                   "pools the near-coincident faces into one plane",
+                   "[csg][solids][tolerance]",
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
+  using index_t = typename TestType::index_type;
+  using real_t = typename TestType::real_type;
+
+  const double band = 1e-3;
+  const auto flags = tf::domain_config::exclude_outer_shell |
+                     tf::domain_config::ignore_open_fragments;
+  // every vertex pushed by a fixed pseudo-random offset of at most half the
+  // band, so neither face is a plane on the lattice until the pool makes it one
+  const auto jitter = [&](auto &mesh, std::uint32_t seed) {
+    const double reach = band / (2 * std::sqrt(3.0));
+    for (std::size_t i = 0; i < mesh.points_buffer().size(); ++i)
+      for (std::size_t k = 0; k < 3; ++k) {
+        seed = seed * 1664525u + 1013904223u;
+        const double u = double(seed >> 8) / double(1u << 24) * 2 - 1;
+        mesh.points_buffer()[i][k] =
+            real_t(double(mesh.points_buffer()[i][k]) + reach * u);
+      }
+  };
+  const auto scene = [&](bool jittered) {
+    auto b0 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1),
+                                         index_t(8), index_t(8), index_t(8));
+    auto b1 = tf::make_box_mesh<index_t>(real_t(0.6), real_t(0.6), real_t(1),
+                                         index_t(6), index_t(6), index_t(8));
+    tf::ensure_positive_orientation(b0.polygons());
+    tf::ensure_positive_orientation(b1.polygons());
+    if (jittered) {
+      jitter(b0, 20261030u);
+      jitter(b1, 20261031u);
+    }
+    return std::make_pair(std::move(b0), std::move(b1));
+  };
+  const auto check_one_solid = [&](real_t gap, bool jittered) {
+    auto [b0, b1] = scene(jittered);
+    auto holder = two_form_graph<real_t>(
+        b0, b1, translation_frame<real_t>(real_t(0), real_t(0), real_t(1) + gap),
+        tf::arrangement_config{
+            tf::intersect_config{tf::intersect_mode::primitives |
+                                     tf::intersect_mode::within,
+                                 band},
+            tf::triangulation_type::cdt});
+    REQUIRE(holder.graph.failed().size() == 0u);
+    auto m = tf::test::csg_mesh_of(holder.graph, tf::csg::merge(0, 1));
+    REQUIRE(tf::is_closed(m.polygons()));
+    REQUIRE(tf::is_manifold(m.polygons()));
+    REQUIRE_THAT(static_cast<double>(tf::signed_volume(m.polygons())),
+                 Catch::Matchers::WithinAbs(1.36, 0.01));
+    // the pooled interface is one wall: exactly the two boxes, nothing between
+    auto [cells, ids] = tf::test::csg_domains_of(holder.graph, flags);
+    REQUIRE(cells.size() == 2u);
+    std::vector<double> volumes;
+    for (auto &c : cells) {
+      REQUIRE(tf::is_closed(c.polygons()));
+      volumes.push_back(double(tf::signed_volume(c.polygons())));
+    }
+    std::sort(volumes.begin(), volumes.end());
+    REQUIRE_THAT(volumes[0], Catch::Matchers::WithinAbs(0.36, 0.01));
+    REQUIRE_THAT(volumes[1], Catch::Matchers::WithinAbs(1.0, 0.01));
+  };
+
+  SECTION("gap inside the band: the exact grids pool") {
+    check_one_solid(real_t(0.5e-3), false);
+  }
+
+  SECTION("gap inside the band: the jittered grids pool") {
+    check_one_solid(real_t(0.5e-3), true);
+  }
+
+  SECTION("gap beyond the band: two intact solids, nothing welds") {
+    auto [b0, b1] = scene(true);
+    const auto n_points = b0.points().size() + b1.points().size();
+    auto holder = two_form_graph<real_t>(
+        b0, b1, translation_frame<real_t>(real_t(0), real_t(0), real_t(1.002)),
+        tf::arrangement_config{
+            tf::intersect_config{tf::intersect_mode::primitives |
+                                     tf::intersect_mode::within,
+                                 band},
+            tf::triangulation_type::cdt});
+    auto m = tf::test::csg_mesh_of(holder.graph, tf::csg::merge(0, 1));
+    REQUIRE(tf::is_closed(m.polygons()));
+    REQUIRE(tf::is_manifold(m.polygons()));
+    REQUIRE(m.points().size() == n_points);
+    REQUIRE_THAT(static_cast<double>(tf::signed_volume(m.polygons())),
+                 Catch::Matchers::WithinAbs(1.36, 0.01));
+  }
+}
+
+// ============================================================================
+// Two unit cubes offset by a fraction of the band in every axis: all six face
+// pairs quantize to one plane each, every corner drops onto its three pools,
+// and the union is ONE cube — eight points, volume one.
+// ============================================================================
+TEMPLATE_TEST_CASE("csg_solids: two cubes a fraction of a band apart are one cube",
+                   "[csg][solids][tolerance]",
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
+  using index_t = typename TestType::index_type;
+  using real_t = typename TestType::real_type;
+
+  const double band = 1e-4;
+  auto b0 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+  auto b1 = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+  tf::ensure_positive_orientation(b0.polygons());
+  tf::ensure_positive_orientation(b1.polygons());
+  auto holder = two_form_graph<real_t>(
+      b0, b1,
+      translation_frame<real_t>(real_t(0.3 * band), real_t(-0.2 * band),
+                                real_t(0.25 * band)),
+      tf::arrangement_config{
+          tf::intersect_config{tf::intersect_mode::primitives |
+                                   tf::intersect_mode::within,
+                               band},
+          tf::triangulation_type::cdt});
+  REQUIRE(holder.graph.failed().size() == 0u);
+  auto m = tf::test::csg_mesh_of(holder.graph, tf::csg::merge(0, 1));
+  REQUIRE(tf::is_closed(m.polygons()));
+  REQUIRE(tf::is_manifold(m.polygons()));
+  // the twelve corner pairs welded: one cube's eight corners
+  REQUIRE(m.points().size() == 8u);
+  REQUIRE_THAT(static_cast<double>(tf::signed_volume(m.polygons())),
+               Catch::Matchers::WithinAbs(1.0, 1e-3));
+  auto [cells, ids] = tf::test::csg_domains_of(
+      holder.graph, tf::domain_config::exclude_outer_shell |
+                        tf::domain_config::ignore_open_fragments);
+  REQUIRE(cells.size() == 1u);
+}
+
+// ============================================================================
+// A sheet inside a cube whose corners stop a hair short of the walls: the
+// band lands the rim on the walls, the sheet becomes a wall, and the cube is
+// two domains of half the volume each. Beyond the band it stays a fin and the
+// cube is whole.
+// ============================================================================
+TEMPLATE_TEST_CASE("csg_solids: a sheet a hair short of the walls halves the cube",
+                   "[csg][solids][tolerance][sheets]",
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
+  using index_t = typename TestType::index_type;
+  using real_t = typename TestType::real_type;
+
+  const real_t gap = real_t(1e-4);
+  auto cube = tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+  tf::ensure_positive_orientation(cube.polygons());
+  tf::polygons_buffer<index_t, real_t, 3, 3> sheet;
+  const real_t h = real_t(0.5) - gap;
+  sheet.points_buffer().allocate(4);
+  sheet.faces_buffer().allocate(2);
+  sheet.points_buffer()[0] = tf::point<real_t, 3>{-h, -h, real_t(0)};
+  sheet.points_buffer()[1] = tf::point<real_t, 3>{+h, -h, real_t(0)};
+  sheet.points_buffer()[2] = tf::point<real_t, 3>{+h, +h, real_t(0)};
+  sheet.points_buffer()[3] = tf::point<real_t, 3>{-h, +h, real_t(0)};
+  sheet.faces_buffer()[0] = std::array<index_t, 3>{0, 1, 2};
+  sheet.faces_buffer()[1] = std::array<index_t, 3>{0, 2, 3};
+
+  const auto halves = [&](double band) {
+    auto c = tf::test::make_tagged_operand(cube);
+    auto f = tf::test::make_tagged_operand(sheet);
+    std::vector<decltype(c.form())> forms{c.form(), f.form()};
+    auto graph = tf::test::build_range_csg_graph(
+        tf::test::forms_range(forms), tf::test::sheets_of({1}),
+        tf::arrangement_config{
+            tf::intersect_config{tf::intersect_mode::primitives, band},
+            tf::triangulation_type::cdt});
+    REQUIRE(graph.failed().size() == 0u);
+    auto [cells, ids] = tf::test::csg_domains_of(
+        graph, tf::domain_config::exclude_outer_shell |
+                   tf::domain_config::ignore_open_fragments);
+    std::vector<double> volumes;
+    for (auto &cell : cells) {
+      REQUIRE(tf::is_closed(cell.polygons()));
+      volumes.push_back(double(tf::signed_volume(cell.polygons())));
+    }
+    std::sort(volumes.begin(), volumes.end());
+    return volumes;
+  };
+
+  SECTION("band wider than the gap: two halves") {
+    const auto volumes = halves(1e-3);
+    REQUIRE(volumes.size() == 2u);
+    REQUIRE_THAT(volumes[0], Catch::Matchers::WithinAbs(0.5, 1e-3));
+    REQUIRE_THAT(volumes[1], Catch::Matchers::WithinAbs(0.5, 1e-3));
+  }
+  SECTION("band narrower than the gap: the cube is whole") {
+    const auto volumes = halves(1e-5);
+    REQUIRE(volumes.size() == 1u);
+    REQUIRE_THAT(volumes[0], Catch::Matchers::WithinAbs(1.0, 1e-3));
   }
 }
 

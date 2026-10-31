@@ -11,14 +11,13 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../core/algorithm/circular_increment.hpp"
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/array_hash.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/hash_set.hpp"
 #include "../../core/range.hpp"
-#include "../../core/views/offset_block_range.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "./for_each_ring_sector.hpp"
 #include "./make_plane_radial_fans.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
@@ -64,75 +63,32 @@ void emit_domain_merges(const Labels &labels,
     tf::hash_set<std::array<Index, 2>, tf::array_hash<Index, 2>> bundle_seen;
   };
 
-  auto dirs_view = tf::make_offset_block_range(fans.rows.offsets_buffer(),
-                                               tf::make_range(fans.dirs));
-
   tf::generic_generate(
       tf::make_sequence_range(Index(fans.pieces.size())),
       std::tie(merges, bundle_merges),
       [&](Index fan, auto &out_buffers, local_state_t &state) {
         if (!is_valid[std::size_t(fan)])
           return;
-        const Index first = fans.page_offsets[std::size_t(fan)];
-        const Index K = fans.page_offsets[std::size_t(fan) + 1] - first;
-
         auto &out_merges = std::get<0>(out_buffers);
         auto &out_bundles = std::get<1>(out_buffers);
         // an uncertified ring states that its components touch, not which
         // of their sides face each other
-        const bool certified = fans.certified[std::size_t(fan)] != 0;
-
-        for (Index r = 0; r < K; ++r) {
-          const Index rn = tf::circular_increment(r, K);
-          auto page = fans.rows[std::size_t(first + r)];
-          auto page_dirs = dirs_view[std::size_t(first + r)];
-          auto next = fans.rows[std::size_t(first + rn)];
-          auto next_dirs = dirs_view[std::size_t(first + rn)];
-
-          for (std::size_t a = 0; a < page.size(); ++a) {
-            const auto row_a = page[a];
-            Index frag_a;
-            if (row_a < Index(0)) {
-              frag_a = Index(-row_a - 1);
-            } else {
-              const Index Fa = exposed_of_row[std::size_t(row_a / Index(3))];
-              if (Fa == Index(-1))
-                continue; // an occurrence the exposure did not carry
-              frag_a = labels[Fa];
-            }
-            // Sides come from the occurrence's own traversal direction —
-            // a slit carrier's two pages take opposite sides, which a
-            // per-carrier containment test cannot express.
-            const Index sa = page_dirs[a] ? Index(0) : Index(1);
-
-            for (std::size_t b = 0; b < next.size(); ++b) {
-              const auto row_b = next[b];
-              Index frag_b;
-              if (row_b < Index(0)) {
-                frag_b = Index(-row_b - 1);
-              } else {
-                const Index Fb = exposed_of_row[std::size_t(row_b / Index(3))];
-                if (Fb == Index(-1))
-                  continue;
-                frag_b = labels[Fb];
-              }
-              const Index sb = (next_dirs[b] ? Index(0) : Index(1)) ^ Index(1);
-              const Index node_a = 2 * frag_a + sa;
-              const Index node_b = 2 * frag_b + sb;
+        const bool certified = fans.verdicts[std::size_t(fan)] ==
+                               plane_radial_ring_verdict::certified;
+        for_each_ring_sector(
+            labels, fans, exposed_of_row, fan,
+            [&](Index node_a, Index node_b, Index frag_a, Index frag_b) {
               std::array<Index, 2> p = {std::min(node_a, node_b),
                                         std::max(node_a, node_b)};
               if (certified && state.seen.insert(p).second)
                 out_merges.push_back(p);
-
               if (frag_a != frag_b) {
                 std::array<Index, 2> bp = {std::min(frag_a, frag_b),
                                            std::max(frag_a, frag_b)};
                 if (state.bundle_seen.insert(bp).second)
                   out_bundles.push_back(bp);
               }
-            }
-          }
-        }
+            });
       },
       local_state_t{});
 

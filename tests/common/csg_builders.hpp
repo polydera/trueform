@@ -18,6 +18,7 @@
 #include <trueform/arrangement/arrangement_graph.hpp>
 #include <trueform/arrangement/policy/arrangement_pair_policy.hpp>
 #include <trueform/arrangement/policy/arrangement_range_policy.hpp>
+#include <trueform/arrangement/policy/arrangement_reseat_policy.hpp>
 #include <trueform/core/none.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/csg/csg_graph.hpp>
@@ -41,21 +42,25 @@ inline auto sheets_of(const std::vector<int> &ids)
 }
 
 template <typename Form>
-using self_csg_graph_t =
-    tf::csg_graph<tf::arrangement::arrangement_range_policy<std::array<Form, 1>,
-                                                            tf::none_t>,
-                  tf::none_t, tf::arrangement_graph>;
+using self_csg_graph_t = tf::csg_graph<
+    tf::arrangement::reseat_policy_t<tf::arrangement::arrangement_range_policy<
+                                         std::array<Form, 1>, tf::none_t>,
+                                     tf::none_t>,
+    tf::none_t, tf::arrangement_graph>;
 
 template <typename Form0, typename Form1>
-using pair_csg_graph_t =
-    tf::csg_graph<tf::arrangement::arrangement_pair_policy<Form0, tf::none_t,
-                                                           Form1, tf::none_t>,
-                  tf::none_t, tf::arrangement_graph>;
+using pair_csg_graph_t = tf::csg_graph<
+    tf::arrangement::reseat_policy_t<tf::arrangement::arrangement_pair_policy<
+                                         Form0, tf::none_t, Form1, tf::none_t>,
+                                     tf::none_t>,
+    tf::none_t, tf::arrangement_graph>;
 
 template <typename Forms>
-using range_csg_graph_t =
-    tf::csg_graph<tf::arrangement::arrangement_range_policy<Forms, tf::none_t>,
-                  tf::none_t, tf::arrangement_graph>;
+using range_csg_graph_t = tf::csg_graph<
+    tf::arrangement::reseat_policy_t<
+        tf::arrangement::arrangement_range_policy<Forms, tf::none_t>,
+        tf::none_t>,
+    tf::none_t, tf::arrangement_graph>;
 
 /// One operand: the form's self arrangement classified.
 template <typename Form>

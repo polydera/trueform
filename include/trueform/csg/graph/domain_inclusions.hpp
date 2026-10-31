@@ -69,7 +69,7 @@ struct domain_inclusions {
 /// iff domain `d` is inside form `i` — behind it, for a sheet. A volume
 /// column is the depth @ref tf::csg::graph::propagate_inclusion_bits carries
 /// from the seeds @ref tf::csg::graph::seed_inclusion_bits casts; a sheet
-/// column is the side @ref tf::csg::graph::propagate_sheet_sides publishes,
+/// column is the side @ref tf::csg::graph::settle_sheet_sides publishes,
 /// zero where the sheet does not separate the domain. Each is the sole
 /// authority for its columns.
 ///

@@ -14,6 +14,7 @@
 #include "../../core/buffer.hpp"
 #include "./arrangement_descriptor.hpp"
 #include "./component_crossings.hpp"
+#include <array>
 #include <cstddef>
 
 namespace tf::csg::graph {
@@ -22,33 +23,40 @@ namespace tf::csg::graph {
 /// @brief The side every domain takes of every sheet, one state per
 ///        `(sheet, domain)`, sheet-major.
 ///
-/// A sheet has no outside, so no side holds by definition: a side is a
-/// statement, and a domain the sheet does not separate carries none.
+/// A sheet has no outside, so a side is a statement, and no side is ever
+/// carried from one domain to another.
 ///
-/// The local side. A wall that carries a layer of the sheet of odd count
-/// states both of its domains: the one on the side the count enters lies
-/// behind the sheet, the other in front. A domain on both sides of one such
-/// wall, or stated both ways by two of them, wraps the sheet.
+/// Inside a volume a sheet separates or it does not, and what it separates
+/// is a component of the volume's inside: its domains joined across every
+/// wall the sheet is not on. A component the sheet's walls reach from one
+/// side only lies on that side. One they reach from both sides goes around
+/// a rim inside the volume: the sheet does not separate it, and its domains
+/// have no side. One they never reach states nothing. A domain inside
+/// several volumes takes a one-side statement over a wrap, and two one-side
+/// statements that disagree prove the union is not separated: no side, and
+/// the disagreement is counted.
+///
+/// A free rim — an open component carrying a layer of the sheet — joins the
+/// two domains it stands between, so a volume's inside reached around the
+/// rim is one component that sees the sheet from both sides; the join only
+/// ever unites components. Both of the rim's sides inside a volume mean the
+/// rim is interior and the pair is counted; one side out means the rim
+/// stands on the volume's own wall and the sheet runs edge to edge. Nesting
+/// never silences a bundle's own separation: a volume the sheet separates
+/// states its side wherever it sits.
 ///
 /// The flush witness. A sheet passing through a fan's edge stands on two of
 /// its pages; one ending there stands on one, and the other half-plane of
 /// that page's carrier lies inside a sector. That sector is the two sectors
 /// a passing sheet would divide, collapsed into one domain that stands on
-/// both sides of the missing page — the same domain twice around the fan —
-/// so it wraps the sheet, whatever side a wall states for it elsewhere.
+/// both sides of the missing page, so it wraps the sheet — unless a volume
+/// states it a side.
 ///
-/// The nested witness. A free rim — an open component of the sheet — lies
-/// inside the region its bundle lands in, which reaches both of its faces
-/// around it and wraps the sheet. A nesting merge unites two false halves of
-/// one region, so a wrap of either is a wrap of both.
-///
-/// No side, no transit. A domain that wraps the sheet has no side, and no
-/// side is carried through it. Every other side is copied across the walls
-/// that do not carry the sheet; a wall that does carry it has both of its
-/// domains stated already. A domain no statement reaches has no side
-/// either, and a domain without a side reads zero. A bundle whose envelope
-/// wraps the sheet lies wholly on one side of it all the same: its winding
-/// seed states the bundle's own domains instead of the envelope.
+/// Every other domain takes the winding's side at a point of one of its
+/// walls the sheet is not on — the side of the sheet's own extension through
+/// the winding field's zero set. A domain every wall of which the sheet is
+/// on has no such point; the sheet's walls state it as they do a component.
+/// A domain without a side reads zero.
 template <typename Index> struct sheet_sides {
   static constexpr char unstated = 0;
   static constexpr char front = 1;
@@ -62,6 +70,11 @@ template <typename Index> struct sheet_sides {
   Index n_domains = 0;
   /// `states[k * n_domains + d]`: the side domain `d` takes of sheet `k`.
   tf::buffer<char> states;
+  /// The `(sheet tag, volume tag)` pairs whose volume holds a free rim of
+  /// the sheet, ascending.
+  tf::buffer<std::array<Index, 2>> rim_volumes;
+  /// The `(sheet, domain)` pairs two volumes stated opposite sides of.
+  Index n_conflicts = 0;
 
   auto n_sheets() const -> Index { return Index(tags.size()); }
 
@@ -96,6 +109,26 @@ template <typename Index> struct sheet_sides {
     }
   }
 
+  /// The sides of sheet `k` its walls state domain `d` on: `front`,
+  /// `behind`, both (`wraps`) or none (`unstated`).
+  template <typename DomainComponents>
+  auto walled(const arrangement_descriptor<Index> &desc,
+              const component_crossings<Index> &crossings,
+              const DomainComponents &domain_components, Index k,
+              Index d) const -> char {
+    char s = unstated;
+    for (const Index c : domain_components[std::size_t(d)])
+      for_each_sheet_layer(desc, crossings, c, [&](Index j, Index behind_side) {
+        if (j != k)
+          return;
+        if (desc.domain_of_side[2 * c + behind_side] == d)
+          s = char(s | behind);
+        if (desc.domain_of_side[2 * c + 1 - behind_side] == d)
+          s = char(s | front);
+      });
+    return s;
+  }
+
   /// Whether component `c` carries a layer of sheet `k` of odd count.
   auto carries(const arrangement_descriptor<Index> &desc,
                const component_crossings<Index> &crossings, Index c,
@@ -104,6 +137,22 @@ template <typename Index> struct sheet_sides {
     for_each_sheet_layer(desc, crossings, c,
                          [&](Index s, Index) { found = found || s == k; });
     return found;
+  }
+
+  /// Whether sheet `k` lies on component `c` at all, a cancelled layer
+  /// included: no point of `c` is then off the sheet.
+  auto touches(const arrangement_descriptor<Index> &desc,
+               const component_crossings<Index> &crossings, Index c,
+               Index k) const -> bool {
+    const Index row = crossings.row_of(c);
+    if (row == Index(-1)) {
+      const Index t = desc.tag_of_component[c];
+      return t >= Index(0) && sheet_of_tag[t] == k;
+    }
+    for (const auto &layer : crossings.layers[static_cast<std::size_t>(row)])
+      if (sheet_of_tag[layer[0]] == k)
+        return true;
+    return false;
   }
 };
 

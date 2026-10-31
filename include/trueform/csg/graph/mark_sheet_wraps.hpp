@@ -29,7 +29,7 @@ namespace tf::csg::graph {
 
 /// @ingroup csg_graph_internals
 /// @brief Mark every domain that wraps a sheet's rim — the flush witness of
-///        @ref tf::csg::graph::sheet_sides — on the walls' statements.
+///        @ref tf::csg::graph::sheet_sides — where no volume states a side.
 ///
 /// A sheet ends on a fan where it stands on exactly one page; the sector
 /// holding that page's continuation
@@ -116,7 +116,8 @@ auto mark_sheet_wraps(tf::csg::graph::sheet_sides<Index> &sides,
   tbb::parallel_sort(wraps.begin(), wraps.end());
   wraps.erase_till_end(std::unique(wraps.begin(), wraps.end()));
   for (const auto &w : wraps)
-    sides.state(w[0], w[1]) = sides_t::wraps;
+    if (sides.state(w[0], w[1]) == sides_t::unstated)
+      sides.state(w[0], w[1]) = sides_t::wraps;
 }
 
 } // namespace tf::csg::graph

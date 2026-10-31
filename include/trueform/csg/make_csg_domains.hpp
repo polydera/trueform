@@ -27,8 +27,8 @@
 #include "./expression/expr.hpp"
 #include "./graph/compute_domain_membership.hpp"
 #include "./graph/compute_domain_partition.hpp"
+#include "./graph/domain_membership_for.hpp"
 #include "./graph/make_csg_domains.hpp"
-#include "./graph/structural_membership.hpp"
 #include "./expression.hpp"
 #include <cstddef>
 #include <tuple>
@@ -82,13 +82,7 @@ auto make_csg_domains_impl(const tf::csg_graph<Policy, Int, Arrangement> &graph,
     }
   }
 
-  const Index universe_fine =
-      Index(tf::csg::graph::find_universe_domain(graph.domain_volumes()));
-  auto membership = tf::csg::graph::compute_domain_membership(
-      graph.descriptor(), graph.inclusion(),
-      graph.labels().open_component_mask(),
-      graph.domain_nesting_merges(), config, E, universe_fine,
-      graph.crossings(), graph.is_sheet());
+  auto membership = tf::csg::graph::domain_membership_for(graph, config, E);
   auto part = tf::csg::graph::compute_domain_partition(
       membership.domain_of_side, membership.n_components, membership.keep);
   auto result = tf::csg::graph::make_csg_domains<

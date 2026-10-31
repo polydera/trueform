@@ -45,7 +45,8 @@ namespace tf::csg::graph {
 /// already holds.
 ///
 /// A representative stands for its component only if every live carrier of
-/// that component states the same stack. That is verified with complete
+/// that component states the same net layers — a fold two or six sheets
+/// deep is the wall it folds out of. That is verified with complete
 /// coverage — every survivor group against its component's, and every
 /// stackless live carrier of a stacked component — and a component failing
 /// it is REPORTED, never refused: `n_defects` counts them,
@@ -133,22 +134,15 @@ auto make_component_crossings(
   });
 
   tf::buffer<std::array<Index, 2>> stack;
+  tf::buffer<std::array<Index, 2>> block;
+  // a stack's net layers: the survivor at +1 and every duplicate at its
+  // sign, summed per tag
   auto normalize = [&](Index survivor, std::size_t lo, std::size_t hi) {
     stack.clear();
     stack.push_back({tri_tags[survivor], Index(0)});
     for (std::size_t k = lo; k < hi; ++k)
       stack.push_back({tri_tags[triples[k].dead], Index(triples[k].opposing)});
     std::sort(stack.begin(), stack.end());
-  };
-
-  tf::offset_block_buffer<Index, std::array<Index, 2>> rep_layers;
-  tf::buffer<std::array<Index, 2>> block;
-  for (std::size_t r = 0; r < out.components.size(); ++r) {
-    const auto rep = rep_range[r];
-    normalize(triples[static_cast<std::size_t>(rep[0])].survivor,
-              static_cast<std::size_t>(rep[0]),
-              static_cast<std::size_t>(rep[1]));
-    rep_layers.push_back(tf::make_range(stack));
     block.clear();
     for (const auto &layer : stack) {
       const Index delta = layer[1] ? Index(-1) : Index(1);
@@ -157,6 +151,13 @@ auto make_component_crossings(
       else
         block.push_back({layer[0], delta});
     }
+  };
+
+  for (std::size_t r = 0; r < out.components.size(); ++r) {
+    const auto rep = rep_range[r];
+    normalize(triples[static_cast<std::size_t>(rep[0])].survivor,
+              static_cast<std::size_t>(rep[0]),
+              static_cast<std::size_t>(rep[1]));
     out.layers.push_back(tf::make_range(block));
   }
 
@@ -169,9 +170,9 @@ auto make_component_crossings(
     if (rep_range[static_cast<std::size_t>(r)][0] == Index(lo))
       return;
     normalize(survivor, lo, hi);
-    const auto rep = rep_layers[static_cast<std::size_t>(r)];
-    if (stack.size() != rep.size() ||
-        !std::equal(stack.begin(), stack.end(), rep.begin()))
+    const auto rep = out.layers[static_cast<std::size_t>(r)];
+    if (block.size() != rep.size() ||
+        !std::equal(block.begin(), block.end(), rep.begin()))
       defects.push_back(c);
   });
 

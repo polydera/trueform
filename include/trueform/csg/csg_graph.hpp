@@ -17,21 +17,18 @@
 #include "../core/none.hpp"
 #include "../core/point.hpp"
 #include "../core/transformed.hpp"
-#include "./graph/assert_nesting_merges_keep_closed_bits.hpp"
 #include "./graph/arrangement_descriptor.hpp"
 #include "./graph/component_crossings.hpp"
 #include "./graph/compute_arrangement_domain_volumes.hpp"
 #include "./graph/domain_depths.hpp"
 #include "./graph/domain_inclusions.hpp"
 #include "./graph/make_arrangement_descriptor.hpp"
-#include "./graph/make_closed_volume_tags.hpp"
 #include "./graph/make_domain_components.hpp"
 #include "./graph/make_sheet_sides.hpp"
-#include "./graph/mark_nested_sheet_wraps.hpp"
 #include "./graph/mark_sheet_wraps.hpp"
 #include "./graph/propagate_inclusion_bits.hpp"
-#include "./graph/propagate_sheet_sides.hpp"
 #include "./graph/seed_inclusion_bits.hpp"
+#include "./graph/settle_sheet_sides.hpp"
 #include "./graph/triangle_component_labels.hpp"
 #include <array>
 #include <cstddef>
@@ -85,17 +82,13 @@ public:
     auto &conv = _arr.converter();
     _labels.build(_arr, apply_form);
 
-    auto apply_to_face = [apply_form](int tag, index_type object,
-                                      const auto &f) {
-      apply_form(index_type(tag),
-                 [&](const auto &form) { f(form.faces()[object]); });
-    };
-    // the arrangement's own reader, never a second one: where an
-    // original vertex stands is stated once, above both tiers
+    // the world's records name the operands it was built over
+    auto apply_to_face = _arr.record_apply_to_face();
+    // the lattice's reader; the descriptor alone reads record faces
     auto get_mesh_point = _arr.lattice().reader(apply_form);
 
     _desc = tf::csg::graph::make_arrangement_descriptor<resolved_int_type>(
-        _arr, _labels, get_mesh_point, apply_to_face, _is_sheet);
+        _arr, _labels, _arr.record_reader(), apply_to_face, _is_sheet);
     _inc = tf::csg::graph::make_domain_inclusions(_arr.n_tags(),
                                                   _desc.n_domains);
     _domain_volumes =
@@ -104,42 +97,57 @@ public:
             _arr, _labels, _desc, apply_form, get_mesh_point);
     _crossings =
         tf::csg::graph::make_component_crossings<index_type>(_arr, _labels);
-    // The depths and the sheet sides are the floods' working state and the
-    // inclusion bits their published answer, so they live exactly from the
-    // seeding cast to the publication that ends the floods.
+    // The depths and the sheet sides are working state and the inclusion
+    // bits their published answer, so they live exactly from the seeding
+    // cast to the publication of the sheet columns.
     {
       auto depths = tf::csg::graph::make_domain_depths(_arr.n_tags(),
                                                        _desc.n_domains);
-      tf::buffer<std::array<index_type, 4>> sheet_seeds;
-      tf::buffer<std::array<index_type, 2>> rim_wraps;
       auto seeds = tf::csg::graph::seed_inclusion_bits<index_type,
                                                        resolved_int_type>(
           depths, _desc, _arr, _labels, apply_form, conv, get_mesh_point,
-          _domain_volumes, _domain_nesting_merges, sheet_seeds, rim_wraps,
-          _is_sheet);
+          _domain_volumes, _domain_nesting_merges, _is_sheet);
       auto domain_components = tf::csg::graph::make_domain_components(_desc);
       tf::csg::graph::propagate_inclusion_bits(
           _inc, depths, _desc, _crossings, domain_components, _is_sheet, seeds);
-      auto sides = tf::csg::graph::make_sheet_sides(_desc, _crossings,
-                                                    _arr.n_tags(), _is_sheet);
+      auto sides = tf::csg::graph::make_sheet_sides(
+          _desc, _crossings, domain_components, _domain_nesting_merges, _inc,
+          _labels.open_component_mask(), _arr.n_tags(), _is_sheet);
+      _n_sheet_conflicts = sides.n_conflicts;
+      _sheet_rim_volumes = std::move(sides.rim_volumes);
       tf::csg::graph::mark_sheet_wraps(sides, _desc, _crossings,
                                        _labels.triangle_labels(),
                                        _arr.exposed_of_row());
-      tf::csg::graph::mark_nested_sheet_wraps(sides, rim_wraps,
-                                              _domain_nesting_merges);
-      tf::csg::graph::propagate_sheet_sides(_inc, sides, sheet_seeds, _desc,
-                                            _crossings, domain_components);
+      tf::csg::graph::settle_sheet_sides<index_type, resolved_int_type>(
+          _inc, sides, _desc, _crossings, domain_components, _arr, _labels,
+          apply_form, get_mesh_point);
     }
-#ifndef NDEBUG
-    tf::csg::graph::assert_nesting_merges_keep_closed_bits(
-        _domain_nesting_merges, _inc,
-        tf::csg::graph::make_closed_volume_tags(_desc, _labels, _arr.n_tags(),
-                                                _is_sheet));
-#endif
   }
 
   /// @brief The arrangement this graph classifies.
   auto arrangement() const -> const arrangement_type & { return _arr; }
+  /// The arrangement handed back, for a build that states it again.
+  auto release_arrangement() && -> arrangement_type { return std::move(_arr); }
+
+  /// The census record the fixed point stated: the rounds run, the welds
+  /// stated, and the conviction the graph stands under — the rounding
+  /// crossings its sites hold, its failed carriers, odd rings and self-sided
+  /// components (@ref tf::csg::graph::census_conviction) — with `capped`
+  /// set when the round cap, not a verdict, ended the run. All zero is the
+  /// green path. Written once, by @ref tf::csg::census_graph_over.
+  struct census_record {
+    std::size_t rounds = 0;
+    std::size_t stated = 0;
+    std::size_t crossed = 0;
+    std::size_t failed = 0;
+    std::size_t odd = 0;
+    std::size_t self_sided = 0;
+    bool capped = false;
+  };
+  auto census() const -> const census_record & { return _census_record; }
+  auto state_census(census_record record) -> void {
+    _census_record = record;
+  }
 
   /// @brief The arrangement carriers that hold no product — see
   ///        @ref tf::arrangement_graph::failed. Empty means this
@@ -179,6 +187,19 @@ public:
     return _crossings;
   }
 
+  /// @brief The `(sheet, domain)` pairs two volumes the sheet separates
+  /// state opposite sides of — the union is not separated, so the domain
+  /// has no side. Reported, never refused.
+  auto n_sheet_conflicts() const -> index_type { return _n_sheet_conflicts; }
+
+  /// @brief The `(sheet tag, volume tag)` pairs whose volume holds a free rim
+  /// of the sheet, ascending: every domain inside reads no side of it.
+  /// Reported, never refused.
+  auto sheet_rim_volumes() const
+      -> const tf::buffer<std::array<index_type, 2>> & {
+    return _sheet_rim_volumes;
+  }
+
   /// @brief Exact signed volume (2x, lattice units) per arrangement
   /// domain — the seeder's oracle. The most negative entry is the
   /// unbounded universe.
@@ -198,12 +219,15 @@ public:
 private:
   tf::buffer<char> _is_sheet;
   arrangement_type _arr;
+  census_record _census_record;
   tf::csg::graph::triangle_component_labels<index_type> _labels;
   tf::csg::graph::arrangement_descriptor<index_type> _desc;
   tf::csg::graph::component_crossings<index_type> _crossings;
   tf::csg::graph::domain_inclusions _inc;
   tf::buffer<typename tf::exact::meta<resolved_int_type>::T2> _domain_volumes;
   tf::buffer<std::array<index_type, 2>> _domain_nesting_merges;
+  index_type _n_sheet_conflicts = 0;
+  tf::buffer<std::array<index_type, 2>> _sheet_rim_volumes;
 };
 
 } // namespace tf

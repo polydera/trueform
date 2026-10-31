@@ -15,6 +15,7 @@
 #include <trueform/csg/make_boolean.hpp>
 #include <trueform/csg/make_csg_domains.hpp>
 #include <trueform/csg/make_csg_mesh.hpp>
+#include <trueform/csg/make_csg_open_fragments.hpp>
 #include <trueform/csg/make_outer_shell.hpp>
 
 namespace tf::test {
@@ -62,6 +63,14 @@ auto csg_domains_of(const Graph &graph) -> csg_domains_t<Graph> {
 }
 
 template <typename Graph>
+auto csg_lattice_domains_of(const Graph &graph)
+    -> csg_lattice_domains_t<Graph> {
+  return tf::make_csg_domains<
+      tf::exact::resolve_int_type<tf::none_t, typename Graph::input_real_type>>(
+      graph);
+}
+
+template <typename Graph>
 auto csg_domains_of(const Graph &graph, tf::domain_config config)
     -> csg_domains_t<Graph> {
   return tf::make_csg_domains<tf::none_t>(graph, config);
@@ -77,6 +86,11 @@ template <typename Graph>
 auto csg_domains_of(const Graph &graph, const tf::csg::selection_t &selection,
                     tf::domain_config config) -> csg_domains_t<Graph> {
   return tf::make_csg_domains<tf::none_t>(graph, selection, config);
+}
+
+template <typename Graph>
+auto csg_open_fragments_of(const Graph &graph) -> csg_domains_t<Graph> {
+  return tf::make_csg_open_fragments<tf::none_t>(graph);
 }
 
 template <typename Graph>

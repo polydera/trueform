@@ -18,7 +18,9 @@
  * reached — is run as often one way as the other. The classification's: every
  * component of a closed operand separates two domains. The census proves the
  * scene reaches the mechanism: the wave crossed sides and ran more than one
- * round.
+ * round. Where a ring is withheld, the product's oracle joins them: every
+ * wall of a closed operand separates its inside from its outside, and the
+ * boolean volumes keep the needle.
  *
  * The scene is built from IEEE-exact operations only — a rational
  * parametrization of the circle, a dyadic radius, shear and cut height — so
@@ -32,9 +34,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/csg.hpp>
+#include <trueform/csg/expression/operators.hpp>
 #include <trueform/intersect/graph/vertex.hpp>
 
 #include "csg_builders.hpp"
+#include "csg_readers.hpp"
 #include "tagged_operand.hpp"
 #include "type_traits.hpp"
 
@@ -180,6 +184,72 @@ template <typename Graph> auto boundary_law_self_sided(const Graph &graph) {
   return self_sided;
 }
 
+/// The walls whose operand's bit does not change across them: both operands
+/// are closed single shells, so side 1 of every wall is its operand's inside
+/// and side 0 its outside.
+template <typename Graph>
+auto boundary_law_unsided_walls(const Graph &graph) -> std::size_t {
+  const auto &descriptor = graph.descriptor();
+  const auto &inclusion = graph.inclusion();
+  std::size_t unsided = 0;
+  for (std::size_t c = 0; c < descriptor.tag_of_component.size(); ++c) {
+    const auto tag = descriptor.tag_of_component[c];
+    if (tag < 0)
+      continue;
+    const auto outside = std::size_t(descriptor.domain_of_side[2 * c]);
+    const auto inside = std::size_t(descriptor.domain_of_side[2 * c + 1]);
+    unsided += !inclusion.test(inside, std::size_t(tag)) ||
+               inclusion.test(outside, std::size_t(tag));
+  }
+  return unsided;
+}
+
+/// The signed volume summed in double: the union's check resolves the
+/// needle's volume beside the box's, below what a float sum holds.
+template <typename Mesh> auto boundary_law_volume(const Mesh &mesh) -> double {
+  const auto polygons = mesh.polygons();
+  if (polygons.size() == 0)
+    return 0.0;
+  const auto origin = polygons.points()[0];
+  double sum = 0.0;
+  for (const auto &polygon : polygons) {
+    const auto at = [&polygon, &origin](std::size_t k, int c) {
+      return double(polygon[k][c]) - double(origin[c]);
+    };
+    for (std::size_t k = 1; k + 1 < std::size_t(polygon.size()); ++k)
+      sum += at(0, 0) * (at(k, 1) * at(k + 1, 2) - at(k, 2) * at(k + 1, 1)) +
+             at(0, 1) * (at(k, 2) * at(k + 1, 0) - at(k, 0) * at(k + 1, 2)) +
+             at(0, 2) * (at(k, 0) * at(k + 1, 1) - at(k, 1) * at(k + 1, 0));
+  }
+  return sum / 6.0;
+}
+
+/// The product a withheld ring must not lose: every wall of either operand
+/// separates its inside from its outside, the needle less the box keeps the
+/// needle above the cut, and the union holds both volumes once. The cut
+/// stands a few dozen lattice units above the apex, so the tip the box keeps
+/// is far below the tolerance, which is a hundredth of the needle.
+template <typename Graph, typename Mesh>
+auto boundary_law_check_product(const Graph &graph, const Mesh &needle,
+                                const Mesh &box) -> void {
+  CHECK(boundary_law_unsided_walls(graph) == 0);
+  const double needle_volume = boundary_law_volume(needle);
+  const double box_volume = boundary_law_volume(box);
+  const auto kept =
+      tf::test::csg_mesh_of(graph, tf::csg::op(0) - tf::csg::op(1));
+  const auto joined =
+      tf::test::csg_mesh_of(graph, tf::csg::op(0) | tf::csg::op(1));
+  const auto shared =
+      tf::test::csg_mesh_of(graph, tf::csg::op(0) & tf::csg::op(1));
+  const double shared_volume = boundary_law_volume(shared);
+  const double slack = 1e-2 * needle_volume;
+  CHECK(kept.faces().size() > 0);
+  CHECK(std::abs(boundary_law_volume(kept) - (needle_volume - shared_volume)) <
+        slack);
+  CHECK(std::abs(boundary_law_volume(joined) -
+                 (box_volume + needle_volume - shared_volume)) < slack);
+}
+
 } // namespace
 
 TEMPLATE_TEST_CASE("csg boundary law: a needle tip cut below the lattice",
@@ -188,11 +258,13 @@ TEMPLATE_TEST_CASE("csg boundary law: a needle tip cut below the lattice",
                    (tf::test::type_pair<std::int64_t, double>)) {
   using index_t = typename TestType::index_type;
   using real_t = typename TestType::real_type;
-  // the same needle on both lattices, cut a few dozen lattice units above the
-  // apex, where its slivers are narrower than one
+  // the same needle on both lattices, cut a few dozen lattice steps above the
+  // apex (the scene's step is 2^-26 on the float lattice and 2^-58 on the
+  // double one), where its slivers are narrower than one
   const bool f32 = std::is_same<real_t, float>::value;
   auto needle = boundary_law_needle<index_t, real_t>(32, 32, f32 ? 3 : 4, 24, 5);
-  auto box = boundary_law_box<index_t, real_t>(std::ldexp(80.0, f32 ? -29 : -60));
+  auto box =
+      boundary_law_box<index_t, real_t>(std::ldexp(80.0, f32 ? -28 : -59));
   auto op0 = tf::test::make_tagged_operand(needle);
   auto op1 = tf::test::make_tagged_operand(box);
   auto graph = tf::test::build_pair_csg_graph(op0.form(), op1.form(),
@@ -207,29 +279,35 @@ TEMPLATE_TEST_CASE("csg boundary law: a needle tip cut below the lattice",
 }
 
 /// THE RING CERTIFICATE on the same needle, cut where its rings stand below
-/// the lattice. One ring's piece welds several exact lines into one, so its
-/// order comes off the pages' own carriers; another's carriers are emitted on
-/// a piece they do not pass through. Either way the order the carriers state
-/// is not the one the emitted surface stands in, and published it joins two
-/// sides of one closed surface. The ring states no sector instead, and still
-/// states that the components meeting at it touch.
-TEMPLATE_TEST_CASE("csg ring certificate: a needle ring the emission does not "
-                   "certify publishes no order",
+/// the lattice. One ring's piece welds several exact lines into one, so it
+/// has no line of its own; another's carriers do not run along the piece's
+/// line. Either way the ring's order is not exactly defined, and published it
+/// joins two sides of one closed surface. Two tiers answer. Where a piece's
+/// end stands within the lattice's rounding of its row's end, the plane
+/// tier welds the two before any ring is stated
+/// (@ref tf::arrangement::plane_row_landing_of) and no certificate has a
+/// ring to withhold; where the pieces stand apart, the ring states no
+/// sector instead. Either way the components meeting there still touch: the
+/// needle and the box stay one bundle, while the walls no ring joined part
+/// its domains into islands, each of which earns its own cast.
+TEMPLATE_TEST_CASE("csg ring certificate: a needle ring whose order is not "
+                   "exactly defined is welded or publishes no order",
                    "[csg][boundary_law][ring_certificate]",
                    (tf::test::type_pair<std::int32_t, float>),
                    (tf::test::type_pair<std::int64_t, double>)) {
   using index_t = typename TestType::index_type;
   using real_t = typename TestType::real_type;
   struct needle_case {
-    int k, step, radius_exp, shear_x, shear_y, cut_exp, cut;
+    int k, step, radius_exp, shear_x, shear_y, cut_exp, cut, withheld;
   };
   const bool f32 = std::is_same<real_t, float>::value;
   const std::array<needle_case, 2> cases =
-      f32 ? std::array<needle_case, 2>{{{64, 64, 4, 24, 5, 29, 80},
-                                        {64, 32, 4, -16, 18, 29, 200}}}
-          : std::array<needle_case, 2>{{{32, 16, 2, 12, -12, 60, 130},
-                                        {32, 16, 4, -22, -14, 60, 200}}};
+      f32 ? std::array<needle_case, 2>{{{64, 64, 4, 24, 5, 28, 80, 1},
+                                        {64, 32, 4, -16, 18, 28, 200, 0}}}
+          : std::array<needle_case, 2>{{{32, 16, 2, 12, -12, 59, 130, 0},
+                                        {32, 16, 4, -22, -14, 59, 200, 1}}};
   for (const auto &c : cases) {
+    CAPTURE(c.k, c.step, c.radius_exp, c.shear_x, c.shear_y, c.cut);
     auto needle = boundary_law_needle<index_t, real_t>(
         c.k, c.step, c.radius_exp, c.shear_x, c.shear_y);
     auto box = boundary_law_box<index_t, real_t>(
@@ -239,12 +317,36 @@ TEMPLATE_TEST_CASE("csg ring certificate: a needle ring the emission does not "
     auto graph = tf::test::build_pair_csg_graph(op0.form(), op1.form(),
                                                 tf::test::no_sheets(), {});
     REQUIRE(graph.failed().size() == 0);
-    CHECK(graph.descriptor().fans.n_withheld >= 1);
+    CHECK(graph.descriptor().fans.n_withheld == index_t(c.withheld));
     CHECK(boundary_law_unbalanced_edges(graph, needle, box) == 0);
     CHECK(boundary_law_self_sided(graph) == 0);
-    // a withheld ring still states that its components touch: the needle
-    // and the box it pierces are one bundle, and no cast repairs a split
     CHECK(graph.descriptor().n_bundles == 1);
-    CHECK(graph.domain_nesting_merges().size() == 0);
+    boundary_law_check_product(graph, needle, box);
+  }
+}
+
+/// The island cast on the needle cut at the heights where its one ring stands
+/// and is withheld. No wall joins the needle's domains to the box's, so they
+/// are an island the universe's flood never reaches; without a cast of its
+/// own the needle's inside reads outside and both the difference and the
+/// union drop it. The heights are lattice units above the apex.
+TEST_CASE("csg ring certificate: every island of a withheld ring earns its "
+          "own cast",
+          "[csg][boundary_law][ring_certificate]") {
+  for (const int height : {8, 14, 18, 19, 20, 24, 28, 30}) {
+    CAPTURE(height);
+    auto needle = boundary_law_needle<std::int32_t, float>(64, 64, 4, 24, 5);
+    auto box =
+        boundary_law_box<std::int32_t, float>(std::ldexp(double(height), -26));
+    auto op0 = tf::test::make_tagged_operand(needle);
+    auto op1 = tf::test::make_tagged_operand(box);
+    auto graph = tf::test::build_pair_csg_graph(op0.form(), op1.form(),
+                                                tf::test::no_sheets(), {});
+    REQUIRE(graph.failed().size() == 0);
+    CHECK(graph.descriptor().fans.n_withheld >= 1);
+    CHECK(boundary_law_self_sided(graph) == 0);
+    CHECK(graph.descriptor().n_bundles == 1);
+    CHECK(graph.domain_nesting_merges().size() >= 1);
+    boundary_law_check_product(graph, needle, box);
   }
 }

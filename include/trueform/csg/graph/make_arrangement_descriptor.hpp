@@ -14,6 +14,7 @@
 #include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../topology/domains/build_domain_of_side.hpp"
 #include "../../topology/domains/make_bundle_labels.hpp"
@@ -118,7 +119,8 @@ auto make_arrangement_descriptor(
   };
 
   out.fans = tf::csg::graph::make_plane_radial_fans<Index, Int>(
-      arrangement.arrangement(), arrangement.world(),
+      arrangement.arrangement(), arrangement.world(), arrangement.identities(),
+      tf::make_range(arrangement.created_points()),
       arrangement.piece_incidence(), arrangement.piece_fences(), labels,
       get_mesh_point, apply_to_face, arrangement.apply_to_form(), n_tags,
       sheet_component.size() > 0);

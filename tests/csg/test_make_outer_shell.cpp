@@ -298,13 +298,17 @@ TEMPLATE_TEST_CASE("csg domains: one-form graph decomposes the self "
   auto graph = tf::test::build_self_csg_graph(soup_operand.form(), {});
   auto [domains, ids] = tf::test::csg_domains_of(graph);
 
-  // two interpenetrating spheres: lens + two crescents
+  // two interpenetrating spheres: lens + two crescents. Watertightness is a
+  // fact of the exact product, read on the lattice; the volumes read the
+  // float export.
   REQUIRE(ids.size() == 3);
-  double total = 0;
-  for (auto &d : domains) {
+  auto lattice = tf::test::csg_lattice_domains_of(graph);
+  REQUIRE(lattice.second.size() == 3);
+  for (auto &d : lattice.first)
     check_watertight(d.polygons());
+  double total = 0;
+  for (auto &d : domains)
     total += static_cast<double>(tf::signed_volume(d.polygons()));
-  }
   // cells tile the enclosed union: total == outer shell volume
   auto shell = tf::test::outer_shell_of(graph);
   REQUIRE_THAT(total,

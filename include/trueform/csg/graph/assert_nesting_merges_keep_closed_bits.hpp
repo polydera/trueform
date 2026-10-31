@@ -12,9 +12,9 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
+#include "../../core/config/verify.hpp"
 #include "./domain_inclusions.hpp"
 #include <array>
-#include <cassert>
 #include <cstddef>
 
 namespace tf::csg::graph {
@@ -40,8 +40,8 @@ auto assert_nesting_merges_keep_closed_bits(
       kept = kept && (!closed_volume_tags[t] ||
                       inc.test(std::size_t(merge[0]), t) ==
                           inc.test(std::size_t(merge[1]), t));
-  assert(kept && "a nesting merge unites domains a closed volume separates");
-  (void)kept;
+  tf::core::verify(kept,
+                   "a nesting merge unites domains a closed volume separates");
 }
 
 } // namespace tf::csg::graph

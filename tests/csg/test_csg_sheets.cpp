@@ -15,6 +15,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <trueform/csg.hpp>
+#include <trueform/csg/graph/winding_side.hpp>
+#include <trueform/exact/vertex.hpp>
 #include <trueform/topology/is_closed.hpp>
 #include <trueform/topology/is_manifold.hpp>
 #include <trueform/trueform.hpp>
@@ -27,6 +29,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -1041,8 +1044,8 @@ TEST_CASE("sheets: two crossing planes carve four wedges", "[csg][sheets]") {
 }
 
 // ============================================================================
-// A flap: a sheet wholly inside a volume separates nothing. The boundary
-// reads see it from either side; inside sees it once.
+// A flap: a sheet wholly inside a volume separates nothing. No boundary read
+// sees it, and inside sees it once, embedded in the region that holds it.
 // ============================================================================
 TEST_CASE("sheets: a flap inside a volume is inside it once", "[csg][sheets]") {
   using tf::csg::inside;
@@ -1065,16 +1068,16 @@ TEST_CASE("sheets: a flap inside a volume is inside it once", "[csg][sheets]") {
   auto &graph = holder.graph;
 
   REQUIRE(tf::test::csg_mesh_of(graph, selection({0}, ~op(0) & op(1))).size() ==
-          2);
+          0);
   REQUIRE(tf::test::csg_mesh_of(graph, selection({0}, op(0) & op(1))).size() ==
-          2);
+          0);
   REQUIRE(tf::test::csg_mesh_of(graph, selection({0}, op(1))).size() == 0);
   auto once = tf::test::csg_mesh_of(graph, inside({0}, op(1)));
   REQUIRE(once.size() == 2);
   REQUIRE(n_boundary(once) == 4);
   REQUIRE(faces_point(once, 2, +1.0));
   REQUIRE(tf::test::csg_mesh_of(graph, inside({0}, ~op(0) & op(1))).size() ==
-          0);
+          2);
   auto [cells, ids] = tf::test::csg_domains_of(graph);
   REQUIRE(cells.size() == 1);
   check_closed_solid(cells[0], 1.0, 1e-12);
@@ -1399,5 +1402,519 @@ TEST_CASE("sheets: fused open fragments leave one block per cell",
     REQUIRE(imap.face_blocks[k].size() == cells[k].faces().size());
     REQUIRE(imap.point_tag_blocks[k].size() == cells[k].points().size());
     REQUIRE(imap.point_blocks[k].size() == cells[k].points().size());
+  }
+}
+
+// ============================================================================
+// A sheet on z = 2 runs through the box [-5,5]^3 and ends at |x|,|y| = 7
+// inside the closed box T = [-9,9]^2 x [-9,3]. Slabs stop inside the box
+// below the sheet and either share T's sides and floor or poke through an
+// outer box around everything, so they carve the cells around the rim and
+// the air reaches the box's floor without passing the cell that holds the
+// rim. The box is what the sheet separates, so its cells keep the sides its
+// walls state however many slabs there are.
+// ============================================================================
+namespace {
+
+auto sheets_law_box(sheets_real_t x0, sheets_real_t y0, sheets_real_t z0,
+                    sheets_real_t x1, sheets_real_t y1, sheets_real_t z1)
+    -> sheets_mesh_t {
+  auto m =
+      tf::make_box_mesh<sheets_index_t>(x1 - x0, y1 - y0, z1 - z0);
+  for (std::size_t i = 0; i < m.points_buffer().size(); ++i) {
+    m.points_buffer()[i][0] += (x0 + x1) / 2;
+    m.points_buffer()[i][1] += (y0 + y1) / 2;
+    m.points_buffer()[i][2] += (z0 + z1) / 2;
+  }
+  return m;
+}
+
+auto sheets_law_cube(sheets_real_t lo, sheets_real_t hi, sheets_real_t z0,
+                     sheets_real_t z1) -> sheets_operand_t {
+  return sheets_identity_operand(sheets_law_box(lo, lo, z0, hi, hi, z1));
+}
+
+// the plane z = `z` over [x0, x1] x [y0, y1], its normal +z
+auto sheets_law_plane(sheets_real_t x0, sheets_real_t y0, sheets_real_t x1,
+                      sheets_real_t y1, sheets_real_t z) -> sheets_mesh_t {
+  auto m = tf::make_plane_mesh<sheets_index_t>(x1 - x0, y1 - y0, 1, 1);
+  for (std::size_t i = 0; i < m.points_buffer().size(); ++i) {
+    m.points_buffer()[i][0] += (x0 + x1) / 2;
+    m.points_buffer()[i][1] += (y0 + y1) / 2;
+    m.points_buffer()[i][2] += z;
+  }
+  return m;
+}
+
+auto sheets_enclosed_rim_scene(int n_slabs, sheets_real_t slab_side,
+                               bool rim_box, bool outer_box = false)
+    -> std::vector<sheets_operand_t> {
+  std::vector<sheets_operand_t> operands;
+  operands.push_back(sheets_law_cube(-5, 5, -5, 5));
+  operands.push_back(
+      sheets_identity_operand(sheets_law_plane(-7, -7, 7, 7, 2)));
+  for (int k = 0; k < n_slabs; ++k)
+    operands.push_back(
+        sheets_law_cube(-slab_side, slab_side, -slab_side,
+                        sheets_real_t(-4) + sheets_real_t(k) / 2));
+  if (rim_box)
+    operands.push_back(sheets_law_cube(-9, 9, -9, 3));
+  if (outer_box)
+    operands.push_back(sheets_law_cube(-12, 12, -12, 12));
+  return operands;
+}
+
+// the volumes that hold a sheet's free rim, as (sheet tag, volume tag)
+void sheets_rim_census(const graph_holder &holder,
+                       std::vector<std::array<int, 2>> expected) {
+  std::vector<std::array<int, 2>> got;
+  for (const auto &pair : holder.graph.sheet_rim_volumes())
+    got.push_back({int(pair[0]), int(pair[1])});
+  REQUIRE(got == expected);
+}
+
+void sheets_check_box_halves(const graph_holder &holder) {
+  using tf::csg::op;
+  REQUIRE(holder.graph.failed().size() == 0);
+  REQUIRE(holder.graph.n_sheet_conflicts() == 0);
+  check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(1)), 700.0,
+                     1e-9);
+  check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)), 300.0,
+                     1e-9);
+}
+
+} // namespace
+
+TEST_CASE("sheets: a free rim closed in by other forms' walls",
+          "[csg][sheets]") {
+  for (const int n : {1, 5, 10}) {
+    DYNAMIC_SECTION("slabs sharing the rim's box, n = " << n) {
+      graph_holder holder(sheets_enclosed_rim_scene(n, 9, true), {1});
+      sheets_check_box_halves(holder);
+      sheets_rim_census(holder, {{1, n + 2}});
+    }
+    DYNAMIC_SECTION("slabs poking through an outer box, n = " << n) {
+      graph_holder holder(sheets_enclosed_rim_scene(n, 13, true, true), {1});
+      sheets_check_box_halves(holder);
+      sheets_rim_census(holder, {{1, n + 2}, {1, n + 3}});
+    }
+  }
+  SECTION("slabs inside the rim's box") {
+    graph_holder holder(sheets_enclosed_rim_scene(5, sheets_real_t(8.5), true),
+                        {1});
+    sheets_check_box_halves(holder);
+    sheets_rim_census(holder, {{1, 7}});
+  }
+  SECTION("no box around the rim") {
+    graph_holder holder(sheets_enclosed_rim_scene(5, 9, false), {1});
+    sheets_check_box_halves(holder);
+    sheets_rim_census(holder, {});
+  }
+}
+
+// ============================================================================
+// The law of sheet sides (csg/graph/sheet_sides.hpp), one clause per
+// section. A volume the sheet's walls reach from one side lies on it, one
+// they reach from both carries no side, one they never reach falls through
+// to the winding, and a one-side statement outranks a wrap.
+// ============================================================================
+namespace {
+
+auto sheets_law_operands(std::vector<sheets_mesh_t> meshes)
+    -> std::vector<sheets_operand_t> {
+  std::vector<sheets_operand_t> operands;
+  for (auto &m : meshes)
+    operands.push_back(sheets_identity_operand(std::move(m)));
+  return operands;
+}
+
+auto sheets_law_joined(const sheets_mesh_t &a, const sheets_mesh_t &b)
+    -> sheets_mesh_t {
+  sheets_mesh_t m;
+  const auto na = sheets_index_t(a.points_buffer().size());
+  m.faces_buffer().allocate(a.faces().size() + b.faces().size());
+  m.points_buffer().allocate(a.points_buffer().size() +
+                             b.points_buffer().size());
+  std::size_t f = 0;
+  for (auto face : a.faces()) {
+    for (int j = 0; j < 3; ++j)
+      m.faces_buffer()[f][j] = face[j];
+    ++f;
+  }
+  for (auto face : b.faces()) {
+    for (int j = 0; j < 3; ++j)
+      m.faces_buffer()[f][j] = face[j] + na;
+    ++f;
+  }
+  std::size_t p = 0;
+  for (auto q : a.points())
+    m.points_buffer()[p++] = q;
+  for (auto q : b.points())
+    m.points_buffer()[p++] = q;
+  return m;
+}
+
+// The U of the (x, z) outline (0,0) (6,0) (6,8) (4,8) (4,2) (2,2) (2,8)
+// (0,8), extruded over y in [0, 2]: two arms x in [0,2] and [4,6] over a
+// base z in [0,2]. Volume 72.
+auto sheets_law_u() -> sheets_mesh_t {
+  const std::array<std::array<sheets_real_t, 2>, 8> outline{
+      {{0, 0}, {6, 0}, {6, 8}, {4, 8}, {4, 2}, {2, 2}, {2, 8}, {0, 8}}};
+  const std::array<std::array<sheets_index_t, 3>, 6> cap{
+      {{0, 1, 4}, {1, 2, 3}, {1, 3, 4}, {0, 4, 5}, {0, 5, 6}, {0, 6, 7}}};
+  sheets_mesh_t m;
+  m.points_buffer().allocate(16);
+  for (std::size_t i = 0; i < 8; ++i) {
+    m.points_buffer()[i] =
+        tf::point<sheets_real_t, 3>{outline[i][0], 0, outline[i][1]};
+    m.points_buffer()[i + 8] =
+        tf::point<sheets_real_t, 3>{outline[i][0], 2, outline[i][1]};
+  }
+  m.faces_buffer().allocate(2 * cap.size() + 16);
+  std::size_t f = 0;
+  auto put = [&](sheets_index_t a, sheets_index_t b, sheets_index_t c) {
+    m.faces_buffer()[f][0] = a;
+    m.faces_buffer()[f][1] = b;
+    m.faces_buffer()[f][2] = c;
+    ++f;
+  };
+  for (const auto &t : cap) {
+    put(t[0], t[1], t[2]);
+    put(t[0] + 8, t[2] + 8, t[1] + 8);
+  }
+  for (sheets_index_t i = 0; i < 8; ++i) {
+    const sheets_index_t j = (i + 1) % 8;
+    put(j, i, i + 8);
+    put(j, i + 8, j + 8);
+  }
+  tf::ensure_positive_orientation(m.polygons());
+  return m;
+}
+
+auto sheets_law_volume(const graph_holder &holder, tf::csg::expr e) -> double {
+  return sheets_volume_of(tf::test::csg_mesh_of(holder.graph, e));
+}
+
+} // namespace
+
+TEST_CASE("sheets: the law of sheet sides, clause by clause",
+          "[csg][sheets]") {
+  using tf::csg::op;
+  SECTION("one side and both sides: a box the sheet crosses, a box it ends "
+          "in") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-5, -2, -2, -1, 2, 2),
+                             sheets_law_box(1, -2, -2, 5, 2, 2),
+                             sheets_law_plane(-6, -3, 3, 3, 0)}),
+        {2});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(2)),
+                       32.0, 1e-9);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(2)),
+                       32.0, 1e-9);
+    REQUIRE(tf::test::csg_mesh_of(holder.graph, op(1) & op(2)).size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(1) - op(2)),
+                       64.0, 1e-9);
+  }
+  SECTION("the component, not the volume: an arm cut off, the rest wrapped") {
+    auto sheet = reversed_copy(sheets_law_plane(-1, -1, 5, 3, 6));
+    graph_holder holder(sheets_law_operands({sheets_law_u(), sheet}), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(1)), 8.0,
+                       1e-9);
+    REQUIRE_THAT(sheets_law_volume(holder, op(0) - op(1)),
+                 Catch::Matchers::WithinAbs(64.0, 1e-9));
+  }
+  SECTION("never reached: a volume's component the sheet misses takes the "
+          "winding") {
+    graph_holder holder(
+        sheets_law_operands(
+            {sheets_law_joined(sheets_law_box(-5, -5, -5, 5, 5, 5),
+                               sheets_law_box(-2, -2, -12, 2, 2, -8)),
+             sheets_law_plane(-7, -7, 7, 7, 0)}),
+        {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    REQUIRE_THAT(sheets_law_volume(holder, op(0) & op(1)),
+                 Catch::Matchers::WithinAbs(564.0, 1e-9));
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)),
+                       500.0, 1e-9);
+  }
+  SECTION("one side outranks a wrap where two volumes overlap") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_box(3, -9, -2, 9, 9, 2),
+                             sheets_law_plane(-7, -7, 7, 7, 0)}),
+        {2});
+    REQUIRE(holder.graph.failed().size() == 0);
+    REQUIRE(holder.graph.n_sheet_conflicts() == 0);
+    check_closed_solid(
+        tf::test::csg_mesh_of(holder.graph, op(0) & op(1) & op(2)), 40.0,
+        1e-9);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(2)),
+                       500.0, 1e-9);
+    REQUIRE(tf::test::csg_mesh_of(holder.graph, (op(1) - op(0)) & op(2))
+                .size() == 0);
+  }
+  SECTION("floaters the sheet never reaches: under its middle, and beside "
+          "its rim in its own plane") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-1, -1, -12, 1, 1, -10),
+                             sheets_law_box(8, -1, -1, 10, 1, 1),
+                             sheets_law_plane(-7, -7, 7, 7, 0)}),
+        {2});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(2)), 8.0,
+                       1e-9);
+    const double beside = sheets_law_volume(holder, op(1) & op(2));
+    REQUIRE((std::abs(beside) < 1e-9 || std::abs(beside - 8.0) < 1e-9));
+  }
+  SECTION("stacked rims: two sheets on one free rim, both separating") {
+    auto operands = sheets_enclosed_rim_scene(5, 9, true);
+    operands.insert(operands.begin() + 2,
+                    sheets_identity_operand(sheets_law_plane(-7, -7, 7, 7, 2)));
+    graph_holder holder(std::move(operands), {1, 2});
+    REQUIRE(holder.graph.failed().size() == 0);
+    for (const int s : {1, 2}) {
+      check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(s)),
+                         700.0, 1e-9);
+      check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(s)),
+                         300.0, 1e-9);
+    }
+  }
+  SECTION("a rim on the volume's own walls separates it") {
+    graph_holder holder(sheets_rim_scene(10, 10), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(1)),
+                       500.0, 1e-9);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)),
+                       500.0, 1e-9);
+  }
+  SECTION("a mirrored sheet keeps its sides on both winding paths") {
+    // z -> -z keeps the plane on z = 0 and turns its normal back onto +z,
+    // so the floater below it lies behind it
+    tf::transformation<sheets_real_t, 3> mirror;
+    mirror.fill({1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0});
+    std::vector<sheets_operand_t> operands;
+    operands.push_back(
+        sheets_identity_operand(sheets_law_box(-1, -1, -4, 1, 1, -2)));
+    operands.push_back(tf::test::make_tagged_operand(
+        sheets_law_plane(-7, -7, 7, 7, 0), mirror));
+    graph_holder holder(std::move(operands), {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(1)), 8.0,
+                       1e-9);
+    REQUIRE(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)).size() == 0);
+
+    // one query takes the pass on the lattice, a batch the folded moments
+    using int_t =
+        typename std::decay_t<decltype(holder.graph)>::resolved_int_type;
+    using corners_t = std::array<tf::exact::pt3<int_t>, 3>;
+    const auto &arrangement = holder.graph.arrangement();
+    auto reader = arrangement.lattice().reader(arrangement.apply_to_form());
+    auto centroid_at = [&](sheets_real_t z) -> corners_t {
+      using pt_t = tf::point<sheets_real_t, 3>;
+      return {reader.converter.convert(pt_t{-0.5, -0.5, z}),
+              reader.converter.convert(pt_t{0.5, -0.5, z}),
+              reader.converter.convert(pt_t{0, 0.5, z})};
+    };
+    tf::buffer<corners_t> one;
+    one.push_back(centroid_at(-3));
+    tf::buffer<corners_t> batch;
+    batch.push_back(centroid_at(-3));
+    while (batch.size() < tf::csg::graph::winding_moments_from)
+      batch.push_back(centroid_at(3));
+    arrangement.apply_to_form()(sheets_index_t(1), [&](const auto &form) {
+      const auto linear = tf::csg::graph::winding_side<int_t>(
+          form, sheets_index_t(1), reader, one);
+      const auto folded = tf::csg::graph::winding_side<int_t>(
+          form, sheets_index_t(1), reader, batch);
+      REQUIRE(linear[0] == char(1));
+      REQUIRE(folded[0] == char(1));
+      for (std::size_t j = 1; j < folded.size(); ++j)
+        REQUIRE(folded[j] == char(0));
+    });
+  }
+}
+
+// ============================================================================
+// A free rim joins the two sides of its sheet, so every cell a volume's
+// inside reaches around the rim reads no side of the sheet, unless a volume
+// the sheet separates states one. A component cut at a volume's wall has no
+// free rim, so a volume the sheet crosses edge to edge keeps its sides.
+// ============================================================================
+namespace {
+
+void sheets_rim_empty(const graph_holder &holder, tf::csg::expr e) {
+  REQUIRE_THAT(sheets_law_volume(holder, e),
+               Catch::Matchers::WithinAbs(0.0, 1e-9));
+}
+
+// A over [-4,4]^2 on z = 0.2 x with a hill, B the same with its middle sunk
+// by 2: the pit between them holds 18
+auto sheets_rim_survey(bool pit) -> sheets_mesh_t {
+  auto m = tf::make_plane_mesh<sheets_index_t>(sheets_real_t(8),
+                                               sheets_real_t(8), 8, 8);
+  for (std::size_t i = 0; i < m.points_buffer().size(); ++i) {
+    auto p = m.points_buffer()[i];
+    sheets_real_t z = sheets_real_t(0.2) * p[0];
+    if (std::abs(p[0] - 2) < 0.5 && std::abs(p[1] - 2) < 0.5)
+      z += 2;
+    if (pit && std::abs(p[0]) < 1.5 && std::abs(p[1]) < 1.5)
+      z -= 2;
+    m.points_buffer()[i][2] = z;
+  }
+  return m;
+}
+
+// the rim stands between -0.8 and 0.8, so the first box holds some of it
+// exactly when its top rises above -0.8
+auto sheets_rim_box_holds_rim(const std::vector<sheets_real_t> &tops) -> bool {
+  return !tops.empty() && tops[0] > sheets_real_t(-0.8);
+}
+
+auto sheets_rim_pit_scene(sheets_real_t half, std::vector<sheets_real_t> tops)
+    -> std::vector<sheets_mesh_t> {
+  std::vector<sheets_mesh_t> meshes;
+  meshes.push_back(sheets_law_box(-half, -half, -5, half, half, 5));
+  meshes.push_back(sheets_rim_survey(false));
+  meshes.push_back(sheets_rim_survey(true));
+  for (const auto top : tops)
+    meshes.push_back(sheets_law_box(-5, -5, -7, 5, 5, top));
+  return meshes;
+}
+
+} // namespace
+
+TEST_CASE("sheets: a free rim inside a volume states nothing there",
+          "[csg][sheets]") {
+  using tf::csg::op;
+  SECTION("a floating sheet in a box: the box reads no side") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_plane(-2, -2, 2, 2, 0)}),
+        {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    sheets_rim_empty(holder, op(0) & op(1));
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)),
+                       1000.0, 1e-9);
+    sheets_rim_census(holder, {{1, 0}});
+  }
+  SECTION("a box cut edge to edge inside a box that holds the rim") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-2, -2, -2, 2, 2, 2),
+                             sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_plane(-3, -3, 3, 3, 0)}),
+        {2});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(2)),
+                       32.0, 1e-9);
+    sheets_rim_empty(holder, (op(1) - op(0)) & op(2));
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(1) - op(2)),
+                       968.0, 1e-9);
+    sheets_rim_census(holder, {{2, 1}});
+  }
+  SECTION("a poked box: the rim inside, bridged by the wall it crosses") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_plane(-8, -3, 2, 3, 0)}),
+        {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    sheets_rim_empty(holder, op(0) & op(1));
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)),
+                       1000.0, 1e-9);
+    sheets_rim_census(holder, {{1, 0}});
+  }
+  SECTION("chained: the cut box inside the rim's box inside a third") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-2, -2, -2, 2, 2, 2),
+                             sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_box(-8, -8, -8, 8, 8, 8),
+                             sheets_law_plane(-3, -3, 3, 3, 0)}),
+        {3});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(3)),
+                       32.0, 1e-9);
+    sheets_rim_empty(holder, (op(1) - op(0)) & op(3));
+    sheets_rim_empty(holder, (op(2) - op(1)) & op(3));
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(2) - op(3)),
+                       4064.0, 1e-9);
+    sheets_rim_census(holder, {{3, 1}, {3, 2}});
+  }
+  SECTION("a rim partly in the air, partly across a wall") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_plane(-3, -3, 8, 3, 0)}),
+        {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    sheets_rim_empty(holder, op(0) & op(1));
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)),
+                       1000.0, 1e-9);
+    sheets_rim_census(holder, {{1, 0}});
+  }
+  SECTION("stacked rims: both sheets retire, a cut box keeps both sides") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-1, -1, -1, 1, 1, 1),
+                             sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_plane(-2, -2, 2, 2, 0),
+                             sheets_law_plane(-2, -2, 2, 2, 0)}),
+        {2, 3});
+    REQUIRE(holder.graph.failed().size() == 0);
+    for (const int s : {2, 3}) {
+      check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(s)),
+                         4.0, 1e-9);
+      sheets_rim_empty(holder, (op(1) - op(0)) & op(s));
+    }
+    sheets_rim_census(holder, {{2, 1}, {3, 1}});
+  }
+  SECTION("a closed sheet has no rim and keeps its sides") {
+    graph_holder holder(
+        sheets_law_operands({sheets_law_box(-5, -5, -5, 5, 5, 5),
+                             sheets_law_box(-1, -1, -1, 1, 1, 1)}),
+        {1});
+    REQUIRE(holder.graph.failed().size() == 0);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) & op(1)),
+                       8.0, 1e-9);
+    check_closed_solid(tf::test::csg_mesh_of(holder.graph, op(0) - op(1)),
+                       992.0, 1e-9);
+    sheets_rim_census(holder, {});
+  }
+  SECTION("a pit pair whose rims lie inside the bounding box: the cut reads "
+          "empty") {
+    for (const auto &tops : std::vector<std::vector<sheets_real_t>>{
+             {}, {-3}, {3}, {1.5}, {-1.5}, {0}, {0.5}, {-0.5}, {1.5, -1.5}}) {
+      graph_holder holder(sheets_law_operands(sheets_rim_pit_scene(5, tops)),
+                          {1, 2});
+      REQUIRE(holder.graph.failed().size() == 0);
+      sheets_rim_empty(holder, (op(0) & op(1)) - op(2));
+      // a box topped at -1.5 is cut by the pit's dish, which separates it:
+      // its own side of B survives inside op0
+      if (std::find(tops.begin(), tops.end(), sheets_real_t(-1.5)) !=
+          tops.end())
+        REQUIRE_THAT(sheets_law_volume(holder, (op(0) & op(2)) - op(1)),
+                     Catch::Matchers::WithinAbs(347.3720866068, 1e-9));
+      else
+        sheets_rim_empty(holder, (op(0) & op(2)) - op(1));
+      if (sheets_rim_box_holds_rim(tops))
+        sheets_rim_census(holder, {{1, 0}, {1, 3}, {2, 0}, {2, 3}});
+      else
+        sheets_rim_census(holder, {{1, 0}, {2, 0}});
+    }
+  }
+  SECTION("the same pit pair inside an inset box reads the pit") {
+    for (const auto &tops : std::vector<std::vector<sheets_real_t>>{
+             {}, {-3}, {3}, {1.5}, {-1.5}, {0}, {0.5}, {-0.5}, {1.5, -1.5}}) {
+      graph_holder holder(
+          sheets_law_operands(sheets_rim_pit_scene(sheets_real_t(3.5), tops)),
+          {1, 2});
+      REQUIRE(holder.graph.failed().size() == 0);
+      check_closed_solid(
+          tf::test::csg_mesh_of(holder.graph, (op(0) & op(1)) - op(2)), 18.0,
+          1e-9);
+      sheets_rim_empty(holder, (op(0) & op(2)) - op(1));
+      if (sheets_rim_box_holds_rim(tops))
+        sheets_rim_census(holder, {{1, 3}, {2, 3}});
+      else
+        sheets_rim_census(holder, {});
+    }
   }
 }

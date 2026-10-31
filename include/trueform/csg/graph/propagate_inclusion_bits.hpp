@@ -37,7 +37,7 @@ namespace tf::csg::graph {
 /// @ref tf::csg::graph::component_crossings; a component carrying no
 /// coincident stack is its own tag at unit. A sheet bounds no volume, so its
 /// layers count nothing and its columns are
-/// @ref tf::csg::graph::propagate_sheet_sides's. The seeds are kept as-is —
+/// @ref tf::csg::graph::settle_sheet_sides's. The seeds are kept as-is —
 /// see @ref tf::csg::graph::seed_inclusion_bits for where they come from.
 ///
 /// @param inc               Per-domain inclusion bitvectors; the volume

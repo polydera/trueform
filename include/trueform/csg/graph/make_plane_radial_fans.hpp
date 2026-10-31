@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include "../../arrangement/identity/identity_substrate.hpp"
 #include "../../arrangement/planes/make_plane_piece_fences.hpp"
 #include "../../arrangement/planes/make_plane_piece_incidence.hpp"
 #include "../../arrangement/planes/plane_arrangement.hpp"
@@ -20,6 +21,7 @@
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/none.hpp"
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/reallocate.hpp"
@@ -28,14 +30,15 @@
 #include "../../exact/dot_sign.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/plane_support.hpp"
-#include "../../exact/tag_of_flat_vertex.hpp"
+#include "../../exact/vertex.hpp"
 #include "../../intersect/graph/face_descriptor.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_edge_radial_authority.hpp"
+#include "../../intersect/graph/plane_edge_radial_line_dot_sign.hpp"
+#include "../../intersect/graph/plane_identity_collapse.hpp"
 #include "../../topology/directed_edge_id_in_face.hpp"
 #include "../../topology/manifold_edge_peer.hpp"
 #include "./make_plane_triangle_faces.hpp"
-#include "./read_plane_radial_ring_emission.hpp"
 #include "./triangle_component_labels.hpp"
 #include <algorithm>
 #include <array>
@@ -43,8 +46,22 @@
 #include <cstdint>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace tf::csg::graph {
+
+/// A ring's certificate: `certified`, or the exact class that withholds its
+/// order. `lineless` — the piece welds several exact lines and has none of
+/// its own; `degenerate` — a page's carrier states no normal; `off_line` — a
+/// page's carrier does not run along the piece's line; `tied` — two adjacent
+/// pages stand on one half-plane.
+enum class plane_radial_ring_verdict : char {
+  certified,
+  lineless,
+  degenerate,
+  off_line,
+  tied
+};
 
 /// The radial fans of the arrangement: one fan per ring around a
 /// non-manifold or seam edge, its pages in radial order around the edge.
@@ -70,13 +87,10 @@ namespace tf::csg::graph {
 /// line (@ref tf::intersect::graph::make_plane_edge_radial_authority) — an
 /// ill-posed piece, ordered by the pages' own coordinates instead.
 ///
-/// `certified[k]` is 0 for a ring whose order the emitted surface does not
-/// certify (@ref make_plane_radial_fans): its pages are published, their
-/// order is not, and `n_withheld` counts these rings. `n_twin_ties` counts
-/// the withheld rings whose two tied pages stand on one geometric plane under
-/// two plane identities: one plane holds one identity wherever the name law
-/// seats it, and the wave entrance seats its entrants outside that law, so a
-/// count above zero is that latent defect firing.
+/// `verdicts[k]` is the k-th ring's certificate (@ref make_plane_radial_fans):
+/// `certified`, or the exact class that withholds its order — its pages are
+/// published, their order is not — and `n_withheld` counts the withheld
+/// rings.
 ///
 /// `continuations`, when requested, runs parallel to the pages: the sector
 /// of the page's own fan — `r` between its pages `r` and `r + 1` — that
@@ -90,10 +104,9 @@ template <typename Index> struct plane_radial_fans {
   tf::offset_block_buffer<Index, Index> rows;
   tf::buffer<char> dirs;
   tf::buffer<Index> continuations;
-  tf::buffer<char> certified;
+  tf::buffer<plane_radial_ring_verdict> verdicts;
   Index n_refused = 0;
   Index n_withheld = 0;
-  Index n_twin_ties = 0;
 };
 
 /// Is it a fan? Collect all the planes around it.
@@ -119,24 +132,19 @@ template <typename Index> struct plane_radial_fans {
 /// definitions name no single line refuses, and only there does the ring come
 /// off the pages' coordinates.
 ///
-/// THE RING CERTIFICATE. The order is a statement about the EMITTED surface:
-/// two adjacent pages bound the sector the partition merges across, and the
-/// sector is made of the triangles the arrangement emitted, not of the
-/// carriers. Below the lattice's resolution the two disagree — a carrier
-/// emitted on a piece it does not pass through, two carriers emitting one
-/// half-plane — so an order computed on the carriers is published only when
-/// the emitted half-planes stand in it around the piece's own endpoints
-/// (@ref read_plane_radial_ring_emission): no page turns back, no two pages
-/// — two plane identities — share one emitted half-plane, no page's emitted
-/// half-plane stands across another page's carrier from where its own
-/// carrier puts it, and a page flat on the piece is placed only where the
-/// piece has a line of its own. A ring the
-/// emission does not certify states no sector, so it joins no two sides it
-/// cannot prove adjacent, and the partition reaches its components through
-/// the rings that do. Its pages still meet at the piece whatever their order,
-/// so the ring still states that its components touch. A page of an uncut
-/// sheet emits no triangle, so a ring holding one stands on its carriers
-/// alone.
+/// THE RING CERTIFICATE. A ring is certified by its exact configuration
+/// alone; emission never gates a vote. A coplanar pack is one carrier (@ref
+/// tf::intersect::graph::name_plane_carriers), so its members are one page
+/// and the stack law distributes them at emission. The order is published
+/// when it is exactly defined: two
+/// pages pair the same way in either order, and otherwise the piece names
+/// its own line, every page's carrier states a normal and runs along that
+/// line, and no two adjacent pages tie (@ref plane_radial_ring_verdict). A
+/// withheld ring states no
+/// sector, so it joins no two sides it cannot prove adjacent, and the
+/// partition reaches its components through the rings that do. Its pages
+/// still meet at the piece whatever their order, so the ring still states
+/// that its components touch.
 ///
 /// THE UNCUT SHEETS. A non-manifold boundary definition names its source
 /// directed side `(tag_other, object_other, side)`; the side's edge, read
@@ -152,11 +160,14 @@ template <typename Index> struct plane_radial_fans {
 ///
 /// `record_continuations` asks for `continuations`; the sheets' sides are
 /// their consumer.
-template <typename Index, typename Int, typename Immutable, typename Labels,
-          typename GetMeshPoint, typename ApplyToFace, typename ApplyToForm>
+template <typename Index, typename Int, typename Immutable,
+          typename CreatedPoints, typename Labels, typename GetMeshPoint,
+          typename ApplyToFace, typename ApplyToForm>
 auto make_plane_radial_fans(
     const tf::arrangement::plane_arrangement<Index, Int> &arrangement,
     const Immutable &immutable,
+    const tf::arrangement::identity_substrate<Index, Int> &identities,
+    const CreatedPoints &created_points,
     const tf::arrangement::plane_piece_incidence<Index> &incidence,
     const tf::arrangement::plane_piece_fences &fences, const Labels &labels,
     const GetMeshPoint &get_mesh_point, const ApplyToFace &apply_to_face,
@@ -177,18 +188,22 @@ auto make_plane_radial_fans(
   const auto triangles = arrangement.triangles();
   const auto face_of = make_plane_triangle_faces(arrangement);
 
-  const auto get_base_point = [&](std::int16_t tag, Index id) {
-    return tag < std::int16_t(0) ? immutable.point_of(id, get_mesh_point)
-                                 : get_mesh_point(int(tag), id);
-  };
-  const auto base_created = immutable.n_created_points();
-  const auto endpoint = [&](std::int16_t tag, Index id) {
-    if (tag >= std::int16_t(0))
-      return get_mesh_point(int(tag), id);
-    if (id < base_created)
-      return immutable.point_of(id, get_mesh_point);
-    return arrangement.resolve_created_point(id, get_base_point,
-                                             get_mesh_point);
+  // an endpoint speaks what the composed layer states for it, and a created
+  // identity stands where the materialized table holds it
+  const auto endpoint = [&](std::int16_t tag, Index id) -> tf::exact::pt3<Int> {
+    std::int16_t at_tag;
+    Index at;
+    tf::intersect::graph::plane_targeted_endpoint(
+        [&identities](Index source, Index key) {
+          return identities.composed_target(source, key);
+        },
+        immutable.vertex_offsets(), tag, id, at_tag, at);
+    if (at_tag >= 0)
+      return tf::exact::pt3<Int>(get_mesh_point(int(at_tag), at));
+    if constexpr (tf::core::verification)
+      tf::core::verify(identities.composed_target(Index(1), at) == Index(-1),
+                       "a composed target is retired in neither layer");
+    return created_points[std::size_t(at)];
   };
 
   const auto descriptor_of_face =
@@ -330,13 +345,9 @@ auto make_plane_radial_fans(
     tf::buffer<std::array<Index, 3>> nm_sides;
     tf::buffer<std::array<Index, 2>> uncut_seen;
     tf::buffer<Index> continuations;
-    tf::buffer<std::array<T1, 3>> halves;
-    tf::buffer<std::array<double, 3>> halves_image;
-    tf::buffer<plane_radial_ring_carrier<Index, Int>> carriers;
     Index refusals = 0;
-    tf::buffer<char> certified;
+    tf::buffer<plane_radial_ring_verdict> verdicts;
     Index withheld = 0;
-    Index twin_ties = 0;
   };
 
   const auto negate = [](const nvec &v) -> nvec {
@@ -356,8 +367,8 @@ auto make_plane_radial_fans(
   // corpus pairs in both directions, so it is an open question, not a fix.
   const auto pages_ring = [&](const tf::buffer<page_t> &pages,
                               const auto &reference)
-      -> tf::intersect::graph::plane_edge_radial_authority {
-    tf::intersect::graph::plane_edge_radial_authority ring;
+      -> tf::intersect::graph::plane_edge_radial_authority<Int> {
+    tf::intersect::graph::plane_edge_radial_authority<Int> ring;
     nvec d{T2(0), T2(0), T2(0)};
     for (std::size_t r = 1; r < pages.size(); ++r) {
       d = cross3(pages[0].wedge, pages[r].wedge);
@@ -385,73 +396,27 @@ auto make_plane_radial_fans(
     return ring;
   };
 
-  // each page's emitted half-plane — its first triangle's apex less the
-  // piece's start — read in ring order against the piece's own run
-  const auto n_flat = arrangement.n_flat_points();
-  const auto vertex_offsets = immutable.vertex_offsets();
-  const auto flat_point = [&](Index flat) {
-    if (flat >= n_flat)
-      return endpoint(std::int16_t(-1), flat - n_flat);
-    const auto tag = tf::exact::tag_of_flat_vertex(vertex_offsets, flat);
-    return endpoint(std::int16_t(tag),
-                    flat - Index(vertex_offsets[std::size_t(tag)]));
-  };
-  const auto emission_of =
-      [&](const auto &pages, const auto &occurrences, const auto &reference,
-          tf::buffer<std::array<T1, 3>> &halves,
-          tf::buffer<std::array<double, 3>> &halves_image,
-          tf::buffer<plane_radial_ring_carrier<Index, Int>> &carriers)
-      -> plane_radial_ring_emission {
-    const auto start = endpoint(reference.point_tag_0, reference.point_0);
-    const auto end = endpoint(reference.point_tag_1, reference.point_1);
-    halves.clear();
-    halves_image.clear();
-    carriers.clear();
-    for (const auto &page : pages) {
-      const auto row = occurrences[std::size_t(page.begin)].row;
-      if (row < Index(0))
-        return {};
-      const auto &corners = triangles[std::size_t(row / Index(3))];
-      const auto apex =
-          flat_point(corners[std::size_t((row % Index(3) + Index(2)) % 3)]);
-      halves.push_back({T1(T1(apex[0]) - start[0]), T1(T1(apex[1]) - start[1]),
-                        T1(T1(apex[2]) - start[2])});
-      halves_image.push_back(plane_radial_ring_image(halves.back()));
-      const auto &frame = tf::arrangement::plane_arrangement_plane_frame(
-          arrangement, immutable, page.plane);
-      const auto &n = frame.plane_n;
-      const T2 residual = n[0] * T2(start[0]) + n[1] * T2(start[1]) +
-                          n[2] * T2(start[2]) - frame.plane_d;
-      carriers.push_back({n, residual, plane_radial_ring_image(n),
-                          double(residual), page.plane, page.side});
-    }
-    return read_plane_radial_ring_emission<Int>(
-        halves, halves_image,
-        std::array<T1, 3>{T1(T1(end[0]) - start[0]), T1(T1(end[1]) - start[1]),
-                          T1(T1(end[2]) - start[2])},
-        carriers);
-  };
-
-  // two plane identities standing on one geometric plane: their frames
-  // proportional, normals and offsets alike
-  const auto twin_carriers = [&](Index a, Index b) {
-    using T3 = typename tf::exact::meta<Int>::T3;
-    if (a == b || a < Index(0) || b < Index(0))
-      return false;
-    const auto &fa = tf::arrangement::plane_arrangement_plane_frame(
-        arrangement, immutable, a);
-    const auto &fb = tf::arrangement::plane_arrangement_plane_frame(
-        arrangement, immutable, b);
-    for (std::size_t i = 0; i < 3; ++i) {
-      if (T3(fa.plane_n[i]) * T3(fb.plane_d) !=
-          T3(fb.plane_n[i]) * T3(fa.plane_d))
-        return false;
-      for (std::size_t j = i + 1; j < 3; ++j)
-        if (T3(fa.plane_n[i]) * T3(fb.plane_n[j]) !=
-            T3(fa.plane_n[j]) * T3(fb.plane_n[i]))
-          return false;
-    }
-    return true;
+  // the exact configuration alone
+  const auto read_verdict = [&](const auto &pages, const auto &ring,
+                                bool posed) -> plane_radial_ring_verdict {
+    const std::size_t K = pages.size();
+    if (K < 3)
+      return plane_radial_ring_verdict::certified;
+    for (const auto &page : pages)
+      if (is_zero(page.wedge))
+        return plane_radial_ring_verdict::degenerate;
+    if (!posed)
+      return ring.valid ? plane_radial_ring_verdict::lineless
+                        : plane_radial_ring_verdict::tied;
+    for (const auto &page : pages)
+      if (tf::intersect::graph::plane_edge_radial_line_dot_sign<Int>(
+              ring, page.wedge) != 0)
+        return plane_radial_ring_verdict::off_line;
+    const auto order = ring_order(ring.axis, ring.sign, pages[0].wedge);
+    for (std::size_t r = 0; r < K; ++r)
+      if (order(pages[r].wedge, pages[(r + 1) % K].wedge) == 0)
+        return plane_radial_ring_verdict::tied;
+    return plane_radial_ring_verdict::certified;
   };
 
   auto task = [&](const auto &chunk, local_t &local) {
@@ -459,7 +424,7 @@ auto make_plane_radial_fans(
       if (fences.fan[std::size_t(piece)] == char(0))
         continue;
       local.pieces.push_back(piece);
-      local.certified.push_back(char(1));
+      local.verdicts.push_back(plane_radial_ring_verdict::certified);
 
       // the piece's canonical pair, in the stream's flat language
       const auto definitions = arrangement.piece_definitions(immutable, piece);
@@ -522,6 +487,11 @@ auto make_plane_radial_fans(
           const auto tag = Index(def.tag_other);
           auto poly_labels = labels.polygon_labels(tag);
           apply_to_form(tag, [&](const auto &form) {
+            // a seat past a form's own points lies on carved faces only, and
+            // every carved face is cut: no uncut face meets it
+            if (std::size_t(ka) >= std::size_t(form.points().size()) ||
+                std::size_t(kb) >= std::size_t(form.points().size()))
+              return;
             const auto faces_t = form.faces();
             auto &&fm = form.face_membership();
             for (const auto f2 : fm[ka]) {
@@ -616,22 +586,12 @@ auto make_plane_radial_fans(
                     });
         } else
           radial_sort(local.pages, ring.axis, ring.sign);
-        // a page flat on the piece is placed by its carrier when the piece
-        // has a line of its own, and by nothing when it has not
-        const auto emission = emission_of(local.pages, local.occurrences,
-                                          reference, local.halves,
-                                          local.halves_image,
-                                          local.carriers);
-        const bool certified = !emission.contradicted && !emission.tied &&
-                               !emission.astray && !(emission.flat && !posed);
-        local.certified[local.certified.size() - 1] = char(certified);
+        const auto verdict = read_verdict(local.pages, ring, posed);
+        const bool certified = verdict == plane_radial_ring_verdict::certified;
+        local.verdicts[local.verdicts.size() - 1] = verdict;
         local.withheld += Index(!certified);
-        if (emission.tied)
-          local.twin_ties += Index(
-              twin_carriers(local.pages[emission.tie[0]].plane,
-                            local.pages[emission.tie[1]].plane));
         if (record_continuations) {
-          if (certified && ring.valid)
+          if (certified && ring.valid && K >= 2)
             continue_ring(local.pages, ring.axis, ring.sign,
                           local.continuations);
           else
@@ -639,7 +599,7 @@ auto make_plane_radial_fans(
               local.continuations.push_back(Index(-1));
         }
       } else if (record_continuations) {
-        auto ring = tf::intersect::graph::plane_edge_radial_authority{};
+        auto ring = tf::intersect::graph::plane_edge_radial_authority<Int>{};
         if (K == 2) {
           ring = tf::intersect::graph::make_plane_edge_radial_authority<Index,
                                                                         Int>(
@@ -669,7 +629,7 @@ auto make_plane_radial_fans(
 
   auto aggregate = [](const local_t &local, plane_radial_fans<Index> &result) {
     tf::core::append(local.pieces, result.pieces);
-    tf::core::append(local.certified, result.certified);
+    tf::core::append(local.verdicts, result.verdicts);
     for (const auto count : local.page_counts)
       result.page_offsets.push_back(
           result.page_offsets[result.page_offsets.size() - 1] + count);
@@ -681,7 +641,6 @@ auto make_plane_radial_fans(
     tf::core::append(local.continuations, result.continuations);
     result.n_refused += local.refusals;
     result.n_withheld += local.withheld;
-    result.n_twin_ties += local.twin_ties;
   };
 
   if (any_fan)
@@ -784,7 +743,7 @@ auto make_plane_radial_fans(
             for (std::size_t r = 0; r < pages.size(); ++r)
               out.continuations.push_back(Index(-1));
           out.pieces.push_back(Index(-1));
-          out.certified.push_back(char(1));
+          out.verdicts.push_back(plane_radial_ring_verdict::certified);
           out.page_offsets.push_back(
               out.page_offsets[out.page_offsets.size() - 1] +
               Index(pages.size()));
@@ -805,17 +764,19 @@ auto make_plane_radial_fans(
 /// The cut tier's fans alone — no surface labels in hand, so no uncut
 /// sheets and no edge-grain carriers: the arrangement's own read.
 template <typename Index, typename Int, typename Immutable,
-          typename GetMeshPoint, typename ApplyToFace>
+          typename CreatedPoints, typename GetMeshPoint, typename ApplyToFace>
 auto make_plane_radial_fans(
     const tf::arrangement::plane_arrangement<Index, Int> &arrangement,
     const Immutable &immutable,
+    const tf::arrangement::identity_substrate<Index, Int> &identities,
+    const CreatedPoints &created_points,
     const tf::arrangement::plane_piece_incidence<Index> &incidence,
     const tf::arrangement::plane_piece_fences &fences,
     const GetMeshPoint &get_mesh_point, const ApplyToFace &apply_to_face)
     -> plane_radial_fans<Index> {
-  return make_plane_radial_fans<Index, Int>(arrangement, immutable, incidence,
-                                            fences, tf::none, get_mesh_point,
-                                            apply_to_face, tf::none, Index(0));
+  return make_plane_radial_fans<Index, Int>(
+      arrangement, immutable, identities, created_points, incidence, fences,
+      tf::none, get_mesh_point, apply_to_face, tf::none, Index(0));
 }
 
 } // namespace tf::csg::graph

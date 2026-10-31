@@ -64,6 +64,9 @@ template csg_domains_t<tri_range_graph> csg_domains_of<tri_range_graph>(
 template csg_mesh_t<tri_range_graph>
 outer_shell_of<tri_range_graph>(const tri_range_graph &);
 
+template csg_domains_t<tri_range_graph>
+csg_open_fragments_of<tri_range_graph>(const tri_range_graph &);
+
 template arrangement_curves_t<tri_range_graph>
 arrangement_curves_of<tri_range_graph>(const tri_range_graph &);
 

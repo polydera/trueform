@@ -33,6 +33,9 @@ template tri_range_graph
 template csg_domains_t<tri_self_graph>
 csg_domains_of<tri_self_graph>(const tri_self_graph &);
 
+template csg_lattice_domains_t<tri_self_graph>
+csg_lattice_domains_of<tri_self_graph>(const tri_self_graph &);
+
 template csg_domains_t<tri_self_graph>
 csg_domains_of<tri_self_graph>(const tri_self_graph &, tf::domain_config);
 
