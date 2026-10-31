@@ -22,14 +22,15 @@
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
+#include <trueform/arrangement/planes/plane_arrangement.hpp>
+#include <trueform/arrangement/planes/union_plane_constraint_collisions.hpp>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/edges.hpp>
 #include <trueform/core/point.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/core/views/blocked_range.hpp>
-#include <trueform/arrangement/planes/plane_arrangement.hpp>
-#include <trueform/arrangement/planes/union_plane_constraint_collisions.hpp>
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/int64.hpp>
 #include <trueform/intersect/graph/plane_edge_def.hpp>
@@ -112,7 +113,6 @@ template <typename Int> auto make_fixture() -> fixture_t<Int> {
     tables.defs()[row] = raw[row];
   }
   tables.def_offsets().push_back(collision_index_t(raw.size()));
-  tables.n_canon() = group + 1;
   tables.edges().offsets_buffer().push_back(0);
   for (std::size_t row = 0; row < raw.size(); ++row)
     tables.edges().data_buffer().push_back(collision_index_t(row));
@@ -148,9 +148,9 @@ template <typename Int> auto make_fixture() -> fixture_t<Int> {
 /// publishes.
 using record_t = std::array<std::int64_t, 15>;
 
-template <typename Int, typename Arrangement>
-auto records_of(const Arrangement &arrangement, const fixture_t<Int> &fixture)
-    -> std::vector<record_t> {
+template <typename Int, typename Arrangement, typename Identities>
+auto records_of(const Arrangement &arrangement, const Identities &identities,
+                const fixture_t<Int> &fixture) -> std::vector<record_t> {
   const auto get_point = [&](std::int16_t, collision_index_t point) {
     return fixture.points[std::size_t(point)];
   };
@@ -158,7 +158,7 @@ auto records_of(const Arrangement &arrangement, const fixture_t<Int> &fixture)
   const auto position = [&](collision_index_t flat) -> tf::point<Int, 3> {
     return flat < n_flat ? fixture.points[std::size_t(flat)]
                          : arrangement.resolve_created_point(
-                               flat - n_flat, get_point, get_point);
+                               identities, flat - n_flat, get_point, get_point);
   };
   std::vector<record_t> records;
   const auto triangles = arrangement.triangles();
@@ -306,20 +306,24 @@ TEMPLATE_TEST_CASE("plane constraint collisions: slot parity across the arms",
   };
 
   tf::arrangement::plane_arrangement<collision_index_t, Int> stock;
+  tf::arrangement::identity_substrate<collision_index_t, Int> stock_identities;
   stock.record_triangle_arrangement();
-  stock.build(fixture.input, collision_index_t(0), get_point, get_point,
-              fixture.vertex_offsets);
+  stock.build(fixture.input, stock_identities, collision_index_t(0), get_point,
+              get_point, fixture.vertex_offsets);
   tf::cdt_refine_config config;
   config.min_quality = 0.0f;
   config.split_encroached = false;
   tf::arrangement::plane_arrangement<collision_index_t, Int> refined;
+  tf::arrangement::identity_substrate<collision_index_t, Int>
+      refined_identities;
   refined.record_triangle_arrangement();
-  refined.build_refined(fixture.input, collision_index_t(0), get_point,
-                        get_point, fixture.vertex_offsets, config);
+  refined.build_refined(fixture.input, refined_identities, collision_index_t(0),
+                        get_point, get_point, fixture.vertex_offsets, config);
 
   REQUIRE(stock.n_planes() == collision_index_t(1));
   REQUIRE(stock.triangles().size() != 0);
   REQUIRE(stock.failed().size() == 0);
   REQUIRE(refined.failed().size() == 0);
-  REQUIRE(records_of(refined, fixture) == records_of(stock, fixture));
+  REQUIRE(records_of(refined, refined_identities, fixture) ==
+          records_of(stock, stock_identities, fixture));
 }

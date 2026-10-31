@@ -9,11 +9,13 @@
  * that surface:
  *
  *   RECOVERY   a scene that strands a plane — a 16-stack sphere against a
- *              4x4 tessellated plane, whose equator ring lands ON the
- *              plane once the FLOAT lattice quantizes it. One plane
- *              refuses, one further round recovers it, and `failed()` is
- *              empty. On the double lattice the ring misses the plane,
- *              nothing refuses, and the same assertions hold trivially.
+ *              4x4 tessellated plane standing thirteen float lattice
+ *              steps (2^-28 for this scene) below the equator ring, so
+ *              the FLOAT lattice puts the ring within a few steps of the
+ *              plane. Two refusals, two further rounds recover them, and
+ *              `failed()` is empty. On the double lattice the same height
+ *              is billions of steps away, nothing refuses, and the same
+ *              assertions hold trivially.
  *   LADDER     the same scene's neighbourhood — the stack and segment
  *              counts either side of the trigger, and the cutting plane
  *              swept through the sphere — where nothing may strand.
@@ -42,10 +44,11 @@
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <trueform/core/range.hpp>
 #include <trueform/arrangement/arrangement_config.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/arrangement/make_arrangement_graph.hpp>
 #include <trueform/arrangement/planes/plane_arrangement.hpp>
+#include <trueform/core/range.hpp>
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/int64.hpp>
 #include <trueform/geometry/ensure_positive_orientation.hpp>
@@ -56,6 +59,7 @@
 #include "type_traits.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -67,8 +71,8 @@ namespace {
 /// only one that refuses; the double lattice never reaches the wave.
 template <typename Real> struct wave_cost;
 template <> struct wave_cost<float> {
-  static constexpr std::size_t rounds = 2;
-  static constexpr std::size_t refusals = 1;
+  static constexpr std::size_t rounds = 3;
+  static constexpr std::size_t refusals = 2;
 };
 template <> struct wave_cost<double> {
   static constexpr std::size_t rounds = 1;
@@ -129,7 +133,8 @@ TEMPLATE_TEST_CASE("plane refusal: the stranded scene recovers",
   using index_t = typename TestType::index_type;
   using real_t = typename TestType::real_type;
 
-  auto scene = sphere_on_plane<index_t, real_t>(16, 32, real_t(0));
+  auto scene =
+      sphere_on_plane<index_t, real_t>(16, 32, real_t(std::ldexp(-13.0, -28)));
   auto op0 = tf::test::make_tagged_operand(scene.first);
   auto op1 = tf::test::make_tagged_operand(scene.second);
   auto graph = tf::test::build_pair_arrangement(op0.form(), op1.form(), {});
@@ -238,7 +243,8 @@ TEMPLATE_TEST_CASE("plane refusal: a constraint-less carrier is published",
     return world.points[std::size_t(point)];
   };
   tf::arrangement::plane_arrangement<index_t, Int> product;
-  product.build(world.input, index_t(0), get_original, get_original,
+  tf::arrangement::identity_substrate<index_t, Int> identities;
+  product.build(world.input, identities, index_t(0), get_original, get_original,
                 world.vertex_offsets);
 
   REQUIRE(product.failed().size() == 1);
@@ -292,8 +298,9 @@ TEST_CASE("plane refusal: a meeting landing across a near-coincident "
       return world.points[std::size_t(point)];
     };
     tf::arrangement::plane_arrangement<index_t, Int> product;
-    product.build(world.input, index_t(0), get_original, get_original,
-                  world.vertex_offsets);
+    tf::arrangement::identity_substrate<index_t, Int> identities;
+    product.build(world.input, identities, index_t(0), get_original,
+                  get_original, world.vertex_offsets);
 
     REQUIRE(product.census().refusals != 0);
     CHECK(product.census().landings != 0);

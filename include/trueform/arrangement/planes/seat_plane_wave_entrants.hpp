@@ -12,7 +12,6 @@
  */
 #pragma once
 
-#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
@@ -22,6 +21,7 @@
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "./classify_plane_wave_entrants.hpp"
+#include "./open_plane_ticket.hpp"
 #include "./plane_piece_key.hpp"
 #include "./plane_tier_definitions.hpp"
 #include "./port_plane_diff.hpp"
@@ -90,10 +90,7 @@ auto seat_plane_wave_entrants(
   joined.erase_till_end(std::unique(joined.begin(), joined.end()));
   // A local tier and an empty router is a state no consumer accepts, and the
   // fresh groups below can create one where the port would not.
-  if (group_router.size() == 0) {
-    group_router.allocate(std::size_t(world_tables.n_canon()));
-    tf::parallel_fill(group_router, Index(-1));
-  }
+  open_plane_ticket(group_router, std::size_t(world_tables.n_canon()));
 
   // The riders, carried by value in the span's own order: provenance then
   // flags, which is what the port appends them under and what every later
@@ -203,7 +200,6 @@ auto seat_plane_wave_entrants(
       seat[row] = Index(at + (row - begin));
     }
     local_def_offsets.push_back(Index(local_defs.size()));
-    local_tables.n_canon() = mint + Index(1);
   }
 
   // Every plane the entrants are seated on holds a local ticket: the world

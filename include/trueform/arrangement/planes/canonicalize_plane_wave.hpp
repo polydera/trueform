@@ -18,22 +18,24 @@
 #include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../intersect/graph/plane_def_respan.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
+#include "./mint_plane_groups.hpp"
 #include "./plane_definition_source.hpp"
 #include "./plane_piece_definition_instance.hpp"
 #include "./plane_piece_key.hpp"
 #include "./plane_tier_definitions.hpp"
 #include "./promote_plane_collision_carriers.hpp"
 #include "./propose_plane_split_pieces.hpp"
+#include "./sweep_plane_routes.hpp"
 #include "tbb/parallel_sort.h"
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <limits>
 #include <tuple>
@@ -400,9 +402,12 @@ auto canonicalize_plane_wave(
     }
     // every matched key and every participant's key IS a class key, so the
     // class is total
-    assert(lo < n_classes &&
-           plane_piece_key<Index>(records[std::size_t(class_offsets[lo])]) ==
-               key);
+    if constexpr (tf::core::verification)
+      tf::core::verify(
+          lo < n_classes &&
+              plane_piece_key<Index>(
+                  records[std::size_t(class_offsets[lo])]) == key,
+          "every key the wave matched is a class key");
     return lo;
   };
 
@@ -467,39 +472,32 @@ auto canonicalize_plane_wave(
 
   final_row.clear();
   losers.clear();
-  const auto def_row_base = Index(defs.size());
-  const auto n_mints = n_classes - kept_classes.size();
-  defs.reallocate(std::size_t(def_row_base) +
-                  std::size_t(def_prefix[n_classes]));
-  const auto old_group_offsets = def_offsets.size();
-  def_offsets.reallocate(old_group_offsets + n_mints);
   final_row.allocate(proposals.size());
-  tf::parallel_for_each(
-      tf::make_sequence_range(n_classes), [&](std::size_t cls) {
-        if (kept_class(cls))
-          return;
-        const auto begin = std::size_t(class_offsets[cls]);
-        const auto end = std::size_t(class_offsets[cls + 1]);
-        const auto mint = mint_of(cls);
-        auto write = std::size_t(def_row_base + def_prefix[cls]);
-        Index row = Index(-1);
-        for (auto at = begin; at < end; ++at) {
-          if (at == begin || !same_instance(records[at - 1], records[at])) {
-            auto def = records[at];
-            def.id = mint;
-            row = Index(write);
-            defs[write++] = def;
-          }
-          // every slot that stated this instance answers the ONE row it
-          // survives as, whether it wrote it or repeated it
-          const auto slot = records[at].id;
-          if (slot != Index(-1))
-            final_row[std::size_t(slot)] = row;
-        }
-        def_offsets[old_group_offsets + std::size_t(mint - group_base)] =
-            Index(write);
-      });
-  local_tables.n_canon() = group_base + Index(n_mints);
+  mint_plane_groups(local_tables, n_classes, n_classes - kept_classes.size(),
+                    def_prefix, [&](std::size_t cls, std::size_t write) {
+                      if (kept_class(cls))
+                        return Index(-1);
+                      const auto begin = std::size_t(class_offsets[cls]);
+                      const auto end = std::size_t(class_offsets[cls + 1]);
+                      const auto mint = mint_of(cls);
+                      Index row = Index(-1);
+                      for (auto at = begin; at < end; ++at) {
+                        if (at == begin ||
+                            !same_instance(records[at - 1], records[at])) {
+                          auto def = records[at];
+                          def.id = mint;
+                          row = Index(write);
+                          defs[write++] = def;
+                        }
+                        // every slot that stated this instance answers the ONE
+                        // row it survives as, whether it wrote it or repeated
+                        // it
+                        const auto slot = records[at].id;
+                        if (slot != Index(-1))
+                          final_row[std::size_t(slot)] = row;
+                      }
+                      return Index(mint - group_base);
+                    });
 
   tf::sequenced_generate(
       tf::make_range(participants), losers,
@@ -514,30 +512,22 @@ auto canonicalize_plane_wave(
   // Otherwise the router composes through a fusion loser. Both facts are
   // stated in the router's one wave sweep, with retirement taking precedence.
   if (layout.size() != 0 || losers.size() != 0)
-    tf::parallel_for_each(
-        tf::make_sequence_range(group_router.size()),
-        [&](std::size_t at) {
-          const auto route = group_router[at];
-          if (route < Index(0))
-            return;
-          const auto split = std::lower_bound(
-              layout.begin(), layout.end(), route,
-              [](const plane_split_piece_layout<Index> &piece, Index id) {
-                return piece.parent < id;
-              });
-          if (split != layout.end() && split->parent == route) {
-            group_router[at] = Index(-2);
-            return;
-          }
-          const auto found = std::lower_bound(
-              losers.begin(), losers.end(), route,
-              [](const std::array<Index, 2> &loser, Index id) {
-                return loser[0] < id;
-              });
-          if (found != losers.end() && (*found)[0] == route)
-            group_router[at] = (*found)[1];
-        },
-        tf::checked);
+    sweep_plane_routes(group_router, [&](Index route) {
+      const auto split = std::lower_bound(
+          layout.begin(), layout.end(), route,
+          [](const plane_split_piece_layout<Index> &piece, Index id) {
+            return piece.parent < id;
+          });
+      if (split != layout.end() && split->parent == route)
+        return Index(-2);
+      const auto found = std::lower_bound(
+          losers.begin(), losers.end(), route,
+          [](const std::array<Index, 2> &loser, Index id) {
+            return loser[0] < id;
+          });
+      return found != losers.end() && (*found)[0] == route ? (*found)[1]
+                                                           : route;
+    });
   return true;
 }
 

@@ -71,7 +71,7 @@ auto prepare_plane_carrier_boundary(const World &world,
     local.pts2.emplace_back(q[frame.ax0], q[frame.ax1]);
   }
   local.face_orientation =
-      int(world.face_orientation(world.member(plane, Index(0))));
+      int(world.face_orientation(world.member(plane, Index(0)), frame));
   local.member_ticket.clear();
   local.cons_row.clear();
 

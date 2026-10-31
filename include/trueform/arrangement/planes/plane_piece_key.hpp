@@ -15,6 +15,7 @@
 #include "../../core/buffer.hpp"
 #include "../../core/reallocate.hpp"
 #include "../../exact/tag_of_flat_vertex.hpp"
+#include "tbb/parallel_sort.h"
 
 #include <algorithm>
 #include <array>
@@ -63,7 +64,9 @@ auto sort_plane_block_by_key(const Tier &tier, tf::buffer<Index> &rows,
     const auto key = plane_piece_key<Index>(tier[std::size_t(rows[at])]);
     scratch[at - begin] = {key[0], key[1], key[2], key[3], rows[at]};
   }
-  std::sort(scratch.begin(), scratch.end());
+  // the row closes the record, so the order is total and one carrier
+  // holding most of a wave's rows sorts across every worker
+  tbb::parallel_sort(scratch.begin(), scratch.end());
   for (auto at = begin; at < end; ++at)
     rows[at] = scratch[at - begin][4];
 }

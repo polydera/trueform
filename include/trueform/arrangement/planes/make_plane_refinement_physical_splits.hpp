@@ -48,10 +48,14 @@ auto make_plane_refinement_physical_splits(
         for (const auto &def : definitions_of(split)) {
           if (!(def.flags & tf::intersect::graph::plane_edge_whole_side_flag))
             continue;
+          // a piece's side delivers only as the source side it keeps whole
+          const auto source = world.source_side(def.face, Index(def.side));
+          if (source[1] < Index(0))
+            continue;
           const auto &descriptor = world.descriptor(def.face);
           apply_to_form(Index(descriptor.tag), [&](const auto &form) {
-            const auto face = form.faces()[descriptor.object];
-            const auto side = std::size_t(def.side);
+            const auto face = form.faces()[source[0]];
+            const auto side = std::size_t(source[1]);
             const auto a = Index(face[side]);
             const auto b = Index(face[(side + 1) % face.size()]);
             const auto u = std::min(a, b);

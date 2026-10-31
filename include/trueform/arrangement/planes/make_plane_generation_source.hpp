@@ -24,7 +24,6 @@
 #include "../../core/views/sequence_range.hpp"
 #include "../../intersect/graph/plane_def_respan.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
-#include "../../intersect/graph/plane_identity_collapse.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "tbb/parallel_sort.h"
 
@@ -75,14 +74,16 @@ auto make_plane_generation_ticket(const GlobalPlanes &global_planes,
 ///
 /// A dense global-plane ticket chooses exactly one authority per carrier:
 /// current PA state when present, otherwise immutable LA. Records carry their
-/// source tier and group by value, are rewritten through the closed identity
-/// table, and sort by final endpoint key. Equal-key runs therefore retain the
-/// union of all definition instances and every immutable ancestor. The source
-/// dense ticket tables map each immediate source group to its clean output
-/// group. They are barrier-local proposal translators, not a second persistent
-/// read path.
+/// source tier and group by value and sort by endpoint key. Equal-key runs
+/// therefore retain the union of all definition instances and every immutable
+/// ancestor. The source dense ticket tables map each immediate source group to
+/// its clean output group. They are barrier-local proposal translators, not a
+/// second persistent read path.
+///
+/// Only the immutable groups the caller names go local; every other group of a
+/// selected plane stays the world's, carried by reference (grain law 3).
 template <typename Index, typename Int, typename Immutable,
-          typename GlobalPlanes, typename VertexOffsets>
+          typename GlobalPlanes>
 auto make_plane_generation_source(
     const Immutable &immutable,
     const tf::intersect::graph::plane_tables<Index, Int> &current,
@@ -90,8 +91,7 @@ auto make_plane_generation_source(
     const tf::buffer<Index> &current_ancestor_offsets,
     const tf::buffer<Index> &current_ancestors,
     const GlobalPlanes &global_planes, Index global_plane_extent,
-    const tf::buffer<std::array<Index, 3>> &merges,
-    const VertexOffsets &vertex_offsets,
+    const tf::buffer<Index> &named_immutable_groups,
     tf::intersect::graph::plane_tables<Index, Int> &output,
     tf::buffer<Index> &global_plane_of_local,
     tf::buffer<Index> &ancestor_offsets, tf::buffer<Index> &ancestors,
@@ -104,8 +104,6 @@ auto make_plane_generation_source(
     Index source_kind;
     Index source_group;
     Index source_row;
-    /// the record's seat in plane order, which the key sort leaves behind
-    Index home;
   };
 
   if (current_ancestor_offsets.size() == 0) {
@@ -151,70 +149,58 @@ auto make_plane_generation_source(
   next_global_planes.allocate(std::size_t(n_planes));
   tf::parallel_copy(global_planes, next_global_planes);
 
-  const auto state_plane_records = [&](Index local, const auto &state) {
-    const auto global = next_global_planes[std::size_t(local)];
-    const bool from_current =
-        std::size_t(global) < current_plane_ticket.size() &&
-        current_plane_ticket[std::size_t(global)] != Index(-1);
-    const auto emit = [&](const auto &block, bool local_block) {
+  const auto named = [&](Index group) {
+    return std::binary_search(named_immutable_groups.begin(),
+                              named_immutable_groups.end(), group);
+  };
+  // every row of a selected plane's source block as its tier and row there;
+  // `local` says the row goes to the clean source, else it stays the
+  // world's, carried by reference
+  const auto for_each_source_row = [&](Index local_plane, const auto &f) {
+    const auto global = next_global_planes[std::size_t(local_plane)];
+    const auto walk = [&](const auto &block, bool local_block) {
       for (const auto row : block) {
-        const auto immutable_row = !local_block || row < Index(0);
-        const auto source_kind = immutable_row
-                                     ? plane_generation_immutable_source<Index>
-                                     : plane_generation_current_source<Index>;
-        const auto source_row =
-            immutable_row ? (local_block ? -1 - row : row) : row;
-        const auto &parent =
-            immutable_row
-                ? immutable.edge_defs()[std::size_t(source_row)]
-                : current.edge_defs()[std::size_t(source_row)];
-        const auto ends = tf::intersect::graph::plane_merged_endpoints(
-            merges, vertex_offsets, parent);
-        if (ends.lo_tag == ends.hi_tag && ends.lo_id == ends.hi_id)
+        if (local_block && row >= Index(0)) {
+          f(plane_generation_current_source<Index>, row,
+            current.edge_defs()[std::size_t(row)], true);
           continue;
-        std::array<Index, 2> a{Index(ends.lo_tag), ends.lo_id};
-        std::array<Index, 2> b{Index(ends.hi_tag), ends.hi_id};
-        const bool flipped = b < a;
-        if (flipped)
-          std::swap(a, b);
-        state(std::array<Index, 4>{a[0], a[1], b[0], b[1]}, flipped,
-              source_kind, parent.id, source_row);
+        }
+        const auto world_row = local_block ? Index(-1) - row : row;
+        const auto &parent = immutable.edge_defs()[std::size_t(world_row)];
+        f(plane_generation_immutable_source<Index>, world_row, parent,
+          named(parent.id));
       }
     };
-    if (from_current) {
-      const auto source = current_plane_ticket[std::size_t(global)];
+    if (std::size_t(global) < current_plane_ticket.size() &&
+        current_plane_ticket[std::size_t(global)] != Index(-1))
       // a block of this arrangement's tier states rows in the flat row
       // space, and an unchanged group stays the world's, so the row itself
       // says which table holds the parent
-      emit(current.plane_edges(source), true);
-    } else {
-      emit(immutable.plane_edges(global), false);
-    }
+      walk(current.plane_edges(current_plane_ticket[std::size_t(global)]),
+           true);
+    else
+      walk(immutable.plane_edges(global), false);
   };
 
-  // The plane is the block: its records are stated once, and the offsets the
-  // aggregation builds are the plane CSR itself. A carrier space of none still
-  // states its one offset.
-  auto &plane_offsets = output.edges().offsets_buffer();
-  plane_offsets.allocate(1);
-  plane_offsets[0] = Index(0);
   tf::buffer<record_t> records;
-  tf::generate_offset_blocks(
-      tf::make_sequence_range(n_planes), plane_offsets, records,
-      [&](Index local, tf::buffer<record_t> &out) {
-        state_plane_records(local, [&out](const std::array<Index, 4> &key,
-                                          bool flipped, Index source_kind,
-                                          Index source_group,
-                                          Index source_row) {
-          out.push_back({key, char(flipped), source_kind, source_group,
-                         source_row, Index(0)});
+  tf::generic_generate(
+      tf::make_sequence_range(n_planes), records,
+      [&](Index local_plane, tf::buffer<record_t> &out) {
+        for_each_source_row(local_plane, [&out](Index source_kind,
+                                                Index source_row,
+                                                const def_t &parent,
+                                                bool local) {
+          if (!local)
+            return;
+          std::array<Index, 2> a{Index(parent.point_tag_0), parent.point_0};
+          std::array<Index, 2> b{Index(parent.point_tag_1), parent.point_1};
+          const bool flipped = b < a;
+          if (flipped)
+            std::swap(a, b);
+          out.push_back({std::array<Index, 4>{a[0], a[1], b[0], b[1]},
+                         char(flipped), source_kind, parent.id, source_row});
         });
       },
-      tf::checked);
-  // the seat is the flat position the offsets just fixed
-  tf::parallel_for_each(
-      tf::make_sequence_range(records.size()),
-      [&records](std::size_t at) { records[at].home = Index(at); },
       tf::checked);
   tbb::parallel_sort(records.begin(), records.end(),
                      [](const record_t &x, const record_t &y) {
@@ -229,18 +215,21 @@ auto make_plane_generation_source(
   auto &plane_data = output.edges().data_buffer();
   defs.allocate(records.size());
   def_offsets.clear();
-  if (records.size() == 0) {
+  if (records.size() == 0)
     def_offsets.push_back(Index(0));
-    output.n_canon() = Index(0);
-  } else {
+  else
     tf::compute_offsets(
         records, std::back_inserter(def_offsets), Index(0),
         [](const record_t &x, const record_t &y) { return x.key == y.key; });
-    output.n_canon() = Index(def_offsets.size()) - Index(1);
-  }
 
   tf::buffer<plane_generation_source_ticket<Index>> all_tickets;
   all_tickets.allocate(records.size());
+  tf::buffer<Index> row_of_immutable;
+  tf::buffer<Index> row_of_current;
+  row_of_immutable.allocate(immutable.edge_defs().size());
+  row_of_current.allocate(current.edge_defs().size());
+  tf::parallel_fill(row_of_immutable, Index(-1));
+  tf::parallel_fill(row_of_current, Index(-1));
   tf::parallel_for_each(
       tf::make_sequence_range(output.n_canon()),
       [&](Index group) {
@@ -265,24 +254,37 @@ auto make_plane_generation_source(
           defs[row] = def;
           all_tickets[row] = {records[row].source_kind,
                               records[row].source_group, group};
+          auto &seat = records[row].source_kind ==
+                               plane_generation_current_source<Index>
+                           ? row_of_current
+                           : row_of_immutable;
+          seat[std::size_t(records[row].source_row)] = Index(row);
         }
       },
       tf::checked);
 
-  plane_data.allocate(records.size());
-  tf::parallel_for_each(
-      tf::make_sequence_range(records.size()),
-      [&](std::size_t row) {
-        plane_data[std::size_t(records[row].home)] = Index(row);
-      },
-      tf::checked);
-  tf::parallel_for_each(
-      tf::make_sequence_range(n_planes),
-      [&](Index plane) {
-        std::sort(plane_data.begin() +
-                      std::size_t(plane_offsets[std::size_t(plane)]),
-                  plane_data.begin() +
-                      std::size_t(plane_offsets[std::size_t(plane) + 1]));
+  // the plane CSR walks each source block in its own order, the port's
+  // order: a local row at its clean seat, a carried one by reference
+  auto &plane_offsets = output.edges().offsets_buffer();
+  plane_offsets.allocate(1);
+  plane_offsets[0] = Index(0);
+  tf::generate_offset_blocks(
+      tf::make_sequence_range(n_planes), plane_offsets, plane_data,
+      [&](Index local_plane, tf::buffer<Index> &out) {
+        for_each_source_row(local_plane, [&](Index source_kind,
+                                             Index source_row, const def_t &,
+                                             bool local) {
+          if (!local) {
+            out.push_back(Index(-1) - source_row);
+            return;
+          }
+          const auto &seat =
+              source_kind == plane_generation_current_source<Index>
+                  ? row_of_current
+                  : row_of_immutable;
+          if (seat[std::size_t(source_row)] != Index(-1))
+            out.push_back(seat[std::size_t(source_row)]);
+        });
       },
       tf::checked);
 

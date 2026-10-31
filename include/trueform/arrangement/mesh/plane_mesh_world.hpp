@@ -19,13 +19,15 @@
 #include "../../core/views/blocked_range.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../../exact/make_supported_plane_frame.hpp"
+#include "../../exact/canonical_plane.hpp"
 #include "../../exact/plane_frame.hpp"
 #include "../../exact/plane_frame_winding.hpp"
 #include "../../exact/vertex.hpp"
 #include "../../intersect/graph/build_plane_edges.hpp"
 #include "../../intersect/graph/canonicalize_plane_edge_defs.hpp"
 #include "../../intersect/graph/face_descriptor.hpp"
+#include "../../intersect/graph/make_plane_face_frame.hpp"
+#include "../../intersect/graph/plane_face_support.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "../../topology/face_membership.hpp"
 #include "../planes/plane_world.hpp"
@@ -76,7 +78,6 @@ public:
   plane_mesh_policy(const Faces &faces, tf::buffer<point_t> &&points)
       : _faces(faces), _points(std::move(points)) {}
 
-  auto tables() -> tables_t & { return _tables; }
   auto tables() const -> const tables_t & { return _tables; }
 
   auto n_planes() const -> Index { return Index(_faces.size()); }
@@ -100,16 +101,18 @@ public:
 
   auto frame(Index plane) const -> frame_t {
     const auto corners = _faces[std::size_t(plane)];
-    const auto &points = _points;
-    return tf::exact::make_supported_plane_frame<Int>(
-        [&corners, &points](const auto &consider) {
-          for (const auto corner : corners)
-            consider(points[std::size_t(corner)]);
+    return tf::intersect::graph::make_plane_face_frame<Int>(
+        corners, [&](std::size_t corner) {
+          return _points[std::size_t(corners[corner])];
         });
   }
   auto face_orientation(Index face) const -> std::int8_t {
+    return face_orientation(face, frame(face));
+  }
+  auto face_orientation(Index face, const frame_t &frame) const
+      -> std::int8_t {
     const auto &points = _points;
-    return tf::exact::plane_frame_winding(frame(face), _faces[std::size_t(face)],
+    return tf::exact::plane_frame_winding(frame, _faces[std::size_t(face)],
                                           [&points](auto corner) {
                                             return points[std::size_t(corner)];
                                           });
@@ -152,8 +155,7 @@ public:
     build_mesh_plane_defs<Index>(_faces, _tables.defs(), face_def_offsets);
     tf::buffer<Index> emission_to_canon;
     tf::intersect::graph::canonicalize_plane_edge_defs<Index>(
-        _tables.defs(), _tables.def_offsets(), _tables.n_canon(),
-        emission_to_canon);
+        _tables.defs(), _tables.def_offsets(), emission_to_canon);
     tf::intersect::graph::build_plane_edges<Index>(
         n_faces, plane_faces, face_def_offsets, emission_to_canon,
         _tables.edges());
@@ -181,6 +183,18 @@ public:
   }
   auto split_survivors(std::size_t) const {
     return tf::range<const Index *, tf::dynamic_size>(nullptr, nullptr);
+  }
+  /// A plane IS its face, so the face names it and is its own source.
+  auto plane_name(Index plane) const -> tf::exact::canonical_plane<Int> {
+    const auto corners = _faces[std::size_t(plane)];
+    return tf::exact::make_canonical_plane<Int>(
+        tf::intersect::graph::plane_face_support<Int>(
+            corners, [&](std::size_t corner) {
+              return _points[std::size_t(corners[corner])];
+            }));
+  }
+  auto source_side(Index face, Index side) const -> std::array<Index, 2> {
+    return {face, side};
   }
 
 private:

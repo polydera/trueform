@@ -171,9 +171,12 @@ template <typename Mesh> auto check_canon(Mesh &mesh) -> void {
 
   tf::buffer<producers_index_t> def_offsets;
   tf::buffer<producers_index_t> emission_to_canon;
-  producers_index_t n_canon = 0;
   tf::intersect::graph::canonicalize_plane_edge_defs<producers_index_t>(
-      defs, def_offsets, n_canon, emission_to_canon);
+      defs, def_offsets, emission_to_canon);
+  const auto n_canon =
+      def_offsets.size() == 0
+          ? producers_index_t(0)
+          : producers_index_t(def_offsets.size()) - producers_index_t(1);
   const auto edges = mesh_edges(polygons);
   CHECK(std::size_t(n_canon) == edges.size());
 

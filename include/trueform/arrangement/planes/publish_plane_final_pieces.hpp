@@ -13,15 +13,11 @@
 #pragma once
 
 #include "../../core/buffer.hpp"
-#include "../../core/offset_block_buffer.hpp"
-#include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "./finalize_plane_piece_tickets.hpp"
 #include "./make_plane_final_piece_definitions.hpp"
+#include "./plane_arrangement_store.hpp"
 #include "./plane_tier_definitions.hpp"
-
-#include <array>
-#include <cstddef>
 
 namespace tf::arrangement {
 
@@ -33,23 +29,18 @@ auto publish_plane_final_pieces(
     const World &world,
     const tf::intersect::graph::plane_tables<Index, Int> &local_tables,
     const tf::buffer<Index> &group_router,
-    const tf::buffer<Index> &plane_ticket,
-    const VertexOffsets &vertex_offsets, Index n_flat,
-    Index immutable_canon_extent,
-    tf::offset_block_buffer<Index,
-                            tf::intersect::graph::plane_edge_def<Index>>
-        &final_piece_definitions,
-    const tf::buffer<std::array<Index, 3>> &triangles,
-    tf::buffer<std::array<Index, 3>> &slot_parents,
-    const tf::buffer<Index> &plane_offsets) -> bool {
+    const tf::buffer<Index> &plane_ticket, const VertexOffsets &vertex_offsets,
+    Index n_flat, Index immutable_canon_extent,
+    plane_arrangement_store<Index> &store) -> bool {
   return make_plane_final_piece_definitions(world, local_tables,
                                             immutable_canon_extent,
-                                            final_piece_definitions) &&
+                                            store.final_piece_definitions) &&
          finalize_plane_piece_tickets(
              world, local_tables,
              make_plane_tier_definitions(world.tables(), local_tables, true),
              group_router, plane_ticket, vertex_offsets, n_flat,
-             immutable_canon_extent, triangles, slot_parents, plane_offsets);
+             immutable_canon_extent, store.triangles, store.slot_parents,
+             store.plane_offsets);
 }
 
 } // namespace tf::arrangement

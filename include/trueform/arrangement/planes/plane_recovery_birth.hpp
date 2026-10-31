@@ -16,7 +16,9 @@
 #include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "../../intersect/graph/plane_def_respan.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_identity_collapse.hpp"
 #include "../../intersect/graph/plane_identity_names.hpp"
@@ -24,7 +26,6 @@
 #include "tbb/parallel_sort.h"
 
 #include <algorithm>
-#include <cassert>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -116,11 +117,12 @@ auto plane_recovery_flat_edge_key(
 /// are ordered once in piece/parameter order for respan.
 ///
 /// `parameters_in_name_frame` says the proposals speak THE FRAME LAW — the
-/// name's frame — so an inverted definition's cuts order by the mirrored
-/// parameter and the chain the respan builds, `[point_0, cuts..., point_1]`,
-/// stays the definition's own. The identities are untouched; only their order
-/// on one edge is. A producer that binds its parameter to the edge instead of
-/// the name passes false.
+/// name's frame, read off the definition the statement saw — while the chain
+/// the respan builds, `[point_0, cuts..., point_1]`, runs the definition as
+/// `merges` restates it, so a cut orders by the mirrored parameter exactly
+/// when the name's start is not the restated `point_0`. The identities are
+/// untouched; only their order on one edge is. A producer that binds its
+/// parameter to the edge instead of the name passes false.
 template <typename Index, typename Param, typename Graph, typename Tables,
           typename VertexOffsets>
 auto order_plane_recovery_splits(
@@ -184,15 +186,28 @@ auto order_plane_recovery_splits(
           // would lose, and it cannot exist. The census keeps counting
           // it so a release build still states the loss it would
           // otherwise take in silence.
-          assert(proposal.parameter > Param(0) && proposal.parameter < whole);
+          if constexpr (tf::core::verification)
+            tf::core::verify(proposal.parameter > Param(0) &&
+                                 proposal.parameter < whole,
+                             "a recovery proposal lies inside its root");
           if (proposal.parameter <= Param(0) || proposal.parameter >= whole) {
             verdict[i] = verdict_out_of_span;
             continue;
           }
-          const bool mirrored =
-              parameters_in_name_frame &&
+          auto restated = def;
+          tf::intersect::graph::plane_piece_def(
+              restated, {Index(ends.lo_tag), ends.lo_id},
+              {Index(ends.hi_tag), ends.hi_id}, def, Index(1));
+          const bool name_from_hi =
               plane_recovery_flat_edge_inverted(plane_recovery_flat_edge_ends(
                   def, n_flat, vertex_offsets));
+          const std::array<Index, 2> name_start =
+              name_from_hi ? std::array<Index, 2>{Index(ends.hi_tag), ends.hi_id}
+                           : std::array<Index, 2>{Index(ends.lo_tag), ends.lo_id};
+          const bool mirrored =
+              parameters_in_name_frame &&
+              name_start != std::array<Index, 2>{Index(restated.point_tag_0),
+                                                 restated.point_0};
           cuts[i] = {proposal.tier, proposal.root,
                      mirrored ? Param(whole - proposal.parameter)
                               : proposal.parameter,

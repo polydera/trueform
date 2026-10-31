@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
@@ -20,29 +21,68 @@
 #include "./make_plane_arrangement_cells.hpp"
 #include "./make_plane_piece_incidence.hpp"
 #include "./plane_arrangement.hpp"
+#include "./plane_arrangement_face.hpp"
 #include <algorithm>
 #include <cstddef>
 
 namespace tf::arrangement {
 
-/// Do the cells this piece bounds carry different depths?
+/// What a cell's covering states when crossed: one entry per covering
+/// member, its form tag and its winding against the carrier.
+template <typename Index> struct plane_piece_crossing_entry {
+  Index cell;
+  Index tag;
+  Index winding;
+};
+
+/// Do the cells this piece bounds carry different depths that are not one
+/// crossing?
 ///
 /// The rows arrive one per member covering the cell, so a cell's run length
-/// IS its depth and a border between depths is a run length change.
+/// IS its depth, and a cell's crossing is the net winding of every tag
+/// covering it — a fold's layers cancel, a second form's wall counts once.
+/// A border between depths stands only where the crossing changes with it:
+/// a pleat two or six sheets deep is the ground it folds out of. Equal
+/// depths are ground continuing, whatever their windings, as they always
+/// were.
 template <typename Index>
-auto plane_piece_depth_varies(tf::buffer<Index> &cells) -> bool {
-  if (cells.size() == 0)
+auto plane_piece_depth_varies(
+    tf::buffer<plane_piece_crossing_entry<Index>> &entries) -> bool {
+  if (entries.size() == 0)
     return false;
-  std::sort(cells.begin(), cells.end());
-  std::size_t reference = 1;
-  while (reference < cells.size() && cells[reference] == cells[0])
-    ++reference;
-  for (std::size_t at = reference; at < cells.size();) {
-    std::size_t end = at + 1;
-    while (end < cells.size() && cells[end] == cells[at])
+  std::sort(entries.begin(), entries.end(),
+            [](const auto &a, const auto &b) {
+              return a.cell != b.cell ? a.cell < b.cell : a.tag < b.tag;
+            });
+  std::size_t reference_end = 0;
+  while (reference_end < entries.size() &&
+         entries[reference_end].cell == entries[0].cell)
+    ++reference_end;
+  const auto next_layer = [&](std::size_t at, std::size_t end, Index &tag,
+                              Index &sum) {
+    tag = entries[at].tag;
+    sum = Index(0);
+    while (at < end && entries[at].tag == tag)
+      sum += entries[at++].winding;
+    return at;
+  };
+  for (std::size_t at = reference_end; at < entries.size();) {
+    std::size_t end = at;
+    while (end < entries.size() && entries[end].cell == entries[at].cell)
       ++end;
-    if (end - at != reference)
-      return true;
+    if (end - at != reference_end) {
+      // the depth changed: a border unless the net layers are the same
+      std::size_t r = 0, c = at;
+      bool same = true;
+      while (same && r < reference_end && c < end) {
+        Index rt, rs, ct, cs;
+        r = next_layer(r, reference_end, rt, rs);
+        c = next_layer(c, end, ct, cs);
+        same = rt == ct && rs == cs;
+      }
+      if (!same || r != reference_end || c != end)
+        return true;
+    }
     at = end;
   }
   return false;
@@ -76,9 +116,12 @@ struct plane_piece_fences {
 /// The last fences quietly — no fan stands there. A border between DEPTHS:
 /// the number of sheets covering the ground changes across the piece — the
 /// one fact the live count cannot carry, since it is the dead members that
-/// differ. Equal depth is ground continuing, and continuing ground is
-/// CROSSABLE — what the component flood may join. A piece no cell names is
-/// dead and fences nothing.
+/// differ — and the crossing changes with it, the net winding per form of
+/// those sheets. A fold's own layers cancel, so a pleat two or six sheets
+/// deep is the same ground as the wall it folds out of and no border. Equal
+/// depth is ground continuing, and continuing ground is CROSSABLE — what the
+/// component flood may join. A piece no cell names is dead and fences
+/// nothing.
 template <typename Index, typename Int, typename Immutable>
 auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
                              const Immutable &immutable,
@@ -92,8 +135,20 @@ auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
   fences.fan.allocate(n_pieces);
   fences.crossable.allocate(n_pieces);
   const auto coplanar_of = arrangement.coplanar_of();
+  // the face of every row, so a covering member states its tag and winding
+  tf::buffer<Index> face_of_row;
+  face_of_row.allocate(arrangement.triangles().size());
+  tf::parallel_fill(face_of_row, Index(-1));
+  tf::parallel_for_each(
+      tf::make_sequence_range(arrangement.n_faces()),
+      [&](Index face) {
+        const auto range = arrangement.face_range(face);
+        for (auto row = range[0]; row < range[1]; ++row)
+          face_of_row[std::size_t(row)] = face;
+      },
+      tf::checked);
   struct local_t {
-    tf::buffer<Index> depth_cells;
+    tf::buffer<plane_piece_crossing_entry<Index>> entries;
   };
   tf::parallel_for_each(
       tf::make_sequence_range(arrangement.final_piece_ticket_extent()),
@@ -106,9 +161,9 @@ auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
         }
         // one row per live occurrence is the degree; one triangle naming
         // this piece from two slots is still ONE covering member, and the
-        // incidence fills a piece's rows triangle-ascending, so the depth's
-        // repeat is the previous row's triangle
-        local.depth_cells.clear();
+        // incidence fills a piece's rows triangle-ascending, so the
+        // depth's repeat is the previous row's triangle
+        local.entries.clear();
         Index live = 0;
         Index previous = Index(-1);
         for (const auto row : rows) {
@@ -117,7 +172,14 @@ auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
           if (triangle == previous)
             continue;
           previous = triangle;
-          local.depth_cells.push_back(cells.cell_of[std::size_t(triangle)]);
+          const auto face = face_of_row[std::size_t(triangle)];
+          local.entries.push_back(
+              {cells.cell_of[std::size_t(triangle)],
+               Index(plane_arrangement_face_descriptor(arrangement, immutable,
+                                                       face)
+                         .tag),
+               Index(plane_arrangement_face_orientation(arrangement,
+                                                        immutable, face))});
         }
         if (live > Index(2)) {
           fences.fan[std::size_t(piece)] = char(1);
@@ -136,7 +198,7 @@ auto make_plane_piece_fences(const plane_arrangement<Index, Int> &arrangement,
         }
         fences.fan[std::size_t(piece)] = char(0);
         fences.crossable[std::size_t(piece)] =
-            char(!plane_piece_depth_varies(local.depth_cells));
+            char(!plane_piece_depth_varies(local.entries));
       },
       local_t{}, tf::checked);
   return fences;

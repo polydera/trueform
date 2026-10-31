@@ -96,7 +96,6 @@ auto fill_tables(tf::intersect::graph::plane_tables<Index, Int> &tables,
     tables.edges().offsets_buffer().push_back(Index(offset));
   for (const auto row : block_rows)
     tables.edges().data_buffer().push_back(Index(row));
-  tables.n_canon() = Index(def_offsets.size()) - Index(1);
 }
 
 template <typename Index>
@@ -183,7 +182,6 @@ auto make_two_loser_world(std::size_t inert_groups)
                                            int(at % std::size_t(30000)), 0));
     world.def_offsets().push_back(Index(world.defs().size()));
   }
-  world.n_canon() = Index(4 + inert_groups);
   world.edges().offsets_buffer().push_back(Index(0));
   world.edges().data_buffer().push_back(Index(2));
   world.edges().offsets_buffer().push_back(Index(1));

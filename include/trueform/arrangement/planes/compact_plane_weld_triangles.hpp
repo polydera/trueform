@@ -15,10 +15,10 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../topology/topo_id.hpp"
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 
@@ -72,8 +72,11 @@ auto compact_plane_weld_triangles(
         const auto descriptor = coplanar_link(triangle);
         if (keep && descriptor != Index(-1)) {
           const auto survivor = coplanar[std::size_t(descriptor)].survivor;
-          assert(nondegenerate[triangle] ==
-                 nondegenerate[std::size_t(survivor)]);
+          if constexpr (tf::core::verification)
+            tf::core::verify(nondegenerate[triangle] ==
+                                 nondegenerate[std::size_t(survivor)],
+                             "a coplanar duplicate degenerates with its "
+                             "survivor");
           keep = nondegenerate[std::size_t(survivor)] != 0;
         }
         triangle_prefix[triangle + 1] = keep ? Index(1) : Index(0);
@@ -142,8 +145,10 @@ auto compact_plane_weld_triangles(
         const auto out_descriptor = dead_prefix[triangle];
         final_coplanar_of[out] = out_descriptor;
         auto value = coplanar[std::size_t(descriptor)];
-        assert(triangle_prefix[std::size_t(value.survivor)] !=
-               triangle_prefix[std::size_t(value.survivor) + 1]);
+        if constexpr (tf::core::verification)
+          tf::core::verify(triangle_prefix[std::size_t(value.survivor)] !=
+                               triangle_prefix[std::size_t(value.survivor) + 1],
+                           "a stack's survivor outlives the compaction");
         value.survivor = triangle_prefix[std::size_t(value.survivor)];
         final_coplanar[std::size_t(out_descriptor)] = value;
       },

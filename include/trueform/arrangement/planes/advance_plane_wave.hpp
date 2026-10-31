@@ -26,10 +26,13 @@
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../exact/meta.hpp"
+#include "../../exact/vertex.hpp"
 #include "../../intersect/graph/flat_of_vertex.hpp"
+#include "../../intersect/graph/near_identity_rows.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_identity_collapse.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
+#include "../identity/identity_substrate.hpp"
 #include "./canonicalize_plane_wave.hpp"
 #include "./close_plane_recovery_births.hpp"
 #include "./close_plane_recovery_identities.hpp"
@@ -39,11 +42,11 @@
 #include "./plane_arrangement_census.hpp"
 #include "./plane_diff.hpp"
 #include "./plane_recovery_birth.hpp"
-#include "./plane_recovery_name.hpp"
 #include "./plane_round_evidence.hpp"
 #include "./port_plane_diff.hpp"
 #include "./promote_plane_collision_carriers.hpp"
 #include "./propose_plane_split_pieces.hpp"
+#include "./resolve_standing_plane_names.hpp"
 #include "./weld_local_plane_rows.hpp"
 #include "tbb/parallel_sort.h"
 
@@ -106,7 +109,9 @@ enum class plane_wave_result {
 /// next round, against the promoted tables.
 ///
 /// The wave's identity and census facts are the wave's until every seam of
-/// it validates; they join this arrangement in one place, last.
+/// it validates; they join this arrangement in one place, last — the near
+/// table its position sort states at `near_window` among them (@ref
+/// close_plane_recovery_identities), appended to `near_rows`.
 template <typename Index, typename Int, typename World, typename VertexOffsets,
           typename ExactPoint, typename NamePoint,
           typename StateEntrance = tf::none_t>
@@ -114,13 +119,13 @@ auto advance_plane_wave(
     const World &world, plane_round_evidence<Index, Int> &evidence,
     tf::intersect::graph::plane_tables<Index, Int> &local_tables,
     tf::buffer<Index> &plane_ticket, tf::buffer<Index> &group_router,
-    tf::buffer<std::array<Index, 3>> &merges, tf::buffer<Index> &created_class,
-    tf::buffer<typename tf::exact::meta<Int>::param_type> &class_t,
-    tf::buffer<plane_recovery_name<
-        Index, typename tf::exact::meta<Int>::param_type>> &class_name,
+    identity_substrate<Index, Int> &identities,
     const VertexOffsets &vertex_offsets, Index n_flat, Index base_created,
     const ExactPoint &exact_point, const NamePoint &name_point,
     plane_arrangement_census &census, tf::buffer<Index> &frontier,
+    Int near_window,
+    tf::intersect::graph::near_identity_rows<Index, tf::exact::pt3<Int>>
+        &near_rows,
     const StateEntrance &state_entrance = tf::none) -> plane_wave_result {
   using param_t = typename tf::exact::meta<Int>::param_type;
   using def_t = tf::intersect::graph::plane_edge_def<Index>;
@@ -191,8 +196,12 @@ auto advance_plane_wave(
         delta_class_id[cls] = feature[0] == Index(0) ? feature[1] : Index(-1);
       },
       tf::checked);
-  const auto class_base = Index(class_t.size());
-  const auto created_base = Index(created_class.size());
+  resolve_standing_plane_names(delta, delta_offsets, n_delta,
+                               identities.plane_class_names(),
+                               identities.plane_created_classes(),
+                               identities.plane_merges(), base_created,
+                               delta_class_id);
+  const auto created_base = identities.n_plane_created();
   // The created extent before this wave's own mints, stated once. A cut at
   // or above it is an identity this wave minted, and a fresh identity
   // appears in no standing row, so the canonicalize sweeps only for the
@@ -201,15 +210,18 @@ auto advance_plane_wave(
   const auto created_mint_base = base_created + created_base;
   tf::buffer<Index> delta_created_class;
   tf::buffer<std::array<Index, 3>> delta_merges;
+  tf::intersect::graph::near_identity_rows<Index, tf::exact::pt3<Int>>
+      delta_near;
   const auto class_point = [&](Index cls) {
     return name_point(delta_class_t[std::size_t(cls)],
                       delta[std::size_t(delta_offsets[std::size_t(cls)])].name);
   };
   close_plane_recovery_identities(
       exact_point, class_point, vertex_offsets, delta, delta_offsets, n_delta,
-      base_created, n_flat, delta_class_id, delta_created_class,
-      evidence.welds, merges, delta_merges, candidate_points, topology_offsets,
-      proposal_ends, created_class, created_base);
+      base_created, n_flat, delta_class_id, delta_created_class, evidence.welds,
+      identities.plane_merges(), delta_merges, candidate_points,
+      topology_offsets, proposal_ends, identities.plane_created_classes(),
+      created_base, near_window, delta_near);
 
   // A proposal reads the identity of its own class: the two carriers were
   // stated in one breath and closed on one key, so class position is the
@@ -224,7 +236,7 @@ auto advance_plane_wave(
 
   // The wave's table: the standing rewrites plus its own, closed once, so
   // one search answers what any identity of this arrangement speaks now.
-  tf::buffer<std::array<Index, 3>> wave_merges = merges;
+  tf::buffer<std::array<Index, 3>> wave_merges = identities.plane_merges();
   tf::core::append(delta_merges, wave_merges);
   tf::intersect::graph::close_plane_merges<Index>(wave_merges);
   // The retired delta — the wave's own changed set, flat and ascending by
@@ -440,26 +452,14 @@ auto advance_plane_wave(
                                    : Index(delta_offsets.size()) - Index(1);
   delta_class_t.reallocate_and_initialize(std::size_t(n_delta_classes),
                                           param_t(0));
-  class_t.reallocate(std::size_t(class_base) + std::size_t(n_delta_classes));
-  class_name.reallocate(std::size_t(class_base) + std::size_t(n_delta_classes));
-  tf::parallel_for_each(
-      tf::make_sequence_range(std::size_t(n_delta_classes)),
+  identities.mint_plane_classes(
+      delta_class_t,
       [&](std::size_t cls) {
-        class_t[std::size_t(class_base) + cls] = delta_class_t[cls];
-        class_name[std::size_t(class_base) + cls] =
-            delta[std::size_t(delta_offsets[cls])].name;
+        return delta[std::size_t(delta_offsets[cls])].name;
       },
-      tf::checked);
-  const auto created_write = created_class.size();
-  created_class.reallocate(created_write + delta_created_class.size());
-  tf::parallel_for_each(
-      tf::make_sequence_range(delta_created_class.size()),
-      [&](std::size_t at) {
-        created_class[created_write + at] =
-            delta_created_class[at] + class_base;
-      },
-      tf::checked);
-  merges = std::move(wave_merges);
+      delta_created_class);
+  identities.weld_plane(std::move(wave_merges));
+  near_rows.append(delta_near);
   census.splits += split_data.size();
   census.splits_out_of_span += out_of_span;
   census.splits_on_endpoint += on_endpoint;

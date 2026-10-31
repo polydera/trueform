@@ -37,6 +37,10 @@
  * axis its own frame drops, where a projection that was not its own would
  * merge distinct lattice points into one identity.
  *
+ * A REFINED PROMOTION SEATS BY NAME: a face the refinement promotes whose
+ * name a standing plane holds joins that plane as one more member, and no
+ * plane past the world's holds a name another plane holds.
+ *
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
@@ -46,16 +50,19 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
+#include <trueform/arrangement/planes/plane_arrangement.hpp>
+#include <trueform/arrangement/planes/plane_arrangement_face.hpp>
+#include <trueform/arrangement/planes/plane_recovery_birth.hpp>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/point.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/range.hpp>
-#include <trueform/arrangement/planes/plane_arrangement.hpp>
-#include <trueform/arrangement/planes/plane_recovery_birth.hpp>
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/int64.hpp>
 #include <trueform/geometry/make_box_mesh.hpp>
 #include <trueform/intersect/graph/local_arrangement.hpp>
+#include <trueform/intersect/graph/name_plane_carriers.hpp>
 #include <trueform/intersect/intersect_config.hpp>
 #include <trueform/intersect/polygon_intersections.hpp>
 #include <trueform/topology/cdt_refine_config.hpp>
@@ -280,10 +287,8 @@ auto evaluate(const World &world, const VertexOffsets &vertex_offsets,
                std::to_string(key[1]) + "}");
         continue;
       }
-      const auto plane =
-          definition.face < world.n_faces()
-              ? world.plane_of_face(definition.face)
-              : world.n_planes() + (definition.face - world.n_faces());
+      const auto plane = tf::arrangement::plane_arrangement_face_plane(
+          product, world, definition.face);
       const auto carried = std::lower_bound(observed.begin(), observed.end(),
                                             incidence_t{ticket, plane, 0});
       if (bounds_area(plane) &&
@@ -453,17 +458,24 @@ template <typename Int, typename Real> auto build_scene() -> scene_state_t {
   tf::arrangement::plane_arrangement<laws_index_t, Int> refined;
   tf::arrangement::plane_arrangement<laws_index_t, Int> null_refined;
   tf::intersect::graph::local_arrangement<laws_index_t, Real, Int> world;
-  world.build(std::move(intersections), get_original, apply_to_face,
-              apply_to_form, tf::make_range(face_offsets), false, false);
+  tf::arrangement::identity_substrate<laws_index_t, Int> stock_identities;
+  world.build(stock_identities, std::move(intersections), get_original,
+              apply_to_face, apply_to_form, tf::make_range(face_offsets), false,
+              false);
+  // each arm states its own plane tables over the one world's
+  auto refined_identities = stock_identities;
+  auto null_refined_identities = stock_identities;
   // the piece each slot publishes is what these laws read
   stock.record_triangle_arrangement();
   refined.record_triangle_arrangement();
   null_refined.record_triangle_arrangement();
-  stock.build(world, get_original);
-  refined.build_refined(world, get_original, apply_to_form, quality);
-  null_refined.build_refined(world, get_original, apply_to_form, nothing);
+  stock.build(world, stock_identities, get_original);
+  refined.build_refined(world, refined_identities, get_original, apply_to_form,
+                        quality);
+  null_refined.build_refined(world, null_refined_identities, get_original,
+                             apply_to_form, nothing);
 
-  const auto read_arm = [&](const auto &product) {
+  const auto read_arm = [&](const auto &product, const auto &identities) {
     arm_state_t arm;
     arm.report = evaluate(world, world.vertex_offsets(), product);
     arm.dropped = evaluate(world, world.vertex_offsets(), product,
@@ -473,12 +485,12 @@ template <typename Int, typename Real> auto build_scene() -> scene_state_t {
     arm.records = records_of(product);
     arm.failed = product.failed().size();
     arm.triangles = product.triangles().size();
-    arm.created = product.census().created;
+    arm.created = std::size_t(identities.n_plane_created());
     return arm;
   };
   scene_state_t state;
-  state.stock = read_arm(stock);
-  state.refined = read_arm(refined);
+  state.stock = read_arm(stock, stock_identities);
+  state.refined = read_arm(refined, refined_identities);
   state.null_refined_records = records_of(null_refined);
   return state;
 }
@@ -501,14 +513,16 @@ auto check_hand_built_laws(tf::test::plane_hand_world<Int> fixture,
   config.min_quality = 0.3f;
   config.split_encroached = true;
   tf::arrangement::plane_arrangement<laws_index_t, Int> product;
+  tf::arrangement::identity_substrate<laws_index_t, Int> identities;
   product.record_triangle_arrangement();
   if (refined)
-    product.build_refined(fixture.input, laws_index_t(fixture.created.size()),
-                          get_base, get_original, fixture.vertex_offsets,
-                          config);
+    product.build_refined(fixture.input, identities,
+                          laws_index_t(fixture.created.size()), get_base,
+                          get_original, fixture.vertex_offsets, config);
   else
-    product.build(fixture.input, laws_index_t(fixture.created.size()), get_base,
-                  get_original, fixture.vertex_offsets);
+    product.build(fixture.input, identities,
+                  laws_index_t(fixture.created.size()), get_base, get_original,
+                  fixture.vertex_offsets);
   CHECK(product.failed().size() == 0);
   return evaluate(fixture.input, fixture.vertex_offsets, product);
 }
@@ -540,6 +554,118 @@ auto carrier_identities(const World &world, const VertexOffsets &vertex_offsets,
   return ids;
 }
 
+/// What the seating scene answers: the laws on its refined product, and the
+/// promotion as the published surface states it.
+struct seating_scene_t {
+  oracle_report_t report;
+  std::size_t failed = 0;
+  laws_index_t top_plane = -1;
+  laws_index_t world_planes = 0;
+  laws_index_t product_planes = 0;
+  laws_index_t named_planes = 0;
+  laws_index_t top_world_members = 0;
+  laws_index_t top_members = 0;
+  laws_index_t neighbor_face = -1;
+  laws_index_t neighbor_plane = -1;
+  bool neighbor_named_as_top = false;
+  std::size_t promoted = 0;
+  std::size_t equal_name_pairs = 0;
+};
+
+/// A 2x2x2 box whose top z = 1 is the two triangles 0 and 1 across the
+/// diagonal 4 -> 7, pierced inside triangle 0 alone by a small box. Only
+/// triangle 0 is cut, so the top plane stands with it as its one member;
+/// every corner of the cut lies inside the diagonal's diametral circle, so
+/// the refinement splits the diagonal and promotes triangle 1, whose name is
+/// the top plane's.
+template <typename Int, typename Real> auto build_seating_scene() {
+  auto pierce = tf::make_box_mesh<laws_index_t, Real>(Real(0.4), Real(0.4),
+                                                      Real(0.4));
+  for (auto &&point : pierce.points_buffer()) {
+    point[0] += Real(0.4);
+    point[1] -= Real(0.4);
+    point[2] += Real(1);
+  }
+  tf::test::tagged_operand<laws_index_t, Real> first(
+      tf::make_box_mesh<laws_index_t, Real>(Real(2), Real(2), Real(2)));
+  tf::test::tagged_operand<laws_index_t, Real> second(std::move(pierce));
+  using form_t = decltype(first.form());
+  std::array<form_t, 2> forms{{first.form(), second.form()}};
+  const auto range = tf::make_range(forms.data(), forms.data() + forms.size());
+
+  tf::polygon_intersections<laws_index_t, Real, Int> intersections;
+  intersections.with_edge_splits(false);
+  const auto lattice = tf::test::input_lattice_for(range, 0.0);
+  intersections.build(
+      range, lattice,
+      tf::intersect_config{tf::intersect_mode::primitives, 0.0});
+  const auto converter = lattice.converter();
+  const auto get_original =
+      [&, converter](int tag, laws_index_t point) -> tf::point<Int, 3> {
+    return converter.convert(forms[std::size_t(tag)].points()[point]);
+  };
+  const auto apply_to_face = [&](int tag, laws_index_t face,
+                                 const auto &apply) {
+    apply(forms[std::size_t(tag)].faces()[face]);
+  };
+  const auto apply_to_form = [&](laws_index_t tag, const auto &apply) {
+    apply(forms[std::size_t(tag)]);
+  };
+  tf::buffer<laws_index_t> face_offsets;
+  face_offsets.allocate(forms.size() + 1);
+  face_offsets[0] = 0;
+  for (std::size_t tag = 0; tag < forms.size(); ++tag)
+    face_offsets[tag + 1] =
+        face_offsets[tag] + laws_index_t(forms[tag].faces().size());
+
+  tf::intersect::graph::local_arrangement<laws_index_t, Real, Int> world;
+  tf::arrangement::identity_substrate<laws_index_t, Int> identities;
+  world.build(identities, std::move(intersections), get_original, apply_to_face,
+              apply_to_form, tf::make_range(face_offsets), false, false);
+  tf::cdt_refine_config quality;
+  quality.min_quality = 0.3f;
+  quality.split_encroached = true;
+  tf::arrangement::plane_arrangement<laws_index_t, Int> product;
+  product.record_triangle_arrangement();
+  product.build_refined(world, identities, get_original, apply_to_form,
+                        quality);
+
+  seating_scene_t scene;
+  scene.report = evaluate(world, world.vertex_offsets(), product);
+  scene.failed = product.failed().size();
+  scene.world_planes = world.n_planes();
+  scene.product_planes = product.n_planes();
+  for (laws_index_t face = 0; face < world.n_faces(); ++face)
+    if (world.descriptor(face).tag == 0 && world.descriptor(face).object == 0)
+      scene.top_plane = world.plane_of_face(face);
+  if (scene.top_plane == laws_index_t(-1))
+    return scene;
+  scene.top_world_members = world.member_count(scene.top_plane);
+  scene.top_members = tf::arrangement::plane_arrangement_member_count(
+      product, world, scene.top_plane);
+
+  const auto descriptors = product.promoted_descriptors();
+  scene.promoted = descriptors.size();
+  for (std::size_t at = 0; at < descriptors.size(); ++at)
+    if (descriptors[at].tag == 0 && descriptors[at].object == 1)
+      scene.neighbor_face = product.n_base_faces() + laws_index_t(at);
+  if (scene.neighbor_face != laws_index_t(-1)) {
+    scene.neighbor_plane = tf::arrangement::plane_arrangement_face_plane(
+        product, world, scene.neighbor_face);
+    scene.neighbor_named_as_top =
+        tf::intersect::graph::name_plane_face<laws_index_t, Int>(
+            laws_index_t(0), laws_index_t(1), apply_to_form, get_original) ==
+        identities.plane_name(scene.top_plane);
+  }
+
+  const auto names = identities.plane_names();
+  scene.named_planes = laws_index_t(names.size());
+  for (std::size_t a = 0; a < names.size(); ++a)
+    for (std::size_t b = a + 1; b < names.size(); ++b)
+      scene.equal_name_pairs += std::size_t(names[a] == names[b]);
+  return scene;
+}
+
 } // namespace
 
 TEMPLATE_TEST_CASE("plane arrangement: a line carrier states its facts",
@@ -559,13 +685,15 @@ TEMPLATE_TEST_CASE("plane arrangement: a line carrier states its facts",
   config.min_quality = 0.3f;
   config.split_encroached = true;
   tf::arrangement::plane_arrangement<laws_index_t, Int> product;
+  tf::arrangement::identity_substrate<laws_index_t, Int> identities;
   product.record_triangle_arrangement();
   if (refined)
-    product.build_refined(fixture.input, laws_index_t(0), get_original,
-                          get_original, fixture.vertex_offsets, config);
+    product.build_refined(fixture.input, identities, laws_index_t(0),
+                          get_original, get_original, fixture.vertex_offsets,
+                          config);
   else
-    product.build(fixture.input, laws_index_t(0), get_original, get_original,
-                  fixture.vertex_offsets);
+    product.build(fixture.input, identities, laws_index_t(0), get_original,
+                  get_original, fixture.vertex_offsets);
 
   // the line carrier bounds no area, so it emits nothing — and it refuses
   // its way to the landing that splits the span it shares with the area
@@ -619,19 +747,20 @@ TEMPLATE_TEST_CASE("plane arrangement: a stated split is not stated twice",
       return fixture.points[std::size_t(point)];
     };
     tf::arrangement::plane_arrangement<laws_index_t, Int> product;
+    tf::arrangement::identity_substrate<laws_index_t, Int> identities;
     product.record_triangle_arrangement();
-    product.build(fixture.input, laws_index_t(0), get_original, get_original,
-                  fixture.vertex_offsets);
-    return product;
+    product.build(fixture.input, identities, laws_index_t(0), get_original,
+                  get_original, fixture.vertex_offsets);
+    return std::make_pair(std::move(product), std::move(identities));
   };
 
-  const auto answered = build(stated);
+  const auto [answered, answered_identities] = build(stated);
   const auto &census = answered.census();
   CHECK(census.rounds == 1);
   CHECK(census.refusals == 0);
   CHECK(census.landings == 0);
   CHECK(census.splits == 0);
-  CHECK(census.created == 0);
+  CHECK(answered_identities.n_plane_created() == 0);
   CHECK(answered.failed().size() == 0);
   const auto area = answered.plane_range(0);
   const auto line = answered.plane_range(1);
@@ -644,7 +773,7 @@ TEMPLATE_TEST_CASE("plane arrangement: a stated split is not stated twice",
     for (std::size_t corner = 0; corner < 3; ++corner)
       CHECK(triangles[std::size_t(row)][corner] < answered.n_flat_points());
 
-  const auto found = build(unstated);
+  const auto found = build(unstated).first;
   CHECK(found.census().rounds != 1);
   CHECK(found.census().refusals != 0);
   CHECK(found.census().splits != 0);
@@ -732,4 +861,30 @@ TEMPLATE_TEST_CASE("plane arrangement: a null refinement is the stock product",
   const auto scene = build_scene<Int, Real>();
   REQUIRE(scene.stock.records.size() != 0);
   REQUIRE(scene.stock.records == scene.null_refined_records);
+}
+
+TEMPLATE_TEST_CASE("plane arrangement: a refined promotion seats by name",
+                   "[cut][planes][laws]", tf::exact::int32, tf::exact::int64) {
+  using Int = TestType;
+  using Real = typename laws_real_of<Int>::type;
+
+  const auto scene = build_seating_scene<Int, Real>();
+  REQUIRE(scene.failed == 0);
+  // the premise: the top plane stands with the cut triangle alone, and the
+  // refinement promoted its uncut neighbour, whose name is the top plane's
+  REQUIRE(scene.top_plane != laws_index_t(-1));
+  REQUIRE(scene.top_world_members == 1);
+  REQUIRE(scene.neighbor_face != laws_index_t(-1));
+  REQUIRE(scene.neighbor_named_as_top);
+  // every plane either tier holds is named once
+  REQUIRE(scene.named_planes == scene.product_planes);
+
+  // THE SEATING LAW: the neighbour joins the standing plane as one more
+  // member, and no plane the promotion founded repeats a standing name
+  CHECK(scene.neighbor_plane == scene.top_plane);
+  CHECK(scene.top_members == scene.top_world_members + 1);
+  CHECK(scene.equal_name_pairs == 0);
+  // the faces whose names no plane holds found planes past the world's
+  CHECK(scene.product_planes > scene.world_planes);
+  check_laws(scene.report);
 }

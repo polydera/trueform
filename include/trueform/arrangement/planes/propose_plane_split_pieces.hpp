@@ -12,9 +12,9 @@
  */
 #pragma once
 
+#include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/algorithm/parallel_contains.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
-#include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
 #include "../../core/range.hpp"
@@ -22,6 +22,7 @@
 #include "../../intersect/graph/plane_def_respan.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
+#include "tbb/parallel_sort.h"
 
 #include <algorithm>
 #include <array>
@@ -130,24 +131,17 @@ auto propose_plane_split_pieces(
           },
           tf::checked))
     return false;
-  // the carriers are a SET over the dense plane space: the mask states
-  // membership and the compaction states it ascending
-  tf::buffer<char> carries;
-  carries.allocate_and_initialize(plane_ticket.size(), char(0));
-  tf::parallel_for_each(
-      tf::make_range(split_parents),
-      [&](Index parent) {
+  // the carriers are a set the parents' instances name, ascending
+  tf::generic_generate(
+      tf::make_range(split_parents), carrier_planes,
+      [&](Index parent, tf::buffer<Index> &out) {
         for (const auto &def : local_tables.canon_group(parent))
-          carries[std::size_t(plane_of_face(def.face))] = 1;
+          out.push_back(plane_of_face(def.face));
       },
       tf::checked);
-  tf::sequenced_generate(
-      tf::make_sequence_range(plane_ticket.size()), carrier_planes,
-      [&carries](std::size_t plane, tf::buffer<Index> &out) {
-        if (carries[plane] != 0)
-          out.push_back(Index(plane));
-      },
-      tf::checked);
+  tbb::parallel_sort(carrier_planes.begin(), carrier_planes.end());
+  carrier_planes.erase_till_end(
+      std::unique(carrier_planes.begin(), carrier_planes.end()));
 
   const auto index_extent = std::size_t(std::numeric_limits<Index>::max());
   layout.allocate(n_parents);

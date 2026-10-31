@@ -22,22 +22,28 @@ using dyn_forms = forms_range_t<std::int32_t, float, tf::dynamic_size>;
 } // namespace
 
 template self_arrangement_t<tri>
-build_self_arrangement<tri>(const tri &, tf::arrangement_config);
+build_self_arrangement<tri>(const tri &, tf::arrangement_config,
+                            tf::arrangement::near_identity_request);
 
 template self_arrangement_t<quad>
-build_self_arrangement<quad>(const quad &, tf::arrangement_config);
+build_self_arrangement<quad>(const quad &, tf::arrangement_config,
+                             tf::arrangement::near_identity_request);
 
 template self_arrangement_t<dyn>
-build_self_arrangement<dyn>(const dyn &, tf::arrangement_config);
+build_self_arrangement<dyn>(const dyn &, tf::arrangement_config,
+                            tf::arrangement::near_identity_request);
 
 template range_arrangement_t<tri_forms>
-    build_range_arrangement<tri_forms>(tri_forms, tf::arrangement_config);
+    build_range_arrangement<tri_forms>(tri_forms, tf::arrangement_config,
+                                       tf::arrangement::near_identity_request);
 
 template range_arrangement_t<quad_forms>
-    build_range_arrangement<quad_forms>(quad_forms, tf::arrangement_config);
+    build_range_arrangement<quad_forms>(quad_forms, tf::arrangement_config,
+                                        tf::arrangement::near_identity_request);
 
 template range_arrangement_t<dyn_forms>
-    build_range_arrangement<dyn_forms>(dyn_forms, tf::arrangement_config);
+    build_range_arrangement<dyn_forms>(dyn_forms, tf::arrangement_config,
+                                       tf::arrangement::near_identity_request);
 
 template polygon_arrangements_result_t<tri>
 polygon_arrangements_of<tri>(const tri &, tf::arrangement_config);

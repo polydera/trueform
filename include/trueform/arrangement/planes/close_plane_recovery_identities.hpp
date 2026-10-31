@@ -13,22 +13,25 @@
 #pragma once
 
 #include "../../core/algorithm/parallel_for_each.hpp"
+#include "../../core/algorithm/parallel_transform.hpp"
 #include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../exact/meta.hpp"
 #include "../../exact/tag_of_flat_vertex.hpp"
+#include "../../exact/vertex.hpp"
+#include "../../intersect/graph/elect_identity_components.hpp"
+#include "../../intersect/graph/near_identity_rows.hpp"
 #include "../../intersect/graph/plane_identity_collapse.hpp"
 #include "../../intersect/graph/plane_identity_names.hpp"
-#include "./elect_plane_identity_components.hpp"
 #include "./plane_flat_weld.hpp"
 #include "./plane_recovery_name.hpp"
 #include "./plane_recovery_statement.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <tuple>
@@ -39,11 +42,10 @@ namespace tf::arrangement {
 /// Close one recovery delta's full-3D coincidences and projected CDT
 /// equivalences before assigning any new identity.
 ///
-/// Fresh name classes participate directly in the sparse union. An existing
-/// created identity wins; otherwise one surviving fresh class mints; only an
-/// all-original projected class appends a rootless synthetic class. This keeps
-/// one election authoritative when full-3D collapse and projection closure
-/// join the same classes. `n_existing_created` adds every still-standing
+/// The fresh name classes are candidates of THE ELECTION (@ref
+/// tf::intersect::graph::elect_identity_components), and full-3D collapse and
+/// projection closure both state its relations, so one election closes the
+/// classes either joins. `n_existing_created` adds every still-standing
 /// identity minted by a prior wave to the position records, so a new name
 /// landing on an earlier PA endpoint reuses it instead of minting a
 /// coordinate-equal twin. Retired created identities no longer own their old
@@ -66,8 +68,12 @@ namespace tf::arrangement {
 /// crossable to every fence, which floods two sides of one surface into one
 /// component. A class that already speaks a standing identity states its own
 /// position and never lands.
+///
+/// `near_rows` receives, when `near_window` asks, the near table of the
+/// delta's position sort as one deferred block (@ref
+/// tf::intersect::graph::collapse_plane_identities).
 template <typename Index, typename Param, typename GetPoint,
-          typename ClassPosition, typename VertexOffsets>
+          typename ClassPosition, typename VertexOffsets, typename Int>
 auto close_plane_recovery_identities(
     const GetPoint &get_point, const ClassPosition &class_position,
     const VertexOffsets &vertex_offsets,
@@ -80,10 +86,12 @@ auto close_plane_recovery_identities(
     const tf::buffer<Index> &candidate_points,
     const tf::buffer<Index> &class_end_offsets,
     const tf::buffer<Index> &class_ends,
-    const tf::buffer<Index> &standing_created_class,
-    Index n_existing_created) -> void {
-  using key_t = plane_identity_key<Index>;
-  using relation_t = plane_identity_relation<Index>;
+    const tf::buffer<Index> &standing_created_class, Index n_existing_created,
+    Int near_window,
+    tf::intersect::graph::near_identity_rows<Index, tf::exact::pt3<Int>>
+        &near_rows) -> void {
+  using key_t = tf::intersect::graph::identity_key<Index>;
+  using relation_t = tf::intersect::graph::identity_relation<Index>;
   using point_t = std::decay_t<decltype(get_point(std::int16_t(-1), Index(0)))>;
   struct position_t {
     point_t point;
@@ -92,11 +100,15 @@ auto close_plane_recovery_identities(
 
   const auto class_key = [&](Index cls) -> key_t {
     const auto id = class_id[std::size_t(cls)];
-    return id == Index(-1) ? key_t{Index(1), cls} : key_t{Index(0), id};
+    return id == Index(-1)
+               ? tf::intersect::graph::fresh_identity_key<Index>(cls)
+               : tf::intersect::graph::standing_identity_key<Index>(id);
   };
   const auto key_of_flat = [&](Index flat) -> key_t {
-    return flat < n_flat ? key_t{Index(2), flat}
-                         : key_t{Index(0), flat - n_flat};
+    return flat < n_flat
+               ? tf::intersect::graph::original_identity_key<Index>(flat)
+               : tf::intersect::graph::standing_identity_key<Index>(
+                     Index(flat - n_flat));
   };
   const auto point_of_flat = [&](Index flat) {
     if (flat >= n_flat)
@@ -125,8 +137,9 @@ auto close_plane_recovery_identities(
       [&](std::size_t cls, tf::buffer<relation_t> &out) {
         const auto &name = statements[std::size_t(class_offsets[cls])].name;
         if (name.feature[0] == Index(1))
-          out.push_back(
-              {class_key(Index(cls)), key_t{Index(2), name.feature[1]}});
+          out.push_back({class_key(Index(cls)),
+                         tf::intersect::graph::original_identity_key<Index>(
+                             Index(name.feature[1]))});
       },
       tf::checked);
   tf::parallel_for_each(
@@ -163,7 +176,10 @@ auto close_plane_recovery_identities(
         }
       },
       tf::checked);
-  assert(std::size_t(n_existing_created) <= standing_created_class.size());
+  if constexpr (tf::core::verification)
+    tf::core::verify(
+        std::size_t(n_existing_created) <= standing_created_class.size(),
+        "every standing created identity has a class");
   tf::sequenced_generate(
       tf::make_sequence_range(std::size_t(n_existing_created)), positions,
       [&](std::size_t created, tf::buffer<position_t> &out) {
@@ -174,8 +190,8 @@ auto close_plane_recovery_identities(
         if (tf::intersect::graph::plane_merge_target(standing_merges, Index(1),
                                                       id) != Index(-1))
           return;
-        out.push_back(
-            {get_point(std::int16_t(-1), id), key_t{Index(0), id}});
+        out.push_back({get_point(std::int16_t(-1), id),
+                       tf::intersect::graph::standing_identity_key<Index>(id)});
       },
       tf::checked);
   for (const auto &weld : welds) {
@@ -215,29 +231,28 @@ auto close_plane_recovery_identities(
   for (Index cls = 0; cls < n_classes; ++cls)
     if (class_id[std::size_t(cls)] == Index(-1))
       keys.push_back(class_key(cls));
-  tf::buffer<Index> parent;
-  tf::buffer<Index> target_of_root;
+  tf::buffer<Index> targets;
   created_class.reserve(created_class.size() + std::size_t(n_classes));
-  const auto mint_class = [&](Index cls) {
+  // a coincidence the originals alone state mints a rootless class naming
+  // the smallest of them
+  const auto mint = [&](const key_t &winner) {
+    auto cls = winner[1];
+    if (winner[0] == Index(tf::intersect::graph::original_identity_rank)) {
+      if (class_offsets.size() == 0)
+        class_offsets.push_back(Index(0));
+      cls = Index(class_offsets.size()) - Index(1);
+      statements.push_back(
+          {make_plane_recovery_name<Index, Param>(
+               tf::intersect::graph::plane_vertex_name<Index>(winner[1])),
+           Index(-1), Index(-1), Index(0)});
+      class_offsets.push_back(Index(statements.size()));
+    }
     created_class.push_back(cls);
     return n_points + n_existing_created + Index(created_class.size()) -
            Index(1);
   };
-  const auto mint_original = [&](Index flat) {
-    if (class_offsets.size() == 0)
-      class_offsets.push_back(Index(0));
-    const auto cls = Index(class_offsets.size()) - Index(1);
-    statements.push_back(
-        {make_plane_recovery_name<Index, Param>(
-             tf::intersect::graph::plane_vertex_name<Index>(flat)),
-         Index(-1), Index(-1), Index(0)});
-    class_offsets.push_back(Index(statements.size()));
-    created_class.push_back(cls);
-    return n_points + n_existing_created + Index(created_class.size()) -
-           Index(1);
-  };
-  elect_plane_identity_components(keys, relations, mint_class, mint_original,
-                                  parent, target_of_root, merges);
+  tf::intersect::graph::elect_identity_components(keys, relations, mint,
+                                                  targets, merges);
 
   // The election's answer, read where each kind of class keeps it. An already
   // named class speaks an existing created identity, and what the election did
@@ -258,13 +273,35 @@ auto close_plane_recovery_identities(
       tf::checked);
   tf::parallel_for_each(
       tf::make_sequence_range(keys.size()),
-      [&keys, &parent, &target_of_root, &class_id](std::size_t at) {
+      [&keys, &targets, &class_id](std::size_t at) {
         const auto &key = keys[at];
-        if (key[0] == Index(1))
-          class_id[std::size_t(key[1])] =
-              target_of_root[std::size_t(parent[at])];
+        if (key[0] == Index(tf::intersect::graph::fresh_identity_rank))
+          class_id[std::size_t(key[1])] = targets[at];
       },
       tf::checked);
+
+  // the sort joins the table as one block, each class as the identity the
+  // election gave it: the class ids are this wave's, and die with it
+  if (near_window > Int(0)) {
+    using near_row_t = typename tf::intersect::graph::near_identity_rows<
+        Index, tf::exact::pt3<Int>>::row_t;
+    tf::buffer<near_row_t> rows;
+    rows.allocate(positions.size());
+    tf::parallel_transform(
+        positions, rows,
+        [&class_id](const position_t &position) {
+          const auto &key = position.key;
+          const bool fresh =
+              key[0] == Index(tf::intersect::graph::fresh_identity_rank);
+          return near_row_t{
+              position.point,
+              fresh ? Index(tf::intersect::graph::standing_identity_rank)
+                    : key[0],
+              fresh ? class_id[std::size_t(key[1])] : key[1]};
+        },
+        tf::checked);
+    near_rows.append(std::move(rows), Index(0));
+  }
 }
 
 } // namespace tf::arrangement

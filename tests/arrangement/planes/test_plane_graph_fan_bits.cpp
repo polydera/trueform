@@ -32,6 +32,7 @@
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/point.hpp>
 #include <trueform/core/polygons_buffer.hpp>
@@ -177,8 +178,10 @@ auto fan_bits_measure(std::vector<fan_bits_mesh_t<Real>> meshes)
     return converter.convert(forms[std::size_t(tag)].points()[id]);
   };
   tf::intersect::graph::local_arrangement<fan_bits_index_t, Real, Int> world;
-  world.build(std::move(intersections), get_mesh_point, apply_to_face,
-              apply_to_form, tf::make_range(face_offsets), false, false);
+  tf::arrangement::identity_substrate<fan_bits_index_t, Int> identities;
+  world.build(identities, std::move(intersections), get_mesh_point,
+              apply_to_face, apply_to_form, tf::make_range(face_offsets), false,
+              false);
 
   namespace g2 = tf::intersect::graph;
   const auto &graph = world.graph();

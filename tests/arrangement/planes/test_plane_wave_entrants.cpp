@@ -23,6 +23,7 @@
 #include "tagged_operand.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/arrangement/planes/discover_plane_wave_entrants.hpp>
 #include <trueform/arrangement/planes/plane_wave_answered.hpp>
 #include <trueform/arrangement/planes/plane_world.hpp>
@@ -69,6 +70,7 @@ struct scene_t {
   std::vector<std::unique_ptr<operand_t>> operands;
   std::vector<decltype(std::declval<operand_t &>().form())> forms;
   tf::buffer<entrants_index_t> face_offsets;
+  tf::arrangement::identity_substrate<entrants_index_t, int_t> identities;
   tf::intersect::graph::local_arrangement<entrants_index_t, real_t, int_t>
       world;
 
@@ -112,8 +114,9 @@ struct scene_t {
         [this, converter](int tag, entrants_index_t id) -> tf::point<int_t, 3> {
       return converter.convert(forms[std::size_t(tag)].points()[id]);
     };
-    world.build(std::move(intersections), get_mesh_point, apply_to_face(),
-                apply_to_form(), tf::make_range(face_offsets), false, false);
+    world.build(identities, std::move(intersections), get_mesh_point,
+                apply_to_face(), apply_to_form(), tf::make_range(face_offsets),
+                false, false);
   }
 };
 
@@ -182,18 +185,23 @@ TEST_CASE("plane entrants: a retired original brings in the faces its own "
   retired.push_back(scene.world.vertex_offsets()[0] + retired_vertex);
   const tf::buffer<entrants_index_t> no_roots;
 
+  // every face of a build no carve reached is its own source
+  const auto own_side = [&](entrants_index_t face, entrants_index_t side) {
+    return scene.world.source_side(face, side);
+  };
   tf::buffer<entrants_index_t> entrants;
   tf::intersect::graph::discover_uncut_entrants(
       scene.world.graph(), tf::make_range(retired), tf::make_range(no_roots),
       scene.world.vertex_offsets(), face_offsets, scene.apply_to_form(),
-      cut_world_names, entrants);
+      cut_world_names, own_side, entrants);
   REQUIRE(as_vector(entrants) == unnamed_ring(scene, entrants_index_t(0),
                                               retired_vertex, cut_world_names));
 
   // THE WAVE'S MASK answers the same question with its own authority, and a
   // face it has answered for is never offered again — which is what ends the
   // entrance.
-  const auto plane_world = tf::arrangement::make_plane_world(scene.world);
+  const auto plane_world =
+      tf::arrangement::make_plane_world(scene.world, scene.identities);
   tf::arrangement::plane_wave_answered<entrants_index_t> answered;
   const auto wave_names = [&](entrants_index_t tag, entrants_index_t object) {
     return answered.answered(tag, object);
@@ -223,6 +231,6 @@ TEST_CASE("plane entrants: a retired original brings in the faces its own "
   tf::intersect::graph::discover_uncut_entrants(
       scene.world.graph(), tf::make_range(nothing), tf::make_range(no_roots),
       scene.world.vertex_offsets(), face_offsets, scene.apply_to_form(),
-      cut_world_names, empty);
+      cut_world_names, own_side, empty);
   REQUIRE(empty.size() == 0u);
 }

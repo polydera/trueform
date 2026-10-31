@@ -19,7 +19,8 @@ namespace tf::arrangement {
 /// What one plane arrangement counted: the carriers it triangulated, the
 /// product it emitted, the rounds a refusal cost it, and everything the
 /// recovery waves stated. A task-local census sums into the round's, and the
-/// round's into the build's.
+/// round's into the build's; `planes`, `triangles` and `failed_planes` are
+/// the build's own, stated where it holds them and never summed.
 struct plane_arrangement_census {
   std::size_t planes = 0;
   std::size_t stacks = 0;
@@ -32,11 +33,14 @@ struct plane_arrangement_census {
   std::size_t refusals = 0;
   std::size_t crossings = 0;
   std::size_t landings = 0;
-  /// Cut ends the rounding carried across their own face's side, landed on
-  /// it under the rim law.
+  /// Points the rim law landed: a cut end the rounding carried across its
+  /// own face's side, or a face corner it carried across the cut.
   std::size_t rim_landings = 0;
+  /// Cuts whose face covers neither side that the rim law could not land:
+  /// the sliver is wider than the lattice's rounding, and the plane emits the
+  /// cut in no slot.
+  std::size_t uncovered_cuts = 0;
   std::size_t collisions = 0;
-  std::size_t created = 0;
   std::size_t splits = 0;
   std::size_t splits_out_of_span = 0;
   std::size_t splits_on_endpoint = 0;
@@ -59,10 +63,8 @@ struct plane_arrangement_census {
 
   auto operator+=(const plane_arrangement_census &o)
       -> plane_arrangement_census & {
-    planes += o.planes;
     stacks += o.stacks;
     constraints += o.constraints;
-    triangles += o.triangles;
     dead_triangles += o.dead_triangles;
     stack_regions += o.stack_regions;
     rounds += o.rounds;
@@ -71,12 +73,11 @@ struct plane_arrangement_census {
     crossings += o.crossings;
     landings += o.landings;
     rim_landings += o.rim_landings;
+    uncovered_cuts += o.uncovered_cuts;
     collisions += o.collisions;
-    created += o.created;
     splits += o.splits;
     splits_out_of_span += o.splits_out_of_span;
     splits_on_endpoint += o.splits_on_endpoint;
-    failed_planes += o.failed_planes;
     stalled_planes += o.stalled_planes;
     spent_planes += o.spent_planes;
     fanned_planes += o.fanned_planes;

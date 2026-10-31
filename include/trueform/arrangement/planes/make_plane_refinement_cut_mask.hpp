@@ -39,8 +39,13 @@ auto make_plane_refinement_cut_mask(const World &world, Index n_tags,
       mask.allocate(form.faces().size());
       tf::parallel_fill(mask, char(0));
     });
-  for (const auto &descriptor : world.descriptors())
-    cut_mask[std::size_t(descriptor.tag)][std::size_t(descriptor.object)] = 1;
+  // a face past its form's own is a carve's piece, whose source face stays
+  // described and marks the slot
+  for (const auto &descriptor : world.descriptors()) {
+    auto &mask = cut_mask[std::size_t(descriptor.tag)];
+    if (std::size_t(descriptor.object) < mask.size())
+      mask[std::size_t(descriptor.object)] = 1;
+  }
   return cut_mask;
 }
 

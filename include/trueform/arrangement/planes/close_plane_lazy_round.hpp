@@ -13,11 +13,11 @@
 #pragma once
 
 #include "../../core/buffer.hpp"
+#include "../../core/config/verify.hpp"
 #include "./plane_arrangement_census.hpp"
 #include "./plane_round_evidence.hpp"
 #include "./state_plane_round_frontier.hpp"
 
-#include <cassert>
 #include <cstddef>
 
 namespace tf::arrangement {
@@ -51,7 +51,9 @@ auto close_plane_lazy_round(World &world,
   if (world.materialized() ||
       (evidence.refused.size() == 0 && evidence.welds.size() == 0))
     return false;
-  assert(immutable_canon_extent == Index(0));
+  if constexpr (tf::core::verification)
+    tf::core::verify(immutable_canon_extent == Index(0),
+                     "a lazy round closes before the world has a group space");
   evidence.census.refusals += evidence.refused.size();
   census += evidence.census;
   census.planes = std::size_t(world.n_planes());

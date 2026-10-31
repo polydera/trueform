@@ -22,17 +22,17 @@
 #include "../../core/range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../intersect/graph/plane_def_respan.hpp"
-#include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_identity_collapse.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "./plane_piece_key.hpp"
 #include "./plane_tier_definitions.hpp"
+#include "./restate_plane_blocks.hpp"
+#include "./sweep_plane_routes.hpp"
 #include "tbb/parallel_sort.h"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <limits>
 
 namespace tf::arrangement {
 
@@ -270,23 +270,16 @@ auto weld_local_plane_rows(
     return !tier.immutable(row) && retired_group(tier[std::size_t(row)].id);
   };
   tf::buffer<std::size_t> row_prefix;
-  row_prefix.allocate(dead_planes.size() + 1);
-  row_prefix[0] = 0;
-  tf::parallel_for_each(
-      tf::make_sequence_range(dead_planes.size()), [&](std::size_t at) {
-        std::size_t count = 0;
-        for (const auto row : local_tables.plane_edges(
-                 plane_ticket[std::size_t(dead_planes[at])]))
-          count += std::size_t(!retired_row(row));
-        row_prefix[at + 1] = count;
-      });
-  // every kept row is a row the tier already holds, so the sum is bounded by
-  // the CSR itself and only the appended extents can exceed the index space
-  for (std::size_t at = 0; at < dead_planes.size(); ++at)
-    row_prefix[at + 1] += row_prefix[at];
-  const auto index_extent = std::size_t(std::numeric_limits<Index>::max());
-  if (dead_planes.size() > index_extent - n_blocks ||
-      row_prefix[dead_planes.size()] > index_extent - block_rows.size())
+  if (!prove_plane_block_extents<Index>(
+          std::size_t(n_blocks), block_rows.size(), dead_planes,
+          [&](Index plane) {
+            std::size_t count = 0;
+            for (const auto row :
+                 local_tables.plane_edges(plane_ticket[std::size_t(plane)]))
+              count += std::size_t(!retired_row(row));
+            return count;
+          },
+          row_prefix))
     return false;
 
   auto &table_defs = local_tables.defs();
@@ -315,18 +308,12 @@ auto weld_local_plane_rows(
       },
       block_local_t{});
 
-  if (dead_planes.size() != 0) {
-    const auto block_base = Index(n_blocks);
-    const auto row_base = std::size_t(block_rows.size());
-    const auto old_block_offsets = block_offsets.size();
-    block_offsets.reallocate(old_block_offsets + dead_planes.size());
-    block_rows.reallocate(row_base + row_prefix[dead_planes.size()]);
-    tf::parallel_for_each(
-        tf::make_sequence_range(dead_planes.size()),
-        [&](std::size_t at, block_local_t &local) {
-          const auto plane = dead_planes[at];
+  if (dead_planes.size() != 0)
+    restate_plane_blocks(
+        block_offsets, block_rows, plane_ticket, dead_planes, row_prefix,
+        [&](std::size_t, Index plane, std::size_t begin,
+            block_local_t &local) {
           const auto block = std::size_t(plane_ticket[std::size_t(plane)]);
-          const auto begin = row_base + row_prefix[at];
           auto write = begin;
           for (auto source = std::size_t(block_offsets[block]);
                source < std::size_t(block_offsets[block + 1]); ++source) {
@@ -335,21 +322,14 @@ auto weld_local_plane_rows(
               block_rows[write++] = row;
           }
           sort_plane_block_by_key(tier, block_rows, begin, write, local.keyed);
-          block_offsets[old_block_offsets + at] = Index(write);
-          plane_ticket[std::size_t(plane)] = block_base + Index(at);
+          return write;
         },
         block_local_t{});
-  }
 
   if (retired_groups.size() != 0)
-    tf::parallel_for_each(
-        tf::make_sequence_range(group_router.size()),
-        [&](std::size_t root) {
-          const auto group = group_router[root];
-          if (group >= Index(0) && retired_group(group))
-            group_router[root] = Index(-2);
-        },
-        tf::checked);
+    sweep_plane_routes(group_router, [&](Index route) {
+      return retired_group(route) ? Index(-2) : route;
+    });
 
   changed_groups.clear();
   changed_groups.allocate(survivors.size());

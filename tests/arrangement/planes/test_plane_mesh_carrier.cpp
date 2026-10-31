@@ -29,6 +29,7 @@
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/arrangement/planes/plane_arrangement.hpp>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/polygons.hpp>
@@ -86,7 +87,9 @@ auto evaluate_mesh_world(World &world, const tf::buffer<Index> &vertex_offsets,
     return world.point(id);
   };
   tf::arrangement::plane_arrangement<Index, Int> product;
-  product.build(world, Index(0), get_point, get_point, vertex_offsets);
+  tf::arrangement::identity_substrate<Index, Int> identities;
+  product.build(world, identities, Index(0), get_point, get_point,
+                vertex_offsets);
 
   const auto magnitude = [](T2 value) {
     return value < T2(0) ? -value : value;
@@ -96,7 +99,7 @@ auto evaluate_mesh_world(World &world, const tf::buffer<Index> &vertex_offsets,
   report.faces = polygons.faces().size();
   report.triangles = product.triangles().size();
   report.failed = product.failed().size();
-  report.created = std::size_t(product.n_created());
+  report.created = std::size_t(identities.n_plane_created());
   for (Index f = 0; f < Index(polygons.faces().size()); ++f) {
     const auto face = polygons.faces()[std::size_t(f)];
     const auto span = product.face_range(f);

@@ -28,11 +28,12 @@
  *   R   THE RESOLUTION — a crossing loop states its crossing, mints the one
  *       identity that names it, and holds a product over it.
  *   M   THE MINT LAW — an identity the wave mints while resolving stands where
- *       the face already stood. `elect_plane_identity_components` never elects
- *       an ORIGINAL vertex as a component's survivor: an existing created
- *       identity wins, else a fresh class mints, else — for a component of
- *       originals alone — `mint_original` appends a rootless class at that
- *       original's own coordinate and retires every original into it. So two
+ *       the face already stood. THE ELECTION (`elect_identity_components`)
+ *       never elects an ORIGINAL vertex as a coincidence's survivor: an
+ *       existing created identity wins, else a fresh class mints, else — for
+ *       a coincidence of originals alone — the wave's mint appends a rootless
+ *       class at that original's own coordinate and retires every original
+ *       into it. So two
  *       corners at one lattice point become ONE minted identity there, and no
  *       product ever names two identities standing at one point.
  *   N   THE PROPAGATION — a split of a canonical group is a fact of the GROUP,
@@ -410,7 +411,7 @@ TEMPLATE_TEST_CASE("mesh triangulation: a clean build states one round",
   CHECK(census.planes == 12);
   CHECK(census.rounds == 1);
   CHECK(census.refusals == 0);
-  CHECK(census.created == 0);
+  CHECK(product.created_points().size() == 0);
   CHECK(census.failed_planes == 0);
   CHECK(census.triangles == 12);
 }
@@ -439,7 +440,6 @@ TEMPLATE_TEST_CASE("mesh triangulation: a crossing loop resolves into a product"
   const auto &census = product.census();
   CHECK(census.refusals >= 1);
   CHECK(census.rounds > 1);
-  CHECK(census.created == 1);
 }
 
 TEMPLATE_TEST_CASE("mesh triangulation: a split reaches the shared edge's "

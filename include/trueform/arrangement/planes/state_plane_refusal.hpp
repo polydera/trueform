@@ -15,6 +15,8 @@
 #include "../../core/buffer.hpp"
 #include "../../intersect/graph/plane_identity_names.hpp"
 #include "./find_plane_meeting_landing.hpp"
+#include "./plane_flat_weld.hpp"
+#include "./plane_landing_parameter.hpp"
 #include "./plane_recovery_birth.hpp"
 #include "./plane_recovery_name.hpp"
 #include "./plane_recovery_statement.hpp"
@@ -22,6 +24,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace tf::arrangement {
 
@@ -90,24 +93,38 @@ auto plane_flat_identity_name(Index flat, Index n_flat) {
 /// ascending. The two disagree on a piece with one created and one original
 /// endpoint, so every parameter is stated in the name's frame here, at
 /// emission, where the row and its edge are one fact.
+///
+/// THE ROW IS ONE LINE IN SPACE. A landing the projection sees is judged
+/// along its row off the lattice positions (@ref plane_row_landing_of): one
+/// standing at an end within the lattice's rounding is that end and goes
+/// into `welds`; every other is stated as a landing at the parameter this
+/// plane saw, the point itself staying where it is.
 template <typename Index, typename Param, typename Groups, typename Cdt,
-          typename Points2, typename VertexOffsets>
+          typename Points2, typename Points3, typename VertexOffsets>
 auto state_plane_refusal(
     const Groups &groups, Index plane, const Cdt &cdt,
     const tf::buffer<Index> &ends, const tf::buffer<Index> &cons,
-    const Points2 &pts2, const tf::buffer<Index> &constraint_groups,
+    const Points2 &pts2, const Points3 &pts3,
+    const tf::buffer<Index> &constraint_groups,
     Index n_flat, Index first_minted, const VertexOffsets &vertex_offsets,
     Index crossing_kind,
     Param whole,
     tf::buffer<plane_recovery_statement<Index, Param>> &statements,
     tf::buffer<plane_recovery_proposal<Index, Param>> &topology,
+    tf::buffer<plane_flat_weld<Index>> &welds,
     tf::buffer<Index> &meeting_record, std::size_t &landings,
     std::size_t &crossings) -> void {
+  using Int = std::decay_t<decltype(pts3[0][0])>;
   const auto kept = cdt.index_map().kept_ids();
   const auto &records = cdt.parameterized_crossings();
   const auto meeting_landing = [&](const auto &crossing) {
     return find_plane_meeting_landing<Index, Param>(
-        cons, pts2, ends, first_minted, crossing.id_a, crossing.id_b);
+        cons, pts2, pts3, ends, first_minted, crossing.id_a, crossing.id_b);
+  };
+  // a landing the row in space puts at an end is that end: the weld is the
+  // statement, and the landing is not made
+  const auto weld_at_end = [&](Index point, Index end) {
+    welds.push_back({ends[std::size_t(point)], ends[std::size_t(end)], plane});
   };
   const auto name_frame_t = [&](Index ticket, Param t) {
     return plane_name_frame_parameter(groups, ticket, t, n_flat,
@@ -171,6 +188,19 @@ auto state_plane_refusal(
         ++landings;
         continue;
       }
+      switch (plane_row_landing_of<Int>(
+          pts3[std::size_t(cons[2 * std::size_t(crossing.id_a)])],
+          pts3[std::size_t(cons[2 * std::size_t(crossing.id_a) + 1])],
+          pts3[std::size_t(input)])) {
+      case plane_row_landing::at_start:
+        weld_at_end(input, cons[2 * std::size_t(crossing.id_a)]);
+        continue;
+      case plane_row_landing::at_end:
+        weld_at_end(input, cons[2 * std::size_t(crossing.id_a) + 1]);
+        continue;
+      case plane_row_landing::inside:
+        break;
+      }
       state_plane_landing(groups, plane,
                           plane_flat_identity_name<Index, Param>(
                               ends[std::size_t(input)], n_flat),
@@ -187,6 +217,10 @@ auto state_plane_refusal(
     if (landing.shared)
       continue;
     if (landing.point != Index(-1)) {
+      if (landing.weld != Index(-1)) {
+        weld_at_end(landing.point, landing.weld);
+        continue;
+      }
       state_plane_landing(groups, plane,
                           plane_flat_identity_name<Index, Param>(
                               ends[std::size_t(landing.point)], n_flat),

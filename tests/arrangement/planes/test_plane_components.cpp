@@ -53,6 +53,7 @@
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/csg/graph/label_plane_arrangement_components.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/arrangement/planes/make_plane_arrangement_cells.hpp>
 #include <trueform/arrangement/planes/make_plane_piece_fences.hpp>
 #include <trueform/arrangement/planes/make_plane_piece_incidence.hpp>
@@ -206,9 +207,11 @@ auto components_measure(std::vector<components_mesh_t<Real>> meshes,
   arrangement.record_triangle_cells();
   arrangement.record_triangle_arrangement();
   tf::intersect::graph::local_arrangement<components_index_t, Real, Int> world;
-  world.build(std::move(intersections), get_mesh_point, apply_to_face,
-              apply_to_form, tf::make_range(face_offsets), false, false);
-  arrangement.build(world, get_mesh_point);
+  tf::arrangement::identity_substrate<components_index_t, Int> identities;
+  world.build(identities, std::move(intersections), get_mesh_point,
+              apply_to_face, apply_to_form, tf::make_range(face_offsets), false,
+              false);
+  arrangement.build(world, identities, get_mesh_point);
 
   components_t out;
   REQUIRE(arrangement.failed().size() == 0);
@@ -299,6 +302,47 @@ auto tiled_pair(components_index_t ticks)
   meshes.push_back(components_translated<Real>(
       tf::make_plane_mesh<components_index_t, Real>(4, 4, ticks, ticks),
       Real(3), Real(1)));
+  return meshes;
+}
+
+/// One plate of ONE form folded onto itself: the plate `[0, 3]` with a strip
+/// `[1, 2]` laid back over it face down and a second strip laid forward face
+/// up — three coincident sheets over the middle, one elsewhere, the same net
+/// winding everywhere. With `glued` the forward strip is left out: two
+/// sheets cancelling over the middle, a net that changes at the strip's
+/// edges.
+template <typename Real>
+auto pleated_plate(bool glued) -> std::vector<components_mesh_t<Real>> {
+  const auto strip = [](Real x0, Real x1, bool up) {
+    components_mesh_t<Real> plate;
+    plate.points_buffer().push_back({x0, Real(0), Real(0)});
+    plate.points_buffer().push_back({x1, Real(0), Real(0)});
+    plate.points_buffer().push_back({x1, Real(3), Real(0)});
+    plate.points_buffer().push_back({x0, Real(3), Real(0)});
+    if (up) {
+      plate.faces_buffer().push_back({components_index_t(0),
+                                      components_index_t(1),
+                                      components_index_t(2)});
+      plate.faces_buffer().push_back({components_index_t(0),
+                                      components_index_t(2),
+                                      components_index_t(3)});
+    } else {
+      plate.faces_buffer().push_back({components_index_t(0),
+                                      components_index_t(2),
+                                      components_index_t(1)});
+      plate.faces_buffer().push_back({components_index_t(0),
+                                      components_index_t(3),
+                                      components_index_t(2)});
+    }
+    return plate;
+  };
+  std::vector<components_mesh_t<Real>> parts;
+  parts.push_back(strip(Real(0), Real(3), true));
+  parts.push_back(strip(Real(1), Real(2), false));
+  if (!glued)
+    parts.push_back(strip(Real(1), Real(2), true));
+  std::vector<components_mesh_t<Real>> meshes;
+  meshes.push_back(components_merged<Real>(std::move(parts)));
   return meshes;
 }
 
@@ -931,4 +975,34 @@ TEMPLATE_TEST_CASE("plane components: a bare touch fences at incidence two",
   CHECK(touch.n_quiet == 0);
   CHECK(touch.fans_only == 2);
   CHECK(touch.unfenced == 1);
+}
+
+TEMPLATE_TEST_CASE("plane components: a pleat is the ground it folds out of, "
+                   "a glued sheet a border",
+                   "[cut][planes][components]", tf::exact::int32,
+                   tf::exact::int64) {
+  using Int = TestType;
+  using Real = typename components_real_of<Int>::type;
+
+  // Three coincident sheets of one form over the plate's middle strip, one
+  // sheet beside it: the depth changes at the strip's edges and the net
+  // winding does not, so neither edge is a border — no fence stands and the
+  // plate is ONE component under the law, exactly as with no fence at all.
+  const auto pleat =
+      components_measure<Int, Real>(pleated_plate<Real>(false), true);
+  CHECK(pleat.n_fans == 0);
+  CHECK(pleat.n_quiet == 0);
+  CHECK(pleat.n_components == 1);
+  CHECK(pleat.unfenced == 1);
+
+  // The same strip laid back alone: two sheets cancelling, so the net
+  // winding drops to zero over the middle and rises again — the strip's two
+  // edges are borders, fenced quietly (each is two pieces, the plate's
+  // diagonal crossing it), and the plate falls into three.
+  const auto glued =
+      components_measure<Int, Real>(pleated_plate<Real>(true), true);
+  CHECK(glued.n_fans == 0);
+  CHECK(glued.n_quiet == 4);
+  CHECK(glued.n_components == 3);
+  CHECK(glued.unfenced == 1);
 }

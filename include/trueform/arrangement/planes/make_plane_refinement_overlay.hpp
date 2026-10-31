@@ -17,7 +17,6 @@
 #include "../../core/algorithm/parallel_iota.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
-#include "../../core/reallocate.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "./close_plane_carrier_frontier.hpp"
@@ -27,31 +26,33 @@
 #include "tbb/parallel_sort.h"
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
+#include <iterator>
 
 namespace tf::arrangement {
 
 /// Build refinement's initial sparse PA-local source.
 ///
-/// The selected immutable planes close under every group they name; newly
-/// reached source faces occupy the contiguous suffix and are local from birth.
-/// One canonical record sort therefore fuses equal keys across both sources,
-/// after which `plane_ticket` and `group_router` are the ordinary PA answers.
-template <typename Index, typename Int, typename World, typename Splits,
-          typename VertexOffsets>
+/// The selected immutable planes close under every group they name; the
+/// planes the newly reached source faces are seated on — `entrants` holds
+/// plane `entrant_planes[k]`'s block `k` (@ref
+/// tf::arrangement::seat_plane_entrant_blocks), and `n_new_planes` of them
+/// lie past the world's own — are local from birth. One canonical record sort
+/// therefore fuses equal keys across both sources, after which `plane_ticket`
+/// and `group_router` are the ordinary PA answers.
+template <typename Index, typename Int, typename World, typename Splits>
 auto make_plane_refinement_overlay(
     const World &world, const Splits &splits,
     const tf::intersect::graph::plane_tables<Index, Int> &entrants,
+    const tf::buffer<Index> &entrant_planes, Index n_new_planes,
     const tf::buffer<Index> &entrant_origins,
-    const VertexOffsets &vertex_offsets,
     tf::intersect::graph::plane_tables<Index, Int> &local_tables,
     tf::buffer<Index> &plane_ticket, tf::buffer<Index> &group_router,
     tf::buffer<Index> &immutable_group_ticket,
     tf::buffer<Index> &entrant_group_ticket) -> bool {
-  const auto entrant_count = Index(entrants.edges().size());
-  const auto plane_extent = world.n_planes() + entrant_count;
-  if (entrant_origins.size() != std::size_t(entrants.n_canon()))
+  const auto plane_extent = world.n_planes() + n_new_planes;
+  if (entrant_origins.size() != std::size_t(entrants.n_canon()) ||
+      entrant_planes.size() != entrants.edges().size())
     return false;
 
   if (tf::parallel_contains(
@@ -94,11 +95,8 @@ auto make_plane_refinement_overlay(
                                  immutable_planes);
   }
 
-  tf::buffer<Index> entrant_global_planes;
-  entrant_global_planes.allocate(std::size_t(entrant_count));
-  tf::parallel_iota(entrant_global_planes, world.n_planes());
   tf::buffer<Index> entrant_plane_ticket;
-  if (!make_plane_generation_ticket(entrant_global_planes, plane_extent,
+  if (!make_plane_generation_ticket(entrant_planes, plane_extent,
                                     entrant_plane_ticket))
     return false;
 
@@ -106,19 +104,33 @@ auto make_plane_refinement_overlay(
   entrant_origin_offsets.allocate(std::size_t(entrants.n_canon()) + 1);
   tf::parallel_iota(entrant_origin_offsets, Index(0));
 
+  // a standing plane the faces joined may also be one the groups selected:
+  // its block in `entrants` already carries its own rows
   tf::buffer<Index> global_planes;
-  global_planes.reserve(immutable_planes.size() + entrant_global_planes.size());
-  tf::core::append(immutable_planes, global_planes);
-  tf::core::append(entrant_global_planes, global_planes);
+  global_planes.reserve(immutable_planes.size() + entrant_planes.size());
+  std::set_union(immutable_planes.begin(), immutable_planes.end(),
+                 entrant_planes.begin(), entrant_planes.end(),
+                 std::back_inserter(global_planes));
+
+  // the groups the refinement names go local, every other one stays the
+  // world's (grain law 3)
+  tf::buffer<Index> named_groups;
+  for (const auto &split : splits)
+    named_groups.push_back(split.group);
+  for (const auto origin : entrant_origins)
+    if (origin < world.n_canon())
+      named_groups.push_back(origin);
+  tbb::parallel_sort(named_groups.begin(), named_groups.end());
+  named_groups.erase_till_end(
+      std::unique(named_groups.begin(), named_groups.end()));
 
   tf::buffer<Index> local_plane_of_global;
   tf::buffer<Index> local_origin_offsets;
   tf::buffer<Index> local_origins;
-  const tf::buffer<std::array<Index, 3>> no_merges;
   if (!make_plane_generation_source<Index, Int>(
           world, entrants, entrant_plane_ticket, entrant_origin_offsets,
-          entrant_origins, global_planes, plane_extent, no_merges,
-          vertex_offsets, local_tables, local_plane_of_global,
+          entrant_origins, global_planes, plane_extent, named_groups,
+          local_tables, local_plane_of_global,
           local_origin_offsets, local_origins, immutable_group_ticket,
           entrant_group_ticket) ||
       !make_plane_generation_ticket(local_plane_of_global, plane_extent,

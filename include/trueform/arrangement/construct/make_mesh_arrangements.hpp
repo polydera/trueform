@@ -49,7 +49,7 @@ auto make_mesh_arrangements(const Arrangement &arrangement) {
   using InputReal = typename Policy::input_real_type;
   using RealOut = tf::resolved_output_real_t<OutputCoordinateType, InputReal>;
   auto n_meshes = static_cast<Index>(policy.n_tags());
-  auto apply_to_polygons = policy.make_apply_to_form();
+  auto apply_to_polygons = arrangement.apply_to_form();
 
   // The slot is the authority for what is uncut, so the map build
   // already keeps cut faces out of the uncut lists.

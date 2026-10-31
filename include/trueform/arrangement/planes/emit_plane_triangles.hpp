@@ -18,15 +18,13 @@
 #include "../../topology/cdt_refiner.hpp"
 #include "../../topology/topo_id.hpp"
 #include "../../topology/topo_type.hpp"
+#include "./accept_plane_triangulation.hpp"
 #include "./collect_plane_corner_welds.hpp"
 #include "./elect_plane_survivors.hpp"
-#include "./find_plane_rim_landings.hpp"
-#include "./flood_plane_member_coverage.hpp"
 #include "./flood_plane_triangle_winding.hpp"
 #include "./gather_plane_member_triangles.hpp"
 #include "./label_plane_cells.hpp"
 #include "./plane_member_statements.hpp"
-#include "./plane_orientation.hpp"
 #include "./state_plane_member_point_subs.hpp"
 
 #include <algorithm>
@@ -74,42 +72,18 @@ auto emit_plane_subs(const Local &local, const Triangle &triangle)
   return subs;
 }
 
-/// Every corner of the stock kernel's triangulation must be one of the
-/// identities the plane was prepared with.
-template <typename Index, typename Local>
-auto plane_corners_are_named(const Local &local) -> bool {
-  for (const auto representative : local.rep)
-    if (representative == Index(-1))
-      return false;
-  return true;
-}
-
 /// A lone member's plane: everything the triangulation kept inside the
 /// face boundary, in the winding the face's loop states there. Region 0 is
 /// the hull exterior and the only thing dropped. A loop that does not touch
 /// itself winds its own way around every region it bounds, so only one that
-/// does is flooded. False when the rim law lands a cut end on the face's
-/// side: the plane emits nothing and the landing is its statement.
-template <typename Index, typename Int, typename Local, typename Mesh,
+/// does is flooded. The carrier stands (@ref accept_plane_triangulation).
+template <typename Index, typename Local, typename Mesh, typename Faces,
           typename CornerOf>
-auto emit_single_plane(Local &local, const Mesh &mesh,
-                       const CornerOf &corner_of, bool record_arrangement,
-                       bool record_cells) -> bool {
-  auto faces = mesh.make_faces();
-  const int cdt_orientation = plane_cdt_orientation<Int>(faces, mesh.points());
+auto emit_single_plane(Local &local, const Mesh &mesh, const Faces &faces,
+                       int cdt_orientation, const CornerOf &corner_of,
+                       bool record_arrangement, bool record_cells) -> void {
   const bool flip = cdt_orientation != local.face_orientation;
   const auto labels = mesh.region_labels();
-  find_plane_rim_landings<Index, Int>(
-      mesh, local,
-      [&labels](Index, Index triangle) {
-        return labels[std::size_t(triangle)] != 0;
-      },
-      [&local](Index, Index constraint) {
-        return (local.cons_winding[std::size_t(constraint)] & 1) != 0;
-      },
-      local.rim_landings);
-  if (local.rim_landings.size() != 0)
-    return false;
   const bool touched = plane_loop_touches_itself(
       local.cons, local.cons_side, local.cons_winding, mesh.index_map().f(),
       std::size_t(mesh.points().size()), local.loop_degree);
@@ -147,51 +121,23 @@ auto emit_single_plane(Local &local, const Mesh &mesh,
   local.face_range.push_back({Index(before), Index(local.tris.size())});
   if (record_cells)
     record_single_plane_cells<Index>(local, mesh);
-  return true;
 }
 
 /// A coplanar stack: ONE triangulation, so agreement between members
 /// is by construction and the only question is who covers what. Each
 /// region elects the minimal-tag covering member; every other covering
-/// member emits a duplicate pointing at the survivor.
-template <typename Index, typename Int, typename World, typename Local,
-          typename Mesh, typename CornerOf>
+/// member emits a duplicate pointing at the survivor. The carrier stands
+/// (@ref accept_plane_triangulation), whose flood left the coverage here.
+template <typename Index, typename World, typename Local, typename Mesh,
+          typename Faces, typename CornerOf>
 auto emit_plane_stack(const World &world, Index plane, Local &local,
-                      const Mesh &mesh, const CornerOf &corner_of,
-                      bool record_arrangement, bool record_cells) -> bool {
-  auto faces = mesh.make_faces();
+                      const Mesh &mesh, const Faces &faces, int cdt_rev,
+                      Index n_regions, const CornerOf &corner_of,
+                      bool record_arrangement, bool record_cells) -> void {
   const auto n_tri = std::size_t(faces.size());
   const auto members = world.plane_members(plane);
   const auto n_members = members.size();
-  const int cdt_rev = plane_cdt_orientation<Int>(faces, mesh.points());
-  const auto n_regions = flood_plane_member_coverage<Index>(
-      mesh, cdt_rev, local.cons_row, local.cons_statements,
-      Index(local.bnd.size()), local.region_adj, local.region_offsets,
-      local.region_stack, local.region_reached, local.cover_range, local.cover,
-      local.cover_winding);
-  if (n_regions == Index(-1))
-    return false;
-  local.census.stack_regions += std::size_t(n_regions);
   const auto labels = mesh.region_labels();
-  find_plane_rim_landings<Index, Int>(
-      mesh, local,
-      [&](Index member, Index triangle) {
-        const auto covering = local.cover_range[std::size_t(labels[std::size_t(triangle)])];
-        for (auto at = covering[0]; at != covering[1]; ++at)
-          if (local.cover[std::size_t(at)] == member)
-            return true;
-        return false;
-      },
-      [&local](Index member, Index constraint) {
-        const auto row = local.cons_row[std::size_t(constraint)];
-        for (auto at = row[0]; at != row[1]; ++at)
-          if (local.cons_statements[std::size_t(at)].member == member)
-            return (local.cons_statements[std::size_t(at)].winding & 1) != 0;
-        return false;
-      },
-      local.rim_landings);
-  if (local.rim_landings.size() != 0)
-    return false;
   // a member's triangle runs the way its loop winds around the region
   const auto member_flip = [&](std::size_t mi, Index region) {
     const auto covering = local.cover_range[std::size_t(region)];
@@ -257,7 +203,6 @@ auto emit_plane_stack(const World &world, Index plane, Local &local,
   }
   if (record_cells)
     record_stack_plane_cells<Index>(local, mesh);
-  return true;
 }
 
 /// Emit one prepared plane from the triangulation that built it.
@@ -296,7 +241,13 @@ auto emit_plane_triangles(const World &world, Index plane, Index n_flat,
     local.steiner_ticket.allocate(std::size_t(mesh.points().size()));
     std::fill(local.steiner_ticket.begin(), local.steiner_ticket.end(),
               Index(-1));
-  } else if (!plane_corners_are_named<Index>(local))
+  }
+  const auto faces = mesh.make_faces();
+  const auto acceptance =
+      accept_plane_triangulation<Index, Int>(local, mesh, faces, pooled);
+  local.census.stack_regions += std::size_t(acceptance.n_regions);
+  local.census.uncovered_cuts += acceptance.uncovered_cuts;
+  if (!acceptance.accepted)
     return false;
   const auto corner_of = [&](Index point) -> Index {
     const auto representative = local.rep[std::size_t(point)];
@@ -315,12 +266,14 @@ auto emit_plane_triangles(const World &world, Index plane, Index n_flat,
     }
     return local.ends[std::size_t(representative)];
   };
-  if (!pooled) {
-    return emit_single_plane<Index, Int>(local, mesh, corner_of,
-                                         record_arrangement, record_cells);
-  }
-  return emit_plane_stack<Index, Int>(world, plane, local, mesh, corner_of,
-                                      record_arrangement, record_cells);
+  if (!pooled)
+    emit_single_plane<Index>(local, mesh, faces, acceptance.cdt_orientation,
+                             corner_of, record_arrangement, record_cells);
+  else
+    emit_plane_stack<Index>(world, plane, local, mesh, faces,
+                            acceptance.cdt_orientation, acceptance.n_regions,
+                            corner_of, record_arrangement, record_cells);
+  return true;
 }
 
 } // namespace tf::arrangement

@@ -19,6 +19,7 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/range.hpp"
 #include "../../core/reallocate.hpp"
 #include "../../core/views/sequence_range.hpp"
@@ -28,11 +29,11 @@
 #include "./plane_piece_key.hpp"
 #include "./plane_tier_definitions.hpp"
 #include "./propose_plane_split_pieces.hpp"
+#include "./restate_plane_blocks.hpp"
 #include "tbb/parallel_sort.h"
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <iterator>
 #include <limits>
@@ -185,9 +186,12 @@ auto commit_plane_wave_blocks(
           else
             hi = mid;
         }
-        assert(lo < std::size_t(def_offsets[std::size_t(winner) + 1]) &&
-               same_plane_piece_definition_instance(tier[lo], retired) &&
-               tier[lo].flags == retired.flags);
+        if constexpr (tf::core::verification)
+          tf::core::verify(
+              lo < std::size_t(def_offsets[std::size_t(winner) + 1]) &&
+                  same_plane_piece_definition_instance(tier[lo], retired) &&
+                  tier[lo].flags == retired.flags,
+              "a retired instance stands in its winner's span");
         return Index(lo);
       };
 
@@ -223,52 +227,39 @@ auto commit_plane_wave_blocks(
   const auto index_extent = std::size_t(std::numeric_limits<Index>::max());
   auto &block_offsets = local_tables.edges().offsets_buffer();
   auto &block_rows = local_tables.edges().data_buffer();
-  const auto block_base = Index(n_blocks);
   const auto row_base = Index(block_rows.size());
   tf::buffer<std::size_t> row_prefix;
-  row_prefix.allocate(carrier_planes.size() + 1);
-  row_prefix[0] = 0;
-  tf::parallel_for_each(
-      tf::make_sequence_range(carrier_planes.size()), [&](std::size_t at) {
-        std::size_t count = 0;
-        for (const auto row : local_tables.plane_edges(
-                 plane_ticket[std::size_t(carrier_planes[at])])) {
-          const auto group = local_group_of(row);
-          const auto parent =
-              group == Index(-1) ? Index(-1)
-                                 : parent_ticket[std::size_t(group)];
-          const auto added =
-              parent == Index(-1)
-                  ? std::size_t(1)
-                  : std::size_t(layout[std::size_t(parent)].pieces);
-          count = count > index_extent - added ? index_extent : count + added;
-        }
-        row_prefix[at + 1] = count;
-      });
-  for (std::size_t at = 0; at < carrier_planes.size(); ++at) {
-    if (row_prefix[at + 1] > index_extent - row_prefix[at])
-      return false;
-    row_prefix[at + 1] += row_prefix[at];
-  }
-  if (block_rows.size() >
-          index_extent - row_prefix[carrier_planes.size()] ||
-      n_blocks > index_extent - carrier_planes.size())
+  if (!prove_plane_block_extents<Index>(
+          std::size_t(n_blocks), block_rows.size(), carrier_planes,
+          [&](Index carrier) {
+            std::size_t count = 0;
+            for (const auto row : local_tables.plane_edges(
+                     plane_ticket[std::size_t(carrier)])) {
+              const auto group = local_group_of(row);
+              const auto parent =
+                  group == Index(-1) ? Index(-1)
+                                     : parent_ticket[std::size_t(group)];
+              const auto added =
+                  parent == Index(-1)
+                      ? std::size_t(1)
+                      : std::size_t(layout[std::size_t(parent)].pieces);
+              count =
+                  count > index_extent - added ? index_extent : count + added;
+            }
+            return count;
+          },
+          row_prefix))
     return false;
-  const auto old_block_offsets = block_offsets.size();
-  block_offsets.reallocate(old_block_offsets + carrier_planes.size());
-  block_rows.reallocate(std::size_t(row_base) +
-                        row_prefix[carrier_planes.size()]);
   tf::buffer<std::size_t> kept_prefix;
   kept_prefix.allocate(carrier_planes.size() + 1);
   kept_prefix[0] = 0;
   struct block_local_t {
     tf::buffer<std::array<Index, 5>> keyed;
   };
-  tf::parallel_for_each(
-      tf::make_sequence_range(carrier_planes.size()),
-      [&](std::size_t at, block_local_t &local) {
-        const auto plane = carrier_planes[at];
-        const auto begin = std::size_t(row_base) + row_prefix[at];
+  restate_plane_blocks(
+      block_offsets, block_rows, plane_ticket, carrier_planes, row_prefix,
+      [&](std::size_t at, Index plane, std::size_t begin,
+          block_local_t &local) {
         auto write = begin;
         for (const auto row :
              local_tables.plane_edges(plane_ticket[std::size_t(plane)])) {
@@ -297,9 +288,12 @@ auto commit_plane_wave_blocks(
           if (kept == begin || block_rows[kept - 1] != block_rows[read])
             block_rows[kept++] = block_rows[read];
         kept_prefix[at + 1] = kept - begin;
-        plane_ticket[std::size_t(plane)] = block_base + Index(at);
+        return kept;
       },
       block_local_t{});
+  // the restate opened the offsets if they were empty, so the base is read
+  // off what it appended
+  const auto old_block_offsets = block_offsets.size() - carrier_planes.size();
   // The reserved extent was one row per slot; the blocks close up over the
   // rows their sets actually name. The kept rows move to a destination OF
   // their own: a block whose predecessors dropped rows starts before its own

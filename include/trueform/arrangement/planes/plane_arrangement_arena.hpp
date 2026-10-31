@@ -76,6 +76,13 @@ template <typename Index, typename Int> struct plane_arrangement_arena {
     face_range.reallocate_and_initialize(std::size_t(n),
                                          {Index(0), Index(0)});
   }
+  /// The arena a build starts from: nothing held, every plane's and every
+  /// face's span empty.
+  auto reset(Index n_planes, Index n_faces) -> void {
+    clear();
+    allocate_planes(n_planes);
+    grow_faces(n_faces);
+  }
 };
 
 } // namespace tf::arrangement

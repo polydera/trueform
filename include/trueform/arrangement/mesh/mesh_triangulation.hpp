@@ -12,7 +12,9 @@
  */
 #pragma once
 
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/checked.hpp"
 #include "../../core/coordinate_dims.hpp"
 #include "../../core/coordinate_type.hpp"
 #include "../../core/frame_of.hpp"
@@ -20,9 +22,11 @@
 #include "../../core/polygons.hpp"
 #include "../../core/range.hpp"
 #include "../../core/transformed.hpp"
+#include "../../core/views/sequence_range.hpp"
 #include "../../exact/resolve_int_type.hpp"
 #include "../../exact/vertex.hpp"
 #include "../../exact/vertex_converter.hpp"
+#include "../identity/identity_substrate.hpp"
 #include "../planes/plane_arrangement.hpp"
 #include "../planes/plane_arrangement_census.hpp"
 #include "./plane_mesh_world.hpp"
@@ -95,14 +99,16 @@ public:
     const auto read = [this](std::int16_t, Index id) -> point_type {
       return _world.point(id);
     };
-    _arr.build(_world, Index(0), read, read, _vertex_offsets);
+    _arr.build(_world, _identities, Index(0), read, read, _vertex_offsets);
 
-    // a created identity may name another, so the table is filled in the
-    // order the tier minted them
-    _created_points.allocate(std::size_t(_arr.n_created()));
-    for (Index id = 0; id < _arr.n_created(); ++id)
-      _created_points[std::size_t(id)] =
-          _arr.resolve_created_point(id, read, read);
+    _created_points.allocate(std::size_t(_identities.n_plane_created()));
+    tf::parallel_for_each(
+        tf::make_sequence_range(_identities.n_plane_created()),
+        [&](Index id) {
+          _created_points[std::size_t(id)] =
+              _arr.resolve_created_point(_identities, id, read, read);
+        },
+        tf::checked);
   }
 
   /// Every triangle, contiguous per input face. A corner is a flat identity:
@@ -161,6 +167,9 @@ private:
 
   converter_type _converter;
   world_type _world;
+  // the mesh world states no local tier, so the plane layer is the whole
+  // identity space this build states
+  identity_substrate<Index, Int> _identities;
   plane_arrangement<Index, Int> _arr;
   tf::buffer<Index> _vertex_offsets;
   tf::buffer<point_type> _created_points;

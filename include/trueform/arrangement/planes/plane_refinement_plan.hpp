@@ -57,6 +57,12 @@ struct plane_refinement_census {
   std::size_t steiners = 0;
   std::size_t projection_weld_relations = 0;
   std::size_t refused_planes = 0;
+  /// Planes whose prepared set the round refuses, which the admission law
+  /// declines (@ref accept_plane_triangulation).
+  std::size_t admission_refused = 0;
+  /// Planned planes the first round refused once the wave delivered its
+  /// splits: the wave's own retry.
+  std::size_t round1_retries = 0;
 };
 
 /// The owning, one-use result of refinement discovery. It is proposal and

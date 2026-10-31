@@ -12,16 +12,15 @@
  */
 #pragma once
 
+#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../../exact/vertex.hpp"
-#include "../../topology/topo_id.hpp"
+#include "../identity/identity_substrate.hpp"
 #include "./plane_arrangement_arena.hpp"
-#include "./plane_arrangement_census.hpp"
+#include "./plane_arrangement_store.hpp"
 #include "./plane_refinement_plan.hpp"
-#include "./plane_triangulation_types.hpp"
 
 #include <array>
 #include <cstddef>
@@ -37,20 +36,23 @@ namespace tf::arrangement {
 /// shift is zero and the walk below would copy the store onto itself. THE
 /// ARENA IS THE PRODUCT then, and it moves.
 template <typename Index, typename Int, typename World>
-auto materialize_plane_products(
-    const World &world, plane_arrangement_arena<Index, Int> &arena,
-    bool record_arrangement, bool record_cells, Index base_created, Index n_flat,
-    tf::buffer<Index> &plane_offsets,
-    tf::buffer<std::array<Index, 3>> &triangles,
-    tf::buffer<std::array<Index, 3>> &slot_parents,
-    tf::buffer<std::array<tf::topo_id<short>, 3>> &corner_subs,
-    tf::buffer<Index> &coplanar_of,
-    tf::buffer<tf::arrangement::coplanar_descriptor<Index>> &coplanar,
-    tf::buffer<char> &stacked, tf::buffer<Index> &triangle_cells,
-    tf::buffer<std::array<Index, 2>> &face_range,
-    tf::buffer<tf::exact::pt3<Int>> &direct_created_points,
-    tf::buffer<Index> &created_class, plane_arrangement_census &census,
-    plane_refinement_census &refinement_census) -> void {
+auto materialize_plane_products(const World &world,
+                                plane_arrangement_arena<Index, Int> &arena,
+                                bool record_arrangement, bool record_cells,
+                                Index base_created, Index n_flat,
+                                plane_arrangement_store<Index> &store,
+                                identity_substrate<Index, Int> &identities,
+                                plane_refinement_census &refinement_census)
+    -> void {
+  auto &plane_offsets = store.plane_offsets;
+  auto &triangles = store.triangles;
+  auto &slot_parents = store.slot_parents;
+  auto &corner_subs = store.corner_subs;
+  auto &coplanar_of = store.coplanar_of;
+  auto &coplanar = store.coplanar;
+  auto &stacked = store.stacked;
+  auto &triangle_cells = store.triangle_cells;
+  auto &face_range = store.face_range;
   plane_offsets.allocate(std::size_t(world.n_planes()) + 1);
   plane_offsets[0] = 0;
   bool arena_is_product = true;
@@ -83,11 +85,8 @@ auto materialize_plane_products(
     stn_base[std::size_t(p) + 1] = stn_base[std::size_t(p)] + (stn[1] - stn[0]);
   }
   const auto n_steiners = std::size_t(stn_base[std::size_t(world.n_planes())]);
-  const auto direct_base = direct_created_points.size();
-  const auto class_base = created_class.size();
-  const auto created_base = base_created + Index(class_base);
-  direct_created_points.reallocate(direct_base + n_steiners);
-  created_class.reallocate(class_base + n_steiners);
+  const auto births = identities.mint_plane_points(n_steiners);
+  const auto created_base = base_created + Index(births.created);
   if (arena_is_product && n_steiners == 0) {
     triangles = std::move(arena.tris);
     corner_subs = std::move(arena.subs);
@@ -100,8 +99,6 @@ auto materialize_plane_products(
     if (record_cells)
       triangle_cells = std::move(arena.cell_of);
     face_range = std::move(arena.face_range);
-    census.triangles = n;
-    census.created = created_class.size();
     refinement_census.steiners = 0;
     return;
   }
@@ -116,6 +113,8 @@ auto materialize_plane_products(
   if (record_cells)
     triangle_cells.allocate(n);
   face_range.allocate(arena.face_range.size());
+  // a face no plane holds as a member — a carve retired it — states no span
+  tf::parallel_fill(face_range, std::array<Index, 2>{Index(0), Index(0)});
   tf::parallel_for_each(
       tf::make_sequence_range(world.n_planes()),
       [&](Index p) {
@@ -125,13 +124,10 @@ auto materialize_plane_products(
         const auto cop_shift = cop_base[std::size_t(p)] - cop[0];
         const auto stn = arena.stn_range[std::size_t(p)];
         const auto stn_shift = stn_base[std::size_t(p)];
-        for (auto s = stn[0]; s < stn[1]; ++s) {
-          const auto direct =
-              direct_base + std::size_t(s - stn[0] + stn_shift);
-          direct_created_points[direct] = arena.steiners[std::size_t(s)];
-          created_class[class_base + std::size_t(s - stn[0] + stn_shift)] =
-              -Index(direct) - Index(1);
-        }
+        for (auto s = stn[0]; s < stn[1]; ++s)
+          identities.state_plane_point(births,
+                                       std::size_t(s - stn[0] + stn_shift),
+                                       arena.steiners[std::size_t(s)]);
         const auto steiner_flat = n_flat + created_base + stn_shift;
         for (auto t = range[0]; t < range[1]; ++t) {
           const auto at = std::size_t(t + shift);
@@ -167,8 +163,6 @@ auto materialize_plane_products(
         }
       },
       tf::checked);
-  census.triangles = n;
-  census.created = created_class.size();
   refinement_census.steiners = n_steiners;
 }
 

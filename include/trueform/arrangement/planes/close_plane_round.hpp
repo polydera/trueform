@@ -14,11 +14,12 @@
 
 #include "../../core/buffer.hpp"
 #include "../../core/none.hpp"
-#include "../../exact/meta.hpp"
+#include "../../exact/vertex.hpp"
+#include "../../intersect/graph/near_identity_rows.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
+#include "../identity/identity_substrate.hpp"
 #include "./advance_plane_wave.hpp"
 #include "./plane_arrangement_census.hpp"
-#include "./plane_recovery_name.hpp"
 #include "./plane_round_evidence.hpp"
 #include "./update_plane_failures.hpp"
 
@@ -42,6 +43,7 @@ enum class plane_round_result { done, retry, aborted, entrance };
 /// set that refusal never triangulated, and the wave publishes it. A weld
 /// needs no refusal either: a triangulation that succeeded may still report
 /// two identities it could not tell apart, and that statement is the wave's.
+/// `near_window` and `near_rows` are the wave's (@ref advance_plane_wave).
 template <typename Index, typename Int, typename World, typename Planes,
           typename VertexOffsets, typename ExactPoint, typename NamePoint,
           typename StateEntrance = tf::none_t>
@@ -50,14 +52,13 @@ auto close_plane_round(
     plane_round_evidence<Index, Int> &evidence,
     tf::intersect::graph::plane_tables<Index, Int> &local_tables,
     tf::buffer<Index> &plane_ticket, tf::buffer<Index> &group_router,
-    tf::buffer<std::array<Index, 3>> &merges, tf::buffer<Index> &created_class,
-    tf::buffer<typename tf::exact::meta<Int>::param_type> &class_t,
-    tf::buffer<plane_recovery_name<
-        Index, typename tf::exact::meta<Int>::param_type>> &class_name,
+    identity_substrate<Index, Int> &identities,
     const VertexOffsets &vertex_offsets, Index n_flat, Index base_created,
     const ExactPoint &exact_point, const NamePoint &name_point,
     tf::buffer<Index> &failed, plane_arrangement_census &census,
-    tf::buffer<Index> &frontier,
+    tf::buffer<Index> &frontier, Int near_window,
+    tf::intersect::graph::near_identity_rows<Index, tf::exact::pt3<Int>>
+        &near_rows,
     const StateEntrance &state_entrance = tf::none) -> plane_round_result {
   evidence.census.refusals += evidence.refused.size();
   census += evidence.census;
@@ -84,10 +85,9 @@ auto close_plane_round(
   if (evidence.refused.size() == 0 && evidence.welds.size() == 0)
     return plane_round_result::done;
   const auto wave = advance_plane_wave(
-      world, evidence, local_tables, plane_ticket, group_router, merges,
-      created_class, class_t, class_name, vertex_offsets, n_flat, base_created,
-      exact_point, name_point, census, frontier, state_entrance);
-  census.created = created_class.size();
+      world, evidence, local_tables, plane_ticket, group_router, identities,
+      vertex_offsets, n_flat, base_created, exact_point, name_point, census,
+      frontier, near_window, near_rows, state_entrance);
   if (wave == plane_wave_result::unsupported)
     return plane_round_result::aborted;
   // a caller that states no entrance can never be answered with one

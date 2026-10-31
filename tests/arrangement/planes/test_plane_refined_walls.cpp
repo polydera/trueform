@@ -32,15 +32,16 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
-#include <trueform/core/buffer.hpp>
-#include <trueform/core/point.hpp>
-#include <trueform/core/range.hpp>
-#include <trueform/core/static_size.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/arrangement/planes/make_plane_refinement_evidence.hpp>
 #include <trueform/arrangement/planes/plane_arrangement.hpp>
 #include <trueform/arrangement/planes/plane_recovery_birth.hpp>
 #include <trueform/arrangement/planes/plane_recovery_statement.hpp>
 #include <trueform/arrangement/planes/plane_refinement_plan.hpp>
+#include <trueform/core/buffer.hpp>
+#include <trueform/core/point.hpp>
+#include <trueform/core/range.hpp>
+#include <trueform/core/static_size.hpp>
 #include <trueform/exact/dyadic_blend.hpp>
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/int64.hpp>
@@ -297,9 +298,10 @@ auto check_defects(const char *arm, const std::vector<std::string> &defects)
 
 /// One world, one config: the refined product gated by the laws it owns.
 template <typename World, typename Subject, typename Stock,
-          typename VertexOffsets>
+          typename VertexOffsets, typename Identities>
 auto check_refined_laws(const World &world, const VertexOffsets &vertex_offsets,
                         const Stock &stock, const Subject &subject,
+                        const Identities &subject_identities,
                         refined_walls_index_t n_base_created,
                         bool require_scaled_boundary) -> void {
   const auto subject_state = read_product(world, subject, vertex_offsets);
@@ -310,7 +312,8 @@ auto check_refined_laws(const World &world, const VertexOffsets &vertex_offsets,
   check_defects("subject", subject_water);
   check_defects("subject", subject_own);
 
-  const auto subject_created = subject.census().created;
+  const auto subject_created =
+      std::size_t(subject_identities.n_plane_created());
   CHECK(subject.failed().size() == 0);
   {
     INFO("C: created identities nothing stands on");
@@ -333,15 +336,20 @@ auto check_hand_built_wall(tf::test::plane_hand_world<Int> &fixture,
                            const tf::cdt_refine_config &config,
                            bool require_scaled_boundary = false) -> void {
   tf::arrangement::plane_arrangement<refined_walls_index_t, Int> stock;
+  tf::arrangement::identity_substrate<refined_walls_index_t, Int>
+      stock_identities;
   stock.record_triangle_arrangement();
-  stock.build(fixture.input, n_base_created, get_base, get_original,
-              fixture.vertex_offsets);
+  stock.build(fixture.input, stock_identities, n_base_created, get_base,
+              get_original, fixture.vertex_offsets);
   tf::arrangement::plane_arrangement<refined_walls_index_t, Int> subject;
+  tf::arrangement::identity_substrate<refined_walls_index_t, Int>
+      subject_identities;
   subject.record_triangle_arrangement();
-  subject.build_refined(fixture.input, n_base_created, get_base, get_original,
-                        fixture.vertex_offsets, config);
+  subject.build_refined(fixture.input, subject_identities, n_base_created,
+                        get_base, get_original, fixture.vertex_offsets, config);
   check_refined_laws(fixture.input, fixture.vertex_offsets, stock, subject,
-                     n_base_created, require_scaled_boundary);
+                     subject_identities, n_base_created,
+                     require_scaled_boundary);
 }
 
 /// The config ladder every wall states for itself.
@@ -374,13 +382,18 @@ auto check_refined_totality(tf::test::plane_hand_world<Int> fixture,
   };
   const auto n_base_created = refined_walls_index_t(fixture.created.size());
   tf::arrangement::plane_arrangement<refined_walls_index_t, Int> stock;
+  tf::arrangement::identity_substrate<refined_walls_index_t, Int>
+      stock_identities;
   stock.record_triangle_arrangement();
-  stock.build(fixture.input, n_base_created, get_base, get_original,
-              fixture.vertex_offsets);
+  stock.build(fixture.input, stock_identities, n_base_created, get_base,
+              get_original, fixture.vertex_offsets);
   tf::arrangement::plane_arrangement<refined_walls_index_t, Int> subject;
+  tf::arrangement::identity_substrate<refined_walls_index_t, Int>
+      subject_identities;
   subject.record_triangle_arrangement();
-  subject.build_refined(fixture.input, n_base_created, get_base, get_original,
-                        fixture.vertex_offsets, encroachment_enabled());
+  subject.build_refined(fixture.input, subject_identities, n_base_created,
+                        get_base, get_original, fixture.vertex_offsets,
+                        encroachment_enabled());
 
   const auto state =
       read_product(fixture.input, subject, fixture.vertex_offsets);
@@ -399,8 +412,11 @@ auto check_refined_totality(tf::test::plane_hand_world<Int> fixture,
   // asserted only where nothing was refused.
   if (subject.refinement_refused_planes().size() == 0)
     CHECK((subject.triangles().size() != stock.triangles().size() ||
-           subject.census().created != stock.census().created));
-  CHECK(state.orphan_created(n_base_created, subject.census().created) == 0);
+           subject_identities.n_plane_created() !=
+               stock_identities.n_plane_created()));
+  CHECK(state.orphan_created(
+            n_base_created,
+            std::size_t(subject_identities.n_plane_created())) == 0);
 }
 
 } // namespace
@@ -541,15 +557,21 @@ TEMPLATE_TEST_CASE("plane refined walls: the boundary-dominant crease",
   tf::arrangement::plane_arrangement<Index, Int> stock;
   tf::arrangement::plane_arrangement<Index, Int> subject;
   tf::intersect::graph::local_arrangement<Index, Real, Int> world;
-  world.build(std::move(intersections), get_original, apply_to_face,
-              apply_to_form, tf::make_range(face_offsets), true, false);
+  tf::arrangement::identity_substrate<Index, Int> stock_identities;
+  world.build(stock_identities, std::move(intersections), get_original,
+              apply_to_face, apply_to_form, tf::make_range(face_offsets), true,
+              false);
+  // each arm states its own plane tables over the one world's
+  auto subject_identities = stock_identities;
   stock.record_triangle_arrangement();
   subject.record_triangle_arrangement();
-  stock.build(world, get_original);
-  subject.build_refined(world, get_original, apply_to_form, config);
+  stock.build(world, stock_identities, get_original);
+  subject.build_refined(world, subject_identities, get_original, apply_to_form,
+                        config);
 
-  check_refined_laws(world, world.vertex_offsets(), stock, subject,
-                     refined_walls_index_t(world.n_created_points()), false);
+  check_refined_laws(
+      world, world.vertex_offsets(), stock, subject, subject_identities,
+      refined_walls_index_t(world.n_created_points(stock_identities)), false);
 }
 
 TEMPLATE_TEST_CASE("plane refined walls: recovery totality, uncut neighbor",
@@ -588,9 +610,11 @@ TEMPLATE_TEST_CASE("plane refined walls: refinement lands on both tiers",
   };
 
   tf::arrangement::plane_arrangement<refined_walls_index_t, Int> stock;
+  tf::arrangement::identity_substrate<refined_walls_index_t, Int>
+      stock_identities;
   stock.record_triangle_arrangement();
-  stock.build(fixture.input, refined_walls_index_t(0), get_base, get_original,
-              fixture.vertex_offsets);
+  stock.build(fixture.input, stock_identities, refined_walls_index_t(0),
+              get_base, get_original, fixture.vertex_offsets);
   const auto stock_tickets = to_vector(stock.plane_tickets());
   std::vector<refined_walls_index_t> stock_tris;
   for (refined_walls_index_t plane = 0; plane < stock.n_planes(); ++plane) {
@@ -607,9 +631,12 @@ TEMPLATE_TEST_CASE("plane refined walls: refinement lands on both tiers",
   const bool split_encroached = GENERATE(true, false);
   auto config = split_encroached ? encroachment_enabled() : boundaries_frozen();
   tf::arrangement::plane_arrangement<refined_walls_index_t, Int> subject;
+  tf::arrangement::identity_substrate<refined_walls_index_t, Int>
+      subject_identities;
   subject.record_triangle_arrangement();
-  subject.build_refined(fixture.input, refined_walls_index_t(0), get_base,
-                        get_original, fixture.vertex_offsets, config);
+  subject.build_refined(fixture.input, subject_identities,
+                        refined_walls_index_t(0), get_base, get_original,
+                        fixture.vertex_offsets, config);
 
   const auto state =
       read_product(fixture.input, subject, fixture.vertex_offsets);
@@ -639,8 +666,9 @@ TEMPLATE_TEST_CASE("plane refined walls: refinement lands on both tiers",
     CHECK(ported != 0);
     CHECK(deepened != 0);
   }
-  CHECK(state.orphan_created(refined_walls_index_t(0),
-                             subject.census().created) == 0);
+  CHECK(state.orphan_created(
+            refined_walls_index_t(0),
+            std::size_t(subject_identities.n_plane_created())) == 0);
 }
 
 TEMPLATE_TEST_CASE("plane refined walls: a mixed-endpoint name mints in place",

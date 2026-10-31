@@ -28,7 +28,10 @@
 #include "../../exact/vertex.hpp"
 #include "../../topology/cdt/constrained_delaunay_refinement_producer.hpp"
 #include "../../topology/cdt_refine_config.hpp"
+#include "../../topology/cdt_region_mode.hpp"
+#include "./accept_plane_triangulation.hpp"
 #include "./collect_plane_flat_welds.hpp"
+#include "./find_plane_rim_landings.hpp"
 #include "./plane_flat_weld.hpp"
 #include "./plane_member_statements.hpp"
 #include "./plane_recovery_birth.hpp"
@@ -44,10 +47,16 @@
 
 namespace tf::arrangement {
 
-/// The reusable input scratch filled for one plane refinement job.
+/// The reusable input scratch filled for one plane refinement job, and the
+/// scratch its acceptance reads: the seed's corners in prepared names
+/// (`rep`), the coverage flood's and the rim law's. The seed folds no
+/// coincident constraints, so `cons_root` stays empty.
 template <typename Index, typename Int> struct plane_refinement_workspace {
+  using param_t = typename tf::exact::meta<Int>::param_type;
+
   tf::buffer<Index> ends;
   tf::points_buffer<Int, 2> pts2;
+  tf::buffer<tf::exact::pt3<Int>> pts3;
   tf::buffer<Index> cons;
   tf::buffer<char> bnd;
   tf::buffer<Index> cons_group;
@@ -58,6 +67,17 @@ template <typename Index, typename Int> struct plane_refinement_workspace {
   tf::buffer<std::array<Index, 2>> cons_cut;
   tf::buffer<std::array<Index, 2>> member_ticket;
   int face_orientation = 1;
+  tf::buffer<Index> rep;
+  tf::buffer<Index> cons_root;
+  tf::buffer<std::array<Index, 4>> region_adj;
+  tf::buffer<Index> region_offsets;
+  tf::buffer<Index> region_stack;
+  tf::buffer<char> region_reached;
+  tf::buffer<std::array<Index, 2>> cover_range;
+  tf::buffer<Index> cover;
+  tf::buffer<signed char> cover_winding;
+  tf::buffer<tf::arrangement::plane_rim_landing<Index, param_t>> rim_landings;
+  tf::arrangement::plane_rim_walk<Index> rim_walk;
 };
 
 /// Discover refinement choices on explicit plane jobs without changing the
@@ -71,7 +91,9 @@ template <typename Index, typename Int> struct plane_refinement_workspace {
 /// ascending, together with the inversion the two orders state.
 /// `frame_of(job)` returns the owning plane frame and `source_of(job, group)`
 /// names the table holding the current group. Steiner block `p` belongs to
-/// global plane `p` in `[0, plane_extent)`.
+/// global plane `p` in `[0, plane_extent)`. A plane is planned only when the
+/// round would accept its seed (@ref accept_plane_triangulation); every other
+/// is refused, its weld evidence kept.
 template <typename Index, typename Int, typename Jobs, typename Prepare,
           typename GroupEnds, typename GroupEndpoints, typename FrameOf,
           typename SourceOf>
@@ -93,9 +115,9 @@ auto discover_plane_refinement(const Jobs &jobs, Index plane_extent,
     tf::buffer<tf::arrangement::plane_refinement_split<Index, Int>> splits;
     tf::buffer<std::array<Index, 3>> steiner_runs;
     tf::buffer<tf::exact::pt3<Int>> steiner_points;
-    tf::buffer<Index> representatives;
     tf::buffer<tf::arrangement::plane_flat_weld<Index>> welds;
     tf::buffer<Index> refused_planes;
+    std::size_t admission_refused = 0;
   };
 
   tf::arrangement::plane_refinement_plan<Index, Int> plan;
@@ -103,6 +125,8 @@ auto discover_plane_refinement(const Jobs &jobs, Index plane_extent,
   tf::buffer<tf::exact::pt3<Int>> steiner_points;
 
   auto task = [&](auto &&range, local_t &local) {
+    // the acceptance walks the seed's constraint owners
+    local.producer.always_track_constraint_owners();
     for (const auto &job : range) {
       auto &workspace = local.workspace;
       if (!prepare(job, workspace)) {
@@ -121,21 +145,29 @@ auto discover_plane_refinement(const Jobs &jobs, Index plane_extent,
                                tf::make_range(workspace.bnd),
                                tf::make_range(local.splittable), config);
       const auto &index_map = local.producer.index_map();
-      // The seed CDT cannot create vertices. Equal input/output counts prove
-      // the dominant no-weld case without a scan.
       const auto weld_map_valid =
           local.producer.has_prepared_input_index_map() &&
-          (index_map.kept_ids().size() == workspace.ends.size() ||
-           tf::arrangement::collect_plane_flat_welds(
-               tf::make_range(workspace.ends), index_map.f(),
-               index_map.kept_ids(), Index(index_map.f().size()),
-               Index(index_map.kept_ids().size()), n_flat, job.plane,
-               local.representatives, local.welds));
+          tf::arrangement::collect_plane_flat_welds(
+              tf::make_range(workspace.ends), index_map.f(),
+              index_map.kept_ids(), Index(index_map.f().size()),
+              Index(index_map.kept_ids().size()), n_flat, job.plane,
+              workspace.rep, local.welds);
       if (!built) {
         local.refused_planes.push_back(job.plane);
         continue;
       }
       if (!weld_map_valid) {
+        local.refused_planes.push_back(job.plane);
+        continue;
+      }
+      const bool pooled = workspace.member_ticket.size() != 0;
+      if (pooled)
+        local.producer.relabel_seed(tf::cdt_region_mode::components);
+      const auto &seed = local.producer.seed();
+      if (!tf::arrangement::accept_plane_triangulation<Index, Int>(
+               workspace, seed, seed.faces_buffer(), pooled)
+               .accepted) {
+        ++local.admission_refused;
         local.refused_planes.push_back(job.plane);
         continue;
       }
@@ -178,6 +210,7 @@ auto discover_plane_refinement(const Jobs &jobs, Index plane_extent,
     tf::core::append(local.splits, plan.splits);
     tf::core::append(local.welds, plan.welds);
     tf::core::append(local.refused_planes, plan.refused_planes);
+    plan.census.admission_refused += local.admission_refused;
     const auto point_base = Index(steiner_points.size());
     for (const auto &run : local.steiner_runs)
       steiner_runs.push_back(

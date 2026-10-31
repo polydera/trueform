@@ -12,13 +12,17 @@
  */
 #pragma once
 
+#include "../../core/config/verify.hpp"
 #include "../../core/range.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "../../exact/canonical_plane.hpp"
 #include "../../exact/plane_frame.hpp"
 #include "../../intersect/graph/face_descriptor.hpp"
 #include "../../intersect/graph/local_arrangement.hpp"
+#include "../identity/identity_substrate.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -68,6 +72,15 @@ namespace tf::arrangement {
 /// @ref tf::arrangement::states_flat_carriers states what answering it commits
 /// a world to, and a world that does not answer it is swept whole.
 ///
+/// ENTRANCE GRAIN, ON DEMAND, reached only when the wave enters a face or the
+/// refinement delivers a split: `plane_name`, the canonical name of the plane
+/// a carrier stands on, which seats an entrant beside the standing planes and
+/// is stated by whoever founded the plane, never derived from a member — the
+/// identity substrate holds it (@ref identity_substrate::plane_name); and
+/// `source_side`, the source face and side a face's side stands on — the face
+/// itself for a face the build named, `-1` for a carved side kept by no
+/// source side — which the entrance discovery and the physical splits read.
+///
 /// THE IDENTITY SPACE IS THE ENTRY'S PARAMETER, not a name every world states:
 /// the closed-world entry is given `n_base_created` and `vertex_offsets` at the
 /// boundary. A world built ON a local arrangement carries that space itself —
@@ -92,8 +105,12 @@ template <typename Policy> struct plane_world : public Policy {
   }
 };
 
-/// The production policy: the local arrangement IS the world, borrowed, and
-/// past its extents the refinement's own promoted rows.
+/// The production policy: the local arrangement IS the world, borrowed with
+/// the identity substrate it stated into, and past its extents the
+/// refinement's own
+/// promoted rows. A plane's name is the substrate's, read at this value's
+/// frozen extent: the local tier's tables below it, the promoted names the
+/// plane tier's tables state past it.
 ///
 /// One policy states BOTH modes: a stock build carries an EMPTY extension, so
 /// its suffix branch is never taken. `local_arrangement` stitches its own cut
@@ -109,12 +126,16 @@ public:
   using index_type = Index;
   using arrangement_t =
       tf::intersect::graph::local_arrangement<Index, RealType, Int>;
+  using identities_t = identity_substrate<Index, Int>;
   using descriptor_t = tf::intersect::graph::face_descriptor<Index>;
   using frame_t = tf::exact::plane_frame<Int>;
+  using name_t = tf::exact::canonical_plane<Int>;
 
-  explicit plane_local_arrangement_policy(const arrangement_t &arrangement)
-      : _arrangement(&arrangement), _promoted_descriptors(nullptr, nullptr),
-        _promoted_frames(nullptr, nullptr),
+  explicit plane_local_arrangement_policy(const arrangement_t &arrangement,
+                                          const identities_t &identities)
+      : _arrangement(&arrangement), _identities(&identities),
+        _promoted_descriptors(nullptr, nullptr),
+        _promoted_frames(nullptr, nullptr), _promoted_names(nullptr, nullptr),
         _promoted_orientations(nullptr, nullptr),
         _promoted_plane_of(nullptr, nullptr),
         _promoted_member_offsets(nullptr, nullptr),
@@ -133,18 +154,20 @@ public:
   /// plane its name holds, or one the promotion founds — and
   /// `member_offsets` / `members` list, per plane, the promoted faces it
   /// holds after its own.
-  template <typename Descriptors, typename Frames, typename Orientations,
-            typename PlaneOf, typename MemberOffsets, typename Members>
+  template <typename Descriptors, typename Frames, typename Names,
+            typename Orientations, typename PlaneOf, typename MemberOffsets,
+            typename Members>
   plane_local_arrangement_policy(const plane_local_arrangement_policy &base,
                                  const Descriptors &descriptors,
-                                 const Frames &frames,
+                                 const Frames &frames, const Names &names,
                                  const Orientations &orientations,
                                  const PlaneOf &plane_of,
                                  const MemberOffsets &member_offsets,
                                  const Members &members)
-      : _arrangement(base._arrangement),
+      : _arrangement(base._arrangement), _identities(base._identities),
         _promoted_descriptors(descriptors.begin(), descriptors.end()),
         _promoted_frames(frames.begin(), frames.end()),
+        _promoted_names(names.begin(), names.end()),
         _promoted_orientations(orientations.begin(), orientations.end()),
         _promoted_plane_of(plane_of.begin(), plane_of.end()),
         _promoted_member_offsets(member_offsets.begin(), member_offsets.end()),
@@ -165,9 +188,12 @@ public:
     return _arrangement->canon_group(canon);
   }
   auto plane_edges(Index plane) const {
+    if constexpr (tf::core::verification)
+      tf::core::verify(plane < _n_base_planes,
+                       "a world-tier read stands on a plane the world holds");
     return _arrangement->plane_edges(plane);
   }
-  auto merges() const { return _arrangement->merges(); }
+  auto merges() const { return tf::make_range(_identities->local_merges()); }
   auto split_roots() const { return _arrangement->split_roots(); }
   auto split_survivors(std::size_t group) const {
     return _arrangement->split_survivors(group);
@@ -179,6 +205,11 @@ public:
     return plane < _n_base_planes
                ? _arrangement->frame(plane)
                : _promoted_frames[std::size_t(plane - _n_base_planes)];
+  }
+  auto plane_name(Index plane) const -> const name_t & {
+    return plane < _n_base_planes
+               ? _identities->local_plane_names()[std::size_t(plane)]
+               : _promoted_names[std::size_t(plane - _n_base_planes)];
   }
   auto member_count(Index plane) const -> Index {
     return own_member_count(plane) + promoted_member_count(plane);
@@ -218,11 +249,27 @@ public:
                ? _arrangement->face_orientation(face)
                : _promoted_orientations[std::size_t(face - _n_base_faces)];
   }
+  /// The same winding read by a caller already holding the face's carrier
+  /// frame, so a world that derives a frame on demand derives it once.
+  auto face_orientation(Index face, const frame_t &) const -> std::int8_t {
+    return face_orientation(face);
+  }
+  /// The source face and side a face's side stands on (@ref
+  /// tf::intersect::graph::local_arrangement::source_side); a promoted face
+  /// is its own source.
+  auto source_side(Index face, Index side) const -> std::array<Index, 2> {
+    return face < _n_base_faces
+               ? _arrangement->source_side(face, side)
+               : std::array<Index, 2>{
+                     _promoted_descriptors[std::size_t(face - _n_base_faces)]
+                         .object,
+                     side};
+  }
 
   auto vertex_offsets() const { return _arrangement->vertex_offsets(); }
   auto face_offsets() const { return _arrangement->face_offsets(); }
   auto n_created_points() const -> Index {
-    return _arrangement->n_created_points();
+    return _arrangement->n_created_points(*_identities);
   }
   auto intersection_points() const {
     return _arrangement->intersection_points();
@@ -230,7 +277,7 @@ public:
   template <typename GetPoint, typename GetMeshPoint>
   auto point_of(Index id, const GetPoint &get_point,
                 const GetMeshPoint &get_mesh_point) const {
-    return _arrangement->point_of(id, get_point, get_mesh_point);
+    return _arrangement->point_of(*_identities, id, get_point, get_mesh_point);
   }
 
 private:
@@ -246,8 +293,10 @@ private:
   }
 
   const arrangement_t *_arrangement;
+  const identities_t *_identities;
   tf::range<const descriptor_t *, tf::dynamic_size> _promoted_descriptors;
   tf::range<const frame_t *, tf::dynamic_size> _promoted_frames;
+  tf::range<const name_t *, tf::dynamic_size> _promoted_names;
   tf::range<const std::int8_t *, tf::dynamic_size> _promoted_orientations;
   tf::range<const Index *, tf::dynamic_size> _promoted_plane_of;
   tf::range<const Index *, tf::dynamic_size> _promoted_member_offsets;
@@ -261,10 +310,11 @@ private:
 template <typename Index, typename RealType, typename Int>
 auto make_plane_world(
     const tf::intersect::graph::local_arrangement<Index, RealType, Int>
-        &arrangement)
+        &arrangement,
+    const identity_substrate<Index, Int> &identities)
     -> plane_world<plane_local_arrangement_policy<Index, RealType, Int>> {
   return plane_world<plane_local_arrangement_policy<Index, RealType, Int>>(
-      arrangement);
+      arrangement, identities);
 }
 
 } // namespace tf::arrangement

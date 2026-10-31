@@ -16,13 +16,13 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "./plane_group_router.hpp"
 #include "./plane_piece_key.hpp"
 #include "./plane_tier_definitions.hpp"
 
-#include <cassert>
 #include <cstddef>
 #include <limits>
 
@@ -98,20 +98,23 @@ auto finalize_plane_piece_tickets(
         // untouched carrier's slots already carry their final immutable ids,
         // and there is nothing to resolve
         const auto finalize_inactive = [&]() {
-#ifndef NDEBUG
-          for (auto triangle = plane_offsets[std::size_t(plane)];
-               triangle < plane_offsets[std::size_t(plane) + 1]; ++triangle) {
-            const auto &tickets = slot_parents[std::size_t(triangle)];
-            // an untouched carrier names an immutable group the router states
-            // and still leaves to the world — never a retired root, whose
-            // staging closure took every carrier of it
-            for (std::size_t slot = 0; slot < 3; ++slot)
-              assert(tickets[slot] == Index(-1) ||
-                     (std::size_t(tickets[slot]) < router.size() &&
-                      resolve_plane_group_router(router, tickets[slot],
-                                                 Index(-1)) == Index(-1)));
+          if constexpr (tf::core::verification) {
+            for (auto triangle = plane_offsets[std::size_t(plane)];
+                 triangle < plane_offsets[std::size_t(plane) + 1];
+                 ++triangle) {
+              const auto &tickets = slot_parents[std::size_t(triangle)];
+              // an untouched carrier names an immutable group the router
+              // states and still leaves to the world — never a retired root,
+              // whose staging closure took every carrier of it
+              for (std::size_t slot = 0; slot < 3; ++slot)
+                tf::core::verify(
+                    tickets[slot] == Index(-1) ||
+                        (std::size_t(tickets[slot]) < router.size() &&
+                         resolve_plane_group_router(router, tickets[slot],
+                                                    Index(-1)) == Index(-1)),
+                    "an untouched carrier names a group the world keeps");
+            }
           }
-#endif
         };
         if (current_plane == Index(-1)) {
           if (plane >= immutable.n_planes()) {

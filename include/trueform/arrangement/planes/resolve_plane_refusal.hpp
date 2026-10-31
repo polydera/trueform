@@ -46,11 +46,12 @@ auto resolve_plane_refusal(
     return;
   state_plane_refusal(make_plane_tier_groups(world.tables(), local_tables),
                       plane, local.cdt,
-                      local.ends, local.cons, local.pts2, local.cons_group,
-                      n_flat, first_minted,
+                      local.ends, local.cons, local.pts2, local.pts3,
+                      local.cons_group, n_flat, first_minted,
                       vertex_offsets, crossing_kind,
                       param_t(1) << tf::exact::meta<Int>::param_bits,
-                      local.statements, local.topology, local.meeting_record,
+                      local.statements, local.topology, local.welds,
+                      local.meeting_record,
                       local.census.landings, local.census.crossings);
   local.census.collisions += local.cdt.constraint_collisions().size();
 }

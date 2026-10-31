@@ -87,6 +87,9 @@ public:
   auto face_orientation(Index face) const -> std::int8_t {
     return _face_orientations[std::size_t(face)];
   }
+  auto face_orientation(Index face, const frame_t &) const -> std::int8_t {
+    return face_orientation(face);
+  }
 
   auto edge_defs() const { return _tables.edge_defs(); }
   auto n_canon() const -> Index { return _tables.n_canon(); }

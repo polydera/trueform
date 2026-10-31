@@ -17,14 +17,17 @@
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <trueform/core/buffer.hpp>
-#include <trueform/core/range.hpp>
-#include <trueform/csg/graph/make_plane_radial_fans.hpp>
-#include <trueform/csg/graph/make_plane_triangle_faces.hpp>
+#include <trueform/arrangement/identity/composed_identity_point.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/arrangement/planes/make_plane_arrangement_cells.hpp>
 #include <trueform/arrangement/planes/make_plane_piece_fences.hpp>
 #include <trueform/arrangement/planes/make_plane_piece_incidence.hpp>
 #include <trueform/arrangement/planes/plane_arrangement.hpp>
+#include <trueform/core/buffer.hpp>
+#include <trueform/core/point.hpp>
+#include <trueform/core/range.hpp>
+#include <trueform/csg/graph/make_plane_radial_fans.hpp>
+#include <trueform/csg/graph/make_plane_triangle_faces.hpp>
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/int64.hpp>
 #include <trueform/geometry/make_plane_mesh.hpp>
@@ -124,9 +127,11 @@ auto radial_fans_measure(std::vector<radial_fans_mesh_t<Real>> meshes,
   arrangement.record_triangle_cells();
   arrangement.record_triangle_arrangement();
   tf::intersect::graph::local_arrangement<radial_fans_index_t, Real, Int> world;
-  world.build(std::move(intersections), get_mesh_point, apply_to_face,
-              apply_to_form, tf::make_range(face_offsets), false, false);
-  arrangement.build(world, get_mesh_point);
+  tf::arrangement::identity_substrate<radial_fans_index_t, Int> identities;
+  world.build(identities, std::move(intersections), get_mesh_point,
+              apply_to_face, apply_to_form, tf::make_range(face_offsets), false,
+              false);
+  arrangement.build(world, identities, get_mesh_point);
 
   REQUIRE(arrangement.failed().size() == 0);
   const auto cells = tf::arrangement::make_plane_arrangement_cells(arrangement);
@@ -134,8 +139,17 @@ auto radial_fans_measure(std::vector<radial_fans_mesh_t<Real>> meshes,
       tf::arrangement::make_plane_piece_incidence(arrangement, cells);
   const auto fences = tf::arrangement::make_plane_piece_fences(
       arrangement, world, incidence, cells);
+  // the created points as the graph materializes them
+  tf::buffer<tf::point<Int, 3>> created_points;
+  created_points.allocate(
+      std::size_t(arrangement.n_base_created() + identities.n_plane_created()));
+  for (std::size_t id = 0; id < created_points.size(); ++id)
+    created_points[id] = tf::arrangement::composed_identity_point(
+        identities, world, arrangement, get_mesh_point, std::int16_t(-1),
+        radial_fans_index_t(id));
   const auto fans = tf::csg::graph::make_plane_radial_fans(
-      arrangement, world, incidence, fences, get_mesh_point, apply_to_face);
+      arrangement, world, identities, tf::make_range(created_points), incidence,
+      fences, get_mesh_point, apply_to_face);
 
   fans_t out;
   for (std::size_t piece = 0; piece < fences.fan.size(); ++piece)
@@ -147,9 +161,11 @@ auto radial_fans_measure(std::vector<radial_fans_mesh_t<Real>> meshes,
   // the piece endpoints, as the scene names them: an original vertex or an
   // identity the local arrangement minted
   const auto endpoint = [&](std::int16_t tag, radial_fans_index_t id) {
-    REQUIRE((tag >= std::int16_t(0) || id < world.n_created_points()));
-    return tag >= std::int16_t(0) ? get_mesh_point(int(tag), id)
-                                  : world.point_of(id, get_mesh_point);
+    REQUIRE(
+        (tag >= std::int16_t(0) || id < world.n_created_points(identities)));
+    return tag >= std::int16_t(0)
+               ? get_mesh_point(int(tag), id)
+               : world.point_of(identities, id, get_mesh_point);
   };
   const auto face_normal = [&](radial_fans_index_t face) {
     const auto &descriptor = world.descriptor(face);

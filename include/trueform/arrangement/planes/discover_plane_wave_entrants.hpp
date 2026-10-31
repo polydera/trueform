@@ -55,6 +55,7 @@ auto discover_plane_wave_entrants(const World &world,
       [&answered](Index tag, Index object) {
         return answered.answered(tag, object);
       },
+      [&world](Index face, Index side) { return world.source_side(face, side); },
       entrants);
 }
 

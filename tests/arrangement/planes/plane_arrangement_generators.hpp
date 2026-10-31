@@ -24,6 +24,7 @@
 #include <trueform/core/point.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/exact/make_supported_plane_frame.hpp>
+#include <trueform/exact/plane_support.hpp>
 #include <trueform/intersect/graph/plane_edge_def.hpp>
 #include <trueform/topology/make_face_membership.hpp>
 #include <trueform/topology/make_manifold_edge_link.hpp>
@@ -105,7 +106,6 @@ auto fill_plane_tables(Input &input, tf::buffer<plane_def_t> raw,
     tables.defs().push_back(raw[row]);
   }
   tables.def_offsets().push_back(plane_index_t(raw.size()));
-  tables.n_canon() = group + 1;
   tables.edges().offsets_buffer().push_back(0);
   for (plane_index_t plane = 0; plane < n_planes; ++plane) {
     for (std::size_t row = 0; row < raw.size(); ++row)
@@ -143,6 +143,46 @@ auto fill_plane_points(tf::buffer<tf::point<Int, 3>> &points,
 // =============================================================================
 // The rim law: a cut the rounding carried across its own face's side
 // =============================================================================
+
+/// The one plane z = 0 of a rim world: its tables, frame and members.
+/// `stacked` makes it a two-member stack — face 1 the first face wound the
+/// other way — so every row belongs to the one plane.
+template <typename Int>
+auto fill_plane_rim_carrier(plane_hand_world<Int> &world,
+                            tf::buffer<plane_def_t> raw, bool stacked) -> void {
+  fill_plane_tables(world.input, std::move(raw), 1);
+  if (stacked) {
+    auto &edges = world.input.tables().edges();
+    edges.data_buffer().clear();
+    edges.offsets_buffer().clear();
+    edges.offsets_buffer().push_back(0);
+    for (std::size_t row = 0; row < world.input.tables().defs().size(); ++row)
+      edges.data_buffer().push_back(plane_index_t(row));
+    edges.offsets_buffer().push_back(plane_index_t(edges.data_buffer().size()));
+  }
+
+  world.input.frames().allocate(1);
+  world.input.frames()[0].ax0 = 0;
+  world.input.frames()[0].ax1 = 1;
+  world.input.frames()[0].plane_n = {0, 0, 1};
+  world.input.frames()[0].plane_d = 0;
+  world.input.frames()[0].plane_fallback = 0;
+  world.input.plane_members_data().offsets_buffer().push_back(0);
+  world.input.plane_members_data().data_buffer().push_back(0);
+  world.input.descriptor_data().push_back({0, 0});
+  world.input.face_planes().push_back(0);
+  world.input.face_orientations().push_back(1);
+  if (stacked) {
+    world.input.plane_members_data().data_buffer().push_back(1);
+    world.input.descriptor_data().push_back({0, 1});
+    world.input.face_planes().push_back(0);
+    world.input.face_orientations().push_back(-1);
+  }
+  world.input.plane_members_data().offsets_buffer().push_back(
+      plane_index_t(world.input.plane_members_data().data_buffer().size()));
+  world.vertex_offsets.push_back(0);
+  world.vertex_offsets.push_back(plane_index_t(world.points.size()));
+}
 
 /// One triangle A B C on z = 0 whose side A -> B the cut's ends X1, X2 split,
 /// and whose cut X1 -> P -> X2 bends through P, one lattice unit OUTSIDE that
@@ -183,40 +223,54 @@ auto make_plane_rim_world(bool stacked = false) -> plane_hand_world<Int> {
     raw.push_back({1, 2, -1, 1, -1, 0, 0, -1, 1, 1, reversed});
     raw.push_back({0, 2, -1, 1, -1, 0, 0, -1, 0, 0, 0});
   }
-  fill_plane_tables(world.input, std::move(raw), 1);
-  if (stacked) {
-    // both members' rows belong to the one plane
-    auto &edges = world.input.tables().edges();
-    edges.data_buffer().clear();
-    edges.offsets_buffer().clear();
-    edges.offsets_buffer().push_back(0);
-    for (std::size_t row = 0; row < world.input.tables().defs().size(); ++row)
-      edges.data_buffer().push_back(plane_index_t(row));
-    edges.offsets_buffer().push_back(
-        plane_index_t(edges.data_buffer().size()));
-  }
+  fill_plane_rim_carrier(world, std::move(raw), stacked);
+  return world;
+}
 
-  world.input.frames().allocate(1);
-  world.input.frames()[0].ax0 = 0;
-  world.input.frames()[0].ax1 = 1;
-  world.input.frames()[0].plane_n = {0, 0, 1};
-  world.input.frames()[0].plane_d = 0;
-  world.input.frames()[0].plane_fallback = 0;
-  world.input.plane_members_data().offsets_buffer().push_back(0);
-  world.input.plane_members_data().data_buffer().push_back(0);
-  world.input.descriptor_data().push_back({0, 0});
-  world.input.face_planes().push_back(0);
-  world.input.face_orientations().push_back(1);
+/// One triangle A B C on z = 0 whose side A -> B the refinement graded into
+/// the chain X1 Q1 Q2 X2, and whose cut runs X1 -> X2 straight. Q1 and Q2
+/// stand a sub-unit inside the face off the cut, so the chain bows past it:
+/// the sliver X1 Q1 Q2 X2 holds two of the face's corners, is covered by the
+/// face on neither side of the cut, and nothing crosses anything. `stacked`
+/// adds the same face wound the other way as the plane's second member.
+template <typename Int>
+auto make_plane_rim_chain_world(bool stacked = false) -> plane_hand_world<Int> {
+  plane_hand_world<Int> world;
+  const std::array<std::array<int, 3>, 7> coordinates{{
+      {{-1000000, 0, 0}},
+      {{1000000, 1, 0}},
+      {{0, 500000, 0}},
+      {{-300000, 0, 0}},
+      {{-100000, 1, 0}},
+      {{100000, 1, 0}},
+      {{300000, 1, 0}},
+  }};
+  fill_plane_points(world.points, coordinates, Int(1));
+
+  const auto reversed = tf::intersect::graph::plane_edge_reversed_flag;
+  const auto fan = tf::intersect::graph::plane_edge_fan_flag;
+  tf::buffer<plane_def_t> raw;
+  // the face's loop A X1 Q1 Q2 X2 B C, its side A -> B split four times
+  raw.push_back({0, 3, -1, 0, -1, 0, 0, -1, 0, 0, 0});
+  raw.push_back({3, 4, -1, 0, -1, 0, 0, -1, 1, 0, 0});
+  raw.push_back({4, 5, -1, 0, -1, 0, 0, -1, 2, 0, 0});
+  raw.push_back({5, 6, -1, 0, -1, 0, 0, -1, 3, 0, 0});
+  raw.push_back({1, 6, -1, 0, -1, 0, 0, -1, 4, 0, reversed});
+  raw.push_back({1, 2, -1, 0, -1, 0, 0, -1, 5, 1, 0});
+  raw.push_back({0, 2, -1, 0, -1, 0, 0, -1, 6, 2, reversed});
+  // its cut X1 -> X2
+  raw.push_back({3, 6, -1, 0, -1, 0, 0, -1, -1, -1, fan});
   if (stacked) {
-    world.input.plane_members_data().data_buffer().push_back(1);
-    world.input.descriptor_data().push_back({0, 1});
-    world.input.face_planes().push_back(0);
-    world.input.face_orientations().push_back(-1);
+    // the same face, wound the other way, as the plane's second member
+    raw.push_back({0, 2, -1, 1, -1, 0, 0, -1, 0, 0, 0});
+    raw.push_back({1, 2, -1, 1, -1, 0, 0, -1, 1, 1, reversed});
+    raw.push_back({1, 6, -1, 1, -1, 0, 0, -1, 2, 2, 0});
+    raw.push_back({5, 6, -1, 1, -1, 0, 0, -1, 3, 2, reversed});
+    raw.push_back({4, 5, -1, 1, -1, 0, 0, -1, 4, 2, reversed});
+    raw.push_back({3, 4, -1, 1, -1, 0, 0, -1, 5, 2, reversed});
+    raw.push_back({0, 3, -1, 1, -1, 0, 0, -1, 6, 2, reversed});
   }
-  world.input.plane_members_data().offsets_buffer().push_back(
-      plane_index_t(world.input.plane_members_data().data_buffer().size()));
-  world.vertex_offsets.push_back(0);
-  world.vertex_offsets.push_back(plane_index_t(world.points.size()));
+  fill_plane_rim_carrier(world, std::move(raw), stacked);
   return world;
 }
 
@@ -552,8 +606,8 @@ auto make_plane_steiner_retry_world(bool live_landings)
 /// pieces on BOTH carriers, which is what the plane tier is handed when the
 /// local arrangement saw the overlap first.
 ///
-/// Both frames come from the frame producer, offered the points of the
-/// carrier they belong to.
+/// Both frames come from the frame producer, reading the support of the
+/// points of the carrier they belong to.
 template <typename Int>
 auto make_plane_line_carrier_world(int axis, bool twin = false,
                                    bool presplit = false)
@@ -600,16 +654,16 @@ auto make_plane_line_carrier_world(int axis, bool twin = false,
   world.input.source_tables() = world.input.tables();
 
   world.input.frames().allocate(2);
-  world.input.frames()[0] = tf::exact::make_supported_plane_frame<Int>(
-      [&](const auto &consider) {
-        for (const auto corner : {0, 2, 4})
-          consider(world.points[std::size_t(corner)]);
-      });
-  world.input.frames()[1] = tf::exact::make_supported_plane_frame<Int>(
-      [&](const auto &consider) {
-        for (const auto corner : {0, 1, 2, 3})
-          consider(world.points[std::size_t(corner)]);
-      });
+  tf::exact::plane_support<Int> planar_support;
+  for (const auto corner : {0, 2, 4})
+    planar_support.offer(world.points[std::size_t(corner)]);
+  world.input.frames()[0] =
+      tf::exact::make_supported_plane_frame<Int>(planar_support);
+  tf::exact::plane_support<Int> line_support;
+  for (const auto corner : {0, 1, 2, 3})
+    line_support.offer(world.points[std::size_t(corner)]);
+  world.input.frames()[1] =
+      tf::exact::make_supported_plane_frame<Int>(line_support);
 
   fill_single_member_planes(world.input, 2);
   world.vertex_offsets.push_back(0);

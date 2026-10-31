@@ -84,13 +84,16 @@ auto prepare_plane_triangulation(
   const auto &frame = world.frame(plane);
   local.pts2.clear();
   local.pts2.reserve(local.ends.size());
+  local.pts3.clear();
+  local.pts3.reserve(local.ends.size());
   for (const auto flat : local.ends) {
     const auto q = point_of_flat(flat);
     local.pts2.emplace_back(q[frame.ax0], q[frame.ax1]);
+    local.pts3.push_back(q);
   }
 
   local.face_orientation =
-      int(world.face_orientation(world.member(plane, Index(0))));
+      int(world.face_orientation(world.member(plane, Index(0)), frame));
 
   // an instance names its face, so the members are stated once as a sorted
   // (face, ordinal) table and every instance answers by one search

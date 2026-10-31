@@ -22,34 +22,42 @@ using dyn_forms = forms_range_t<std::int64_t, double, tf::dynamic_size>;
 
 template pair_arrangement_t<tri, tri>
 build_pair_arrangement<tri, tri>(const tri &, const tri &,
-                                 tf::arrangement_config);
+                                 tf::arrangement_config,
+                                 tf::arrangement::near_identity_request);
 
 template pair_arrangement_t<tri, quad>
 build_pair_arrangement<tri, quad>(const tri &, const quad &,
-                                  tf::arrangement_config);
+                                  tf::arrangement_config,
+                                  tf::arrangement::near_identity_request);
 
 template pair_arrangement_t<tri, dyn>
 build_pair_arrangement<tri, dyn>(const tri &, const dyn &,
-                                 tf::arrangement_config);
+                                 tf::arrangement_config,
+                                 tf::arrangement::near_identity_request);
 
 template pair_arrangement_t<quad, quad>
 build_pair_arrangement<quad, quad>(const quad &, const quad &,
-                                   tf::arrangement_config);
+                                   tf::arrangement_config,
+                                   tf::arrangement::near_identity_request);
 
 template pair_arrangement_t<quad, dyn>
 build_pair_arrangement<quad, dyn>(const quad &, const dyn &,
-                                  tf::arrangement_config);
+                                  tf::arrangement_config,
+                                  tf::arrangement::near_identity_request);
 
 template pair_arrangement_t<dyn, tri>
 build_pair_arrangement<dyn, tri>(const dyn &, const tri &,
-                                 tf::arrangement_config);
+                                 tf::arrangement_config,
+                                 tf::arrangement::near_identity_request);
 
 template pair_arrangement_t<dyn, quad>
 build_pair_arrangement<dyn, quad>(const dyn &, const quad &,
-                                  tf::arrangement_config);
+                                  tf::arrangement_config,
+                                  tf::arrangement::near_identity_request);
 
 template pair_arrangement_t<dyn, dyn>
 build_pair_arrangement<dyn, dyn>(const dyn &, const dyn &,
-                                 tf::arrangement_config);
+                                 tf::arrangement_config,
+                                 tf::arrangement::near_identity_request);
 
 } // namespace tf::test

@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../../core/buffer.hpp"
+#include "../../intersect/graph/elect_identity_components.hpp"
 #include "./plane_flat_weld.hpp"
 #include <algorithm>
 #include <cstddef>
@@ -24,9 +25,12 @@ namespace tf::arrangement {
 ///
 /// The CDT's input-to-output map is the authority: projection twins may be
 /// distinct in exact 3D and must not be rediscovered by comparing positions.
-/// Created identities outrank originals and ties use the lowest flat key. An
-/// output introduced by resolve mode legitimately has no input anchor and is
-/// left as `-1`; an emission caller decides whether that is admissible.
+/// The anchor is the input THE ELECTION's rank law puts first (@ref
+/// tf::intersect::graph::identity_key). It is a proposal: an output only
+/// originals reach anchors at the smallest, and the wave's election mints
+/// for it. An output introduced by resolve mode legitimately has no input
+/// anchor and is left as `-1`; an emission caller decides whether that is
+/// admissible.
 ///
 /// `ends` are the anchors — the identities this plane names — and they are the
 /// leading prepared inputs. `n_prepared` is everything the triangulation was
@@ -54,19 +58,18 @@ auto collect_plane_flat_welds(const Ends &ends, const Forward &forward,
   }
   representatives.allocate(std::size_t(n_final));
   std::fill(representatives.begin(), representatives.end(), Index(-1));
-  auto prefers = [&](Index candidate, Index standing) {
-    const auto candidate_created = ends[std::size_t(candidate)] >= n_flat;
-    const auto standing_created = ends[std::size_t(standing)] >= n_flat;
-    return candidate_created != standing_created
-               ? candidate_created
-               : ends[std::size_t(candidate)] < ends[std::size_t(standing)];
+  const auto key_of = [&](Index input) {
+    const auto end = Index(ends[std::size_t(input)]);
+    return end >= n_flat
+               ? tf::intersect::graph::standing_identity_key<Index>(end)
+               : tf::intersect::graph::original_identity_key<Index>(end);
   };
   for (Index input = 0; input < n_input; ++input) {
     const auto output = forward[std::size_t(input)];
     if (output < 0 || n_final <= output)
       return false;
     auto &representative = representatives[std::size_t(output)];
-    if (representative == Index(-1) || prefers(input, representative))
+    if (representative == Index(-1) || key_of(input) < key_of(representative))
       representative = input;
   }
   for (Index input = 0; input < n_input; ++input) {

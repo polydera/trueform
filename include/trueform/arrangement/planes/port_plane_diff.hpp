@@ -13,23 +13,25 @@
 #pragma once
 
 #include "../../core/algorithm/parallel_contains.hpp"
-#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/none.hpp"
 #include "../../core/range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
+#include "./mint_plane_groups.hpp"
+#include "./open_plane_ticket.hpp"
 #include "./plane_definition_source.hpp"
 #include "./plane_group_router.hpp"
 #include "./plane_tier_definitions.hpp"
+#include "./restate_plane_blocks.hpp"
 #include "tbb/parallel_sort.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <limits>
 #include <type_traits>
@@ -223,28 +225,16 @@ auto port_plane_diff(
               std::size_t(local_tables.edges().data_buffer().size()))
     return false;
 
-  if (plane_ticket.size() == 0) {
-    plane_ticket.allocate(std::size_t(n_planes));
-    tf::parallel_fill(plane_ticket, Index(-1));
-  }
-  if (group_router.size() == 0) {
-    group_router.allocate(std::size_t(n_immutable));
-    tf::parallel_fill(group_router, Index(-1));
-  }
+  open_plane_ticket(plane_ticket, std::size_t(n_planes));
+  open_plane_ticket(group_router, std::size_t(n_immutable));
 
-  if (taken_groups.size() != 0) {
-    local_defs.reallocate(std::size_t(def_row_base) +
-                          std::size_t(span_offsets[taken_groups.size()]));
-    if (local_def_offsets.size() == 0)
-      local_def_offsets.push_back(Index(0));
-    const auto old_def_offsets = local_def_offsets.size();
-    local_def_offsets.reallocate(old_def_offsets + taken_groups.size());
-    tf::parallel_for_each(
-        tf::make_sequence_range(taken_groups.size()),
-        [&](std::size_t rank) {
+  if (taken_groups.size() != 0)
+    mint_plane_groups(
+        local_tables, taken_groups.size(), taken_groups.size(), span_offsets,
+        [&](std::size_t rank, std::size_t begin) {
           const auto group = taken_groups[rank];
           const auto mint = group_base + Index(rank);
-          auto at = std::size_t(def_row_base + span_offsets[rank]);
+          auto at = begin;
           for (const auto &def : world_tables.canon_group(group)) {
             auto minted = def;
             minted.id = mint;
@@ -258,17 +248,17 @@ auto port_plane_diff(
                  rider != std::size_t(rider_offsets[rank + 1]); ++rider) {
               auto minted = riders[rider];
               minted.id = mint;
-              assert(at == std::size_t(def_row_base + span_offsets[rank]) ||
-                     !tf::intersect::graph::plane_def_instance_less(
-                         minted, local_defs[at - 1]));
+              if constexpr (tf::core::verification)
+                tf::core::verify(
+                    at == begin ||
+                        !tf::intersect::graph::plane_def_instance_less(
+                            minted, local_defs[at - 1]),
+                    "a ported span keeps its instances in order");
               local_defs[at++] = minted;
             }
-          local_def_offsets[old_def_offsets + rank] =
-              def_row_base + span_offsets[rank + 1];
           group_router[std::size_t(group)] = mint;
+          return Index(rank);
         });
-    local_tables.n_canon() = group_base + Index(taken_groups.size());
-  }
 
   // the one row a block of this arrangement names a world row by: the rank
   // inside the span the router named it, or the world's own row CARRIED
@@ -280,10 +270,14 @@ auto port_plane_diff(
     const auto local_row =
         local_def_offsets[std::size_t(mint)] +
         (world_row - world_def_offsets[std::size_t(def.id)]);
-    assert(local_defs[std::size_t(local_row)].point_tag_0 == def.point_tag_0 &&
-           local_defs[std::size_t(local_row)].point_0 == def.point_0 &&
-           local_defs[std::size_t(local_row)].point_tag_1 == def.point_tag_1 &&
-           local_defs[std::size_t(local_row)].point_1 == def.point_1);
+    if constexpr (tf::core::verification)
+      tf::core::verify(
+          local_defs[std::size_t(local_row)].point_tag_0 == def.point_tag_0 &&
+              local_defs[std::size_t(local_row)].point_0 == def.point_0 &&
+              local_defs[std::size_t(local_row)].point_tag_1 ==
+                  def.point_tag_1 &&
+              local_defs[std::size_t(local_row)].point_1 == def.point_1,
+          "a ported row keeps its endpoints");
     return local_row;
   };
 
@@ -308,24 +302,14 @@ auto port_plane_diff(
 
   if (ported_planes.size() == 0)
     return true;
-  const auto block_base = Index(local_tables.edges().size());
-  const auto data_base = Index(block_rows.size());
-  if (block_offsets.size() == 0)
-    block_offsets.push_back(Index(0));
-  const auto old_block_offsets = block_offsets.size();
-  block_offsets.reallocate(old_block_offsets + ported_planes.size());
-  block_rows.reallocate(std::size_t(data_base) +
-                        std::size_t(block_prefix[ported_planes.size()]));
-  tf::parallel_for_each(
-      tf::make_sequence_range(ported_planes.size()),
-      [&](std::size_t at) {
-        const auto plane = ported_planes[at];
-        auto row = std::size_t(data_base + block_prefix[at]);
+  restate_plane_blocks(
+      block_offsets, block_rows, plane_ticket, ported_planes, block_prefix,
+      [&](std::size_t, Index plane, std::size_t row, tf::none_t &) {
         for (const auto world_row : world_tables.plane_edges(plane))
           block_rows[row++] = current_row(world_row);
-        block_offsets[old_block_offsets + at] = data_base + block_prefix[at + 1];
-        plane_ticket[std::size_t(plane)] = block_base + Index(at);
-      });
+        return row;
+      },
+      tf::none_t{});
   return true;
 }
 

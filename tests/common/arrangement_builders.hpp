@@ -20,8 +20,10 @@
 
 #include <trueform/arrangement/arrangement_config.hpp>
 #include <trueform/arrangement/arrangement_graph.hpp>
+#include <trueform/arrangement/identity/near_identity_request.hpp>
 #include <trueform/arrangement/policy/arrangement_pair_policy.hpp>
 #include <trueform/arrangement/policy/arrangement_range_policy.hpp>
+#include <trueform/arrangement/policy/arrangement_reseat_policy.hpp>
 #include <trueform/core/none.hpp>
 
 #include <array>
@@ -34,34 +36,46 @@ namespace tf::test {
 // tf::make_arrangement_graph deduced, against the type declared here.
 template <typename Form>
 using self_arrangement_t = tf::arrangement_graph<
-    tf::arrangement::arrangement_range_policy<std::array<Form, 1>, tf::none_t>,
+    tf::arrangement::reseat_policy_t<tf::arrangement::arrangement_range_policy<
+                                         std::array<Form, 1>, tf::none_t>,
+                                     tf::none_t>,
     tf::none_t>;
 
 template <typename Form0, typename Form1>
-using pair_arrangement_t =
-    tf::arrangement_graph<tf::arrangement::arrangement_pair_policy<
-                              Form0, tf::none_t, Form1, tf::none_t>,
-                          tf::none_t>;
+using pair_arrangement_t = tf::arrangement_graph<
+    tf::arrangement::reseat_policy_t<tf::arrangement::arrangement_pair_policy<
+                                         Form0, tf::none_t, Form1, tf::none_t>,
+                                     tf::none_t>,
+    tf::none_t>;
 
 template <typename Forms>
 using range_arrangement_t = tf::arrangement_graph<
-    tf::arrangement::arrangement_range_policy<Forms, tf::none_t>, tf::none_t>;
+    tf::arrangement::reseat_policy_t<
+        tf::arrangement::arrangement_range_policy<Forms, tf::none_t>,
+        tf::none_t>,
+    tf::none_t>;
 
-/// The form's self arrangement (`within` implied).
+/// The form's self arrangement (`within` implied). `request` is what a tier
+/// above asks of the build; the classification builders ask what
+/// `tf::make_csg_graph` asks.
 template <typename Form>
-auto build_self_arrangement(const Form &form, tf::arrangement_config config)
+auto build_self_arrangement(const Form &form, tf::arrangement_config config,
+                            tf::arrangement::near_identity_request request = {})
     -> self_arrangement_t<Form>;
 
 /// Two operands, possibly of different arity.
 template <typename Form0, typename Form1>
 auto build_pair_arrangement(const Form0 &form0, const Form1 &form1,
-                            tf::arrangement_config config)
+                            tf::arrangement_config config,
+                            tf::arrangement::near_identity_request request = {})
     -> pair_arrangement_t<Form0, Form1>;
 
 /// N operands. The graph stores the range, so the forms behind it must
 /// outlive the graph.
 template <typename Forms>
-auto build_range_arrangement(Forms forms, tf::arrangement_config config)
+auto build_range_arrangement(
+    Forms forms, tf::arrangement_config config,
+    tf::arrangement::near_identity_request request = {})
     -> range_arrangement_t<Forms>;
 
 } // namespace tf::test

@@ -19,6 +19,7 @@
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/arrangement/identity/identity_substrate.hpp>
 #include <trueform/arrangement/planes/plane_arrangement.hpp>
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/int64.hpp>
@@ -38,7 +39,8 @@ template <typename Int> auto folded_tip_balances() -> void {
     return fixture.points[std::size_t(point)];
   };
   tf::arrangement::plane_arrangement<folded_tip_index_t, Int> product;
-  product.build(fixture.input, folded_tip_index_t(0), get_original,
+  tf::arrangement::identity_substrate<folded_tip_index_t, Int> identities;
+  product.build(fixture.input, identities, folded_tip_index_t(0), get_original,
                 get_original, fixture.vertex_offsets);
   REQUIRE(product.failed().size() == 0);
 

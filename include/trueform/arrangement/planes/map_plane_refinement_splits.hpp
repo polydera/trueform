@@ -36,20 +36,21 @@ namespace tf::arrangement {
 /// generation's exact split currency.
 ///
 /// Initial choices use the immutable-group dense ticket. A physical row is
-/// restated through every whole source side in the promoted entrant table and
-/// uses the entrant-group ticket. Equal `(feature, parameter)` rows collapse
-/// only after both sources name the same mixed canonical group.
+/// restated through every whole source side in the promoted entrant table, on
+/// the plane `entrant_plane_of` seats that side's face on, and uses the
+/// entrant-group ticket. Equal `(feature, parameter)` rows collapse only after
+/// both sources name the same mixed canonical group.
 template <typename Index, typename Int, typename InitialSplits,
           typename PhysicalRows, typename EntrantTables,
-          typename EntrantDescriptors, typename MixedTables,
-          typename ApplyToForm, typename VertexOffsets>
+          typename EntrantDescriptors, typename EntrantPlaneOf,
+          typename MixedTables, typename ApplyToForm, typename VertexOffsets>
 auto map_plane_refinement_splits(
     const InitialSplits &initial, const PhysicalRows &physical,
     const tf::buffer<Index> &immutable_group_ticket,
     const EntrantTables &entrants,
     const tf::buffer<Index> &entrant_group_ticket,
     const EntrantDescriptors &entrant_descriptors, Index entrant_face_base,
-    Index entrant_plane_base, const MixedTables &mixed,
+    const EntrantPlaneOf &entrant_plane_of, const MixedTables &mixed,
     const ApplyToForm &apply_to_form, Index n_flat,
     const VertexOffsets &vertex_offsets,
     tf::buffer<plane_refinement_split<Index, Int>> &output) -> bool {
@@ -120,7 +121,8 @@ auto map_plane_refinement_splits(
                  ++row) {
               const auto parameter =
                   reverse ? end_parameter - row->parameter : row->parameter;
-              rows.push_back({feature, entrant_plane_base + entrant,
+              rows.push_back({feature,
+                              entrant_plane_of[std::size_t(entrant)],
                               mixed_group, parameter,
                               plane_refinement_current_source,
                               std::uint8_t(inverted)});

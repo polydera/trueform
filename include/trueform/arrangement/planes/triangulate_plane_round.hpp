@@ -82,6 +82,7 @@ auto triangulate_plane_round(
     tf::buffer<Index> ends;
     tf::buffer<Index> corner_local;
     tf::points_buffer<Int, 2> pts2;
+    tf::buffer<pt3_t> pts3;
     tf::buffer<Index> cons;
     tf::buffer<char> bnd;
     tf::buffer<Index> cons_group;
@@ -94,6 +95,7 @@ auto triangulate_plane_round(
     tf::buffer<signed char> cons_winding;
     tf::buffer<std::array<Index, 2>> cons_cut;
     tf::buffer<plane_rim_landing<Index, param_t>> rim_landings;
+    plane_rim_walk<Index> rim_walk;
     tf::buffer<std::array<Index, 2>> member_ticket;
     tf::buffer<tf::topo_id<short>> point_subs;
     tf::buffer<Index> subs_touched;
@@ -167,6 +169,15 @@ auto triangulate_plane_round(
       const auto steiner_before = local.steiner_points.size();
       const auto n_members = std::size_t(world.member_count(plane));
       const bool pooled = n_members > 1;
+      // a plane every member of which a carve retired holds no product
+      if (n_members == 0) {
+        local.planes.push_back(plane);
+        local.range.push_back({Index(before), Index(before)});
+        local.cop_range.push_back({Index(cop_before), Index(cop_before)});
+        local.stn_range.push_back(
+            {Index(steiner_before), Index(steiner_before)});
+        continue;
+      }
       bool ok = prepare_plane_triangulation(world, local_tables, plane_ticket,
                                             vertex_offsets, plane, local,
                                             point_of_flat);
