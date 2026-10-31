@@ -27,6 +27,7 @@
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/make_supported_plane_frame.hpp>
 #include <trueform/exact/meta.hpp>
+#include <trueform/exact/plane_support.hpp>
 #include <trueform/exact/vertex.hpp>
 #include <trueform/intersect/graph/face_descriptor.hpp>
 #include <trueform/intersect/graph/name_plane_carriers.hpp>
@@ -193,11 +194,11 @@ TEST_CASE("plane support: a line carrier's frame projects along the line",
           "[intersect][exact]") {
   const std::array<pt3_t, 3> line{pt3_t{0, 0, 0}, pt3_t{0, 0, 7},
                                   pt3_t{0, 0, 3}};
-  const auto frame = tf::exact::make_supported_plane_frame<support_int_t>(
-      [&](const auto &consider) {
-        for (const auto &point : line)
-          consider(point);
-      });
+  tf::exact::plane_support<support_int_t> support;
+  for (const auto &point : line)
+    support.offer(point);
+  const auto frame =
+      tf::exact::make_supported_plane_frame<support_int_t>(support);
   using T2 = tf::exact::meta<support_int_t>::T2;
   CHECK(frame.plane_n[0] == T2(0));
   CHECK(frame.plane_n[1] == T2(0));

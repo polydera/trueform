@@ -1,0 +1,27 @@
+/*
+ * Copyright (c) 2026 XLAB
+ * All rights reserved.
+ *
+ * This file is part of trueform (trueform.polydera.com)
+ *
+ * Licensed for noncommercial use under the PolyForm Noncommercial
+ * License 1.0.0.
+ * Commercial licensing available via info@polydera.com.
+ *
+ * Author: Žiga Sajovic
+ */
+#pragma once
+
+#include <cstddef>
+
+namespace tf::arrangement {
+
+/// What a tier above an arrangement asks of its build: the near table (@ref
+/// tf::intersect::graph::collapse_plane_identities) at `quanta` input quanta
+/// (@ref tf::arrangement::dispatch::make_input_quantum), none at zero. The
+/// window is a request, never a tolerance: it moves no identity.
+struct near_identity_request {
+  std::size_t quanta = 0;
+};
+
+} // namespace tf::arrangement

@@ -74,7 +74,8 @@ auto state_uncut_entrants(
   tf::buffer<side_t> sides;
   tf::generic_generate(
       tf::enumerate(entrants), sides,
-      [&](auto pair, tf::buffer<side_t> &out) {
+      [&face_offsets, &stamp_base, &entrant_descriptors, &apply_to_form, &g,
+       &split_group_of](auto pair, tf::buffer<side_t> &out) {
         auto &&[index, entrant] = pair;
         const auto position = std::size_t(index);
         const auto flat = Index(entrant);

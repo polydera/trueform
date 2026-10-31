@@ -47,7 +47,7 @@ struct scene_t {
 };
 
 auto authority_of(const scene_t &scene, const std::vector<def_t> &definitions)
-    -> graph::plane_edge_radial_authority {
+    -> graph::plane_edge_radial_authority<radial_authority_int_t> {
   const auto descriptor_of_face =
       [&](index_t face) -> const graph::face_descriptor<index_t> & {
     return scene.descriptors[std::size_t(face)];

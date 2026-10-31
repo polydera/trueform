@@ -16,6 +16,7 @@
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/views/enumerate.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../exact/canonical_plane.hpp"
@@ -36,6 +37,9 @@ auto name_plane_face(Index tag, Index object, const ApplyToForm &apply_to_form,
     -> tf::exact::canonical_plane<Int> {
   tf::exact::canonical_plane<Int> name{};
   apply_to_form(tag, [&](const auto &form) {
+    if constexpr (tf::core::verification)
+      tf::core::verify(std::size_t(object) < std::size_t(form.faces().size()),
+                       "a plane is named off a face its form holds");
     const auto corners = form.faces()[object];
     name = tf::exact::make_canonical_plane<Int>(
         plane_face_support<Int>(corners, [&](std::size_t corner) {
@@ -69,8 +73,9 @@ auto is_plane_name_void(const tf::exact::canonical_plane<Int> &name) -> bool {
 ///
 /// THE NAME IS ONLY A NAME. It settles WHICH carriers are one plane and
 /// nothing else: the carrier's frame, projection and orientation are
-/// read off a member that stands on the EXACT plane, so no coordinate in
-/// the pipeline is ever placed by a quantized descriptor.
+/// read off a member that stands on the EXACT plane (@ref
+/// make_plane_face_frame), so no coordinate in the pipeline is ever placed
+/// by a quantized descriptor.
 ///
 /// THE NUMBERING IS THE GROUP ORDER: a run is group-ascending, so its
 /// first entry is its smallest member, and the planes take their ids in
@@ -137,7 +142,7 @@ auto name_plane_carriers(
   plane_names.allocate(std::size_t(n_planes));
   tf::parallel_for_each(
       tf::enumerate(runs),
-      [&](auto pair) {
+      [&run_offsets, &plane_names, &entries, &plane_of](auto pair) {
         auto &&[plane, run] = pair;
         const auto begin = run_offsets[std::size_t(run.run)];
         const auto end = run_offsets[std::size_t(run.run) + 1];

@@ -91,15 +91,17 @@ auto discover_weld_entrants(const Retired &retired_originals,
 /// instance of the group are the ones the split leaves the cut world to
 /// reach.
 ///
-/// An instance names its face-local edge, so the manifold link answers by
-/// that index alone. Only a non-manifold edge — no single peer — pays the
+/// An instance names its face-local edge, read on the source face
+/// `source_side(face, side)` states, so the manifold link answers by that
+/// index alone. Only a non-manifold edge — no single peer — pays the
 /// membership intersection.
 template <typename Index, typename Graph, typename Roots, typename FaceOffsets,
-          typename ApplyToForm, typename IsNamed>
+          typename ApplyToForm, typename IsNamed, typename SourceSide>
 auto discover_split_entrants(const Graph &g, const Roots &split_roots,
                              const FaceOffsets &face_offsets,
                              const ApplyToForm &apply_to_form,
                              const IsNamed &is_named,
+                             const SourceSide &source_side,
                              tf::buffer<Index> &entrants) -> void {
   if (split_roots.size() == 0)
     return;
@@ -111,7 +113,8 @@ auto discover_split_entrants(const Graph &g, const Roots &split_roots,
         auto in_group = [&](Index tag, Index object) {
           for (const auto &instance : span) {
             const auto &descriptor = descriptors[std::size_t(instance.face)];
-            if (descriptor.tag == tag && descriptor.object == object)
+            if (descriptor.tag == tag &&
+                source_side(Index(instance.face), Index(0))[0] == object)
               return true;
           }
           return false;
@@ -119,16 +122,22 @@ auto discover_split_entrants(const Graph &g, const Roots &split_roots,
         for (const auto &instance : span) {
           if (instance.side < 0)
             continue;
+          // a side a carve split within its source side shares that edge
+          // only with faces the entrance already brought in
+          const auto source =
+              source_side(Index(instance.face), Index(instance.side));
+          if (source[1] < Index(0))
+            continue;
           const auto &descriptor = descriptors[std::size_t(instance.face)];
           const auto tag = descriptor.tag;
-          const auto face = descriptor.object;
+          const auto face = source[0];
           apply_to_form(tag, [&](const auto &form) {
             const auto corners = form.faces()[face];
             const auto n = corners.size();
-            if (std::size_t(instance.side) >= n)
+            const auto side = std::size_t(source[1]);
+            if (side >= n)
               return;
-            const auto peer =
-                form.manifold_edge_link()[face][std::size_t(instance.side)];
+            const auto peer = form.manifold_edge_link()[face][side];
             if (peer.is_boundary())
               return;
             if (peer.is_simple()) {
@@ -137,9 +146,8 @@ auto discover_split_entrants(const Graph &g, const Roots &split_roots,
                 out.push_back(face_offsets[std::size_t(tag)] + peer.face_peer);
               return;
             }
-            const auto v0 = Index(corners[std::size_t(instance.side)]);
-            const auto v1 =
-                Index(corners[(std::size_t(instance.side) + 1) % n]);
+            const auto v0 = Index(corners[side]);
+            const auto v1 = Index(corners[(side + 1) % n]);
             tf::face_edge_neighbors_apply(
                 form.face_membership(), form.faces(), face, v0, v1,
                 [&](const auto &neighbour) {
@@ -167,20 +175,43 @@ auto discover_split_entrants(const Graph &g, const Roots &split_roots,
 /// and the sort states it once.
 template <typename Index, typename Graph, typename Retired, typename Roots,
           typename VertexOffsets, typename FaceOffsets, typename ApplyToForm,
-          typename IsNamed>
+          typename IsNamed, typename SourceSide>
 auto discover_uncut_entrants(const Graph &g, const Retired &retired_originals,
                              const Roots &split_roots,
                              const VertexOffsets &vertex_offsets,
                              const FaceOffsets &face_offsets,
                              const ApplyToForm &apply_to_form,
                              const IsNamed &is_named,
+                             const SourceSide &source_side,
                              tf::buffer<Index> &entrants) -> void {
   discover_weld_entrants(retired_originals, vertex_offsets, face_offsets,
                          apply_to_form, is_named, entrants);
   discover_split_entrants(g, split_roots, face_offsets, apply_to_form, is_named,
-                          entrants);
+                          source_side, entrants);
   if (entrants.size() == 0)
     return;
+  tbb::parallel_sort(entrants.begin(), entrants.end());
+  entrants.erase_till_end(std::unique(entrants.begin(), entrants.end()));
+}
+
+/// The carved faces the cut world never named, joined to the entrants:
+/// a re-seat's pieces enter whether a record reaches them or not.
+/// `carved_faces` and `entrants` are flat face keys, ascending.
+template <typename Index, typename Descriptors, typename FaceOffsets,
+          typename CarvedFaces>
+auto discover_carved_entrants(const Descriptors &descriptors,
+                              const FaceOffsets &face_offsets,
+                              const CarvedFaces &carved_faces,
+                              tf::buffer<Index> &entrants) -> void {
+  if (carved_faces.size() == 0)
+    return;
+  for (const auto key : carved_faces) {
+    const auto tag = tf::exact::tag_of_flat_vertex(face_offsets, Index(key));
+    if (!plane_graph_names_face<Index>(descriptors, face_offsets, Index(tag),
+                                       Index(key) -
+                                           face_offsets[std::size_t(tag)]))
+      entrants.push_back(Index(key));
+  }
   tbb::parallel_sort(entrants.begin(), entrants.end());
   entrants.erase_till_end(std::unique(entrants.begin(), entrants.end()));
 }

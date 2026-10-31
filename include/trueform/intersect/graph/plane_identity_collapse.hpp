@@ -19,11 +19,15 @@
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
 #include "../../core/range.hpp"
+#include "../../core/reallocate.hpp"
 #include "../../core/views/drop.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "../../core/views/slice.hpp"
 #include "../../core/views/take.hpp"
 #include "../../exact/tag_of_flat_vertex.hpp"
+#include "./elect_identity_components.hpp"
+#include "./near_identity_rows.hpp"
 #include "./plane_edge_def.hpp"
 #include "./plane_identity_names.hpp"
 #include "tbb/parallel_sort.h"
@@ -69,9 +73,11 @@ auto plane_retired_originals(const tf::buffer<std::array<Index, 3>> &merges) {
 /// Close the rewrite rows into a flat table: a source stated with
 /// several targets keeps the smallest and states the targets' own
 /// identity, then every target chases to its root, so no row is a chain
-/// and one binary search answers.
-template <typename Index>
-auto close_plane_merges(tf::buffer<std::array<Index, 3>> &merges) -> void {
+/// and one binary search answers. `on_root(row, stated)` sees each closed
+/// row in table order beside the target it held before the chase.
+template <typename Index, typename OnRoot>
+auto close_plane_merges(tf::buffer<std::array<Index, 3>> &merges,
+                        const OnRoot &on_root) -> void {
   if (merges.size() == 0)
     return;
   tbb::parallel_sort(merges.begin(), merges.end());
@@ -100,32 +106,100 @@ auto close_plane_merges(tf::buffer<std::array<Index, 3>> &merges) -> void {
          next != Index(-1) && next != root && guard < merges.size();
          next = plane_merge_target(merges, Index(1), root), ++guard)
       root = next;
+    const auto stated = row[2];
     row[2] = root;
+    on_root(row, stated);
   }
 }
 
-/// An endpoint as the closed table states it: a moved endpoint speaks
-/// the created identity that absorbed it, so a consumer holding the old
+template <typename Index>
+auto close_plane_merges(tf::buffer<std::array<Index, 3>> &merges) -> void {
+  close_plane_merges<Index>(merges,
+                            [](const std::array<Index, 3> &, Index) {});
+}
+
+/// `statement` closed into the closed table `merges`. `moved` receives, in
+/// table order, every closed row `merges` did not hold: the statement's own
+/// and every standing row its closure re-targeted.
+template <typename Index>
+auto close_plane_merges(tf::buffer<std::array<Index, 3>> &merges,
+                        const tf::buffer<std::array<Index, 3>> &statement,
+                        tf::buffer<std::array<Index, 3>> &moved) -> void {
+  // the keys the closure can restate apart from a chase — a statement's
+  // source, its target and the standing target of its source — each with
+  // the target the standing table holds for it, `-1` for none
+  tf::buffer<std::array<Index, 3>> reached;
+  reached.allocate(statement.size() * 3);
+  tf::parallel_for_each(
+      tf::make_sequence_range(statement.size()),
+      [&](std::size_t at) {
+        const auto &row = statement[at];
+        const auto held = plane_merge_target(merges, row[0], row[1]);
+        reached[3 * at] = {row[0], row[1], held};
+        reached[3 * at + 1] = {Index(1), row[2],
+                               plane_merge_target(merges, Index(1), row[2])};
+        reached[3 * at + 2] =
+            held == Index(-1)
+                ? reached[3 * at]
+                : std::array<Index, 3>{Index(1), held,
+                                       plane_merge_target(merges, Index(1),
+                                                          held)};
+      },
+      tf::checked);
+  tbb::parallel_sort(reached.begin(), reached.end());
+  reached.erase_till_end(std::unique(reached.begin(), reached.end()));
+  tf::core::append(statement, merges);
+  moved.clear();
+  close_plane_merges<Index>(
+      merges, [&](const std::array<Index, 3> &row, Index stated) {
+        const auto at = std::lower_bound(
+            reached.begin(), reached.end(), row,
+            [](const std::array<Index, 3> &x, const std::array<Index, 3> &y) {
+              return std::tie(x[0], x[1]) < std::tie(y[0], y[1]);
+            });
+        const bool keyed =
+            at != reached.end() && (*at)[0] == row[0] && (*at)[1] == row[1];
+        if (keyed ? (*at)[2] != row[2] : stated != row[2])
+          moved.push_back(row);
+      });
+}
+
+/// An endpoint as a layer states it: `target(source, id)` answers a rewrite
+/// key, `-1` for one the layer does not retire, so a moved endpoint speaks
+/// the created identity that absorbed it and a consumer holding the old
 /// `{tag, id}` stays merge-blind.
 ///
-/// The table names an original by its FLAT vertex — the one key space
-/// both producers of a rewrite row write — so the lift happens here and a
+/// A key names an original by its FLAT vertex — the one key space every
+/// writer of a rewrite row writes — so the lift happens here and a
 /// definition states its endpoint in its own per-mesh currency.
-template <typename Index, typename Merges, typename VertexOffsets>
-auto plane_merged_endpoint(const Merges &merges,
-                           const VertexOffsets &vertex_offsets,
-                           std::int16_t tag, Index id, std::int16_t &out_tag,
-                           Index &out_id) -> void {
-  const auto target =
-      plane_merge_target(merges, tag < 0 ? Index(1) : Index(0),
-                         tag < 0 ? id : vertex_offsets[std::size_t(tag)] + id);
-  if (target == Index(-1)) {
+template <typename Index, typename Target, typename VertexOffsets>
+auto plane_targeted_endpoint(const Target &target,
+                             const VertexOffsets &vertex_offsets,
+                             std::int16_t tag, Index id, std::int16_t &out_tag,
+                             Index &out_id) -> void {
+  const Index to =
+      tag < 0 ? target(Index(1), id)
+              : target(Index(0), vertex_offsets[std::size_t(tag)] + id);
+  if (to == Index(-1)) {
     out_tag = tag;
     out_id = id;
     return;
   }
   out_tag = -1;
-  out_id = target;
+  out_id = to;
+}
+
+/// An endpoint as one closed table states it (@ref plane_targeted_endpoint).
+template <typename Index, typename Merges, typename VertexOffsets>
+auto plane_merged_endpoint(const Merges &merges,
+                           const VertexOffsets &vertex_offsets,
+                           std::int16_t tag, Index id, std::int16_t &out_tag,
+                           Index &out_id) -> void {
+  plane_targeted_endpoint(
+      [&merges](Index source, Index key) {
+        return plane_merge_target(merges, source, key);
+      },
+      vertex_offsets, tag, id, out_tag, out_id);
 }
 
 /// One definition's two endpoints as the closed table states them, in the
@@ -137,29 +211,43 @@ template <typename Index> struct plane_merged_endpoint_pair {
   Index hi_id;
 };
 
-/// Both endpoints of one definition, read through
-/// @ref tf::intersect::graph::plane_merged_endpoint.
+/// Both endpoints of one definition as a layer states them (@ref
+/// plane_targeted_endpoint).
+template <typename Index, typename Target, typename VertexOffsets>
+auto plane_targeted_endpoints(const Target &target,
+                              const VertexOffsets &vertex_offsets,
+                              const plane_edge_def<Index> &def)
+    -> plane_merged_endpoint_pair<Index> {
+  plane_merged_endpoint_pair<Index> ends{};
+  plane_targeted_endpoint(target, vertex_offsets, def.point_tag_0, def.point_0,
+                          ends.lo_tag, ends.lo_id);
+  plane_targeted_endpoint(target, vertex_offsets, def.point_tag_1, def.point_1,
+                          ends.hi_tag, ends.hi_id);
+  return ends;
+}
+
+/// Both endpoints of one definition as one closed table states them.
 template <typename Index, typename Merges, typename VertexOffsets>
 auto plane_merged_endpoints(const Merges &merges,
                             const VertexOffsets &vertex_offsets,
                             const plane_edge_def<Index> &def)
     -> plane_merged_endpoint_pair<Index> {
-  plane_merged_endpoint_pair<Index> ends{};
-  plane_merged_endpoint(merges, vertex_offsets, def.point_tag_0, def.point_0,
-                        ends.lo_tag, ends.lo_id);
-  plane_merged_endpoint(merges, vertex_offsets, def.point_tag_1, def.point_1,
-                        ends.hi_tag, ends.hi_id);
-  return ends;
+  return plane_targeted_endpoints(
+      [&merges](Index source, Index key) {
+        return plane_merge_target(merges, source, key);
+      },
+      vertex_offsets, def);
 }
 
 /// THE GATE — one producer of coordinates. Every class quantized once in
 /// its own frame; then the collapse — identities that occupy one lattice
-/// position are one identity, whatever produced them — and one dense
-/// remap. THE GATE IS SHOWN EVERY IDENTITY THE CUT WORLD NAMES: both
-/// endpoints of every definition enter the same table, so two originals
-/// the lattice cannot tell apart are one identity whether or not any
-/// split states them, and a split that rounds onto its root's endpoint is
-/// absorbed by it rather than leaving a zero-length piece.
+/// position are one coincidence of THE ELECTION (@ref
+/// tf::intersect::graph::elect_identity_component), whatever produced
+/// them — and one dense remap. THE GATE IS SHOWN EVERY IDENTITY THE CUT
+/// WORLD NAMES: both endpoints of every definition enter the same table,
+/// so two originals the lattice cannot tell apart are one identity whether
+/// or not any split states them, and a split that rounds onto its root's
+/// endpoint is absorbed by it rather than leaving a zero-length piece.
 ///
 /// The table's rows are IDENTITIES, never mentions: a class states its
 /// own, an endpoint states one only when nothing already does. A run of
@@ -186,8 +274,17 @@ auto plane_merged_endpoints(const Merges &merges,
 /// too, and its class NAMES the smallest of them, so `statements` and
 /// `class_offsets` grow by that class. The return value is the count of
 /// positions that absorbed more than one identity.
+///
+/// THE NEAR TABLE, when `near_window` asks for one: every two identities at
+/// DISTINCT positions within `near_window` of each other on every axis — the
+/// band join (@ref find_near_positions) over the very rows the coincidences
+/// were read from, in the stream's flat currency (an original by its flat
+/// vertex, a created identity past them). The rows are the table: their sort
+/// joins `near_rows` as one block, and the join runs only when a reader asks
+/// (@ref join_near_identity_rows), so a build nobody convicts pays nothing.
 template <typename Index, typename Graph, typename GetPoint,
-          typename ClassPosition, typename VertexOffsets, typename Landings>
+          typename ClassPosition, typename VertexOffsets, typename Landings,
+          typename Int>
 auto collapse_plane_identities(
     const Graph &g, const GetPoint &get_point,
     const ClassPosition &class_position, const VertexOffsets &vertex_offsets,
@@ -195,7 +292,10 @@ auto collapse_plane_identities(
     tf::buffer<plane_name_statement<Index>> &statements,
     tf::buffer<Index> &class_offsets, Index n_classes, Index n_points,
     tf::buffer<Index> &class_id, tf::buffer<Index> &created_class,
-    tf::buffer<std::array<Index, 3>> &merges) -> std::size_t {
+    tf::buffer<std::array<Index, 3>> &merges, Int near_window,
+    near_identity_rows<
+        Index, std::decay_t<decltype(get_point(std::int16_t(-1), Index(0)))>>
+        &near_rows) -> std::size_t {
   const auto defs = g.edge_defs();
   if (n_classes == 0 && defs.size() == 0 && landings.size() == 0)
     return 0;
@@ -203,11 +303,7 @@ auto collapse_plane_identities(
   // the collapse's whole currency: a quantized position, the priority of
   // what states it (created identity, fresh class, original vertex) and
   // the identity itself
-  struct position_row_t {
-    pt3_t point;
-    Index rank;
-    Index id;
-  };
+  using position_row_t = typename near_identity_rows<Index, pt3_t>::row_t;
   // THE ONE KEY SPACE both kinds of endpoint already live in: an original
   // by its flat vertex, a created point past the whole original space.
   const auto n_flat = vertex_offsets[vertex_offsets.size() - 1];
@@ -233,7 +329,9 @@ auto collapse_plane_identities(
   for (Index c = 0; c < n_classes; ++c) {
     const auto id = class_id[std::size_t(c)];
     positions.push_back(
-        {class_position(c), id == Index(-1) ? 1 : 0, id == Index(-1) ? c : id});
+        {class_position(c),
+         Index(id == Index(-1) ? fresh_identity_rank : standing_identity_rank),
+         id == Index(-1) ? c : id});
     if (id != Index(-1))
       named.push_back(id);
   }
@@ -279,7 +377,10 @@ auto collapse_plane_identities(
         const auto id = created ? Index(slot) - n_flat : Index(slot);
         if (created && std::binary_search(named.begin(), named.end(), id))
           return;
-        out.push_back({slot_point(slot), created ? Index(0) : Index(2), id});
+        out.push_back(
+            {slot_point(slot),
+             Index(created ? standing_identity_rank : original_identity_rank),
+             id});
       },
       tf::checked);
   tbb::parallel_sort(
@@ -290,43 +391,29 @@ auto collapse_plane_identities(
       });
 
   tf::buffer<std::array<Index, 3>> mergers;
-  // the collision participants and nothing else: a position stating
-  // itself more than once closes transitively here, so the election is
-  // the closed class's and no chain ever reaches the rewrite table
-  tf::buffer<Index> participants;
-  tf::buffer<Index> parent;
-  tf::buffer<Index> winner;
-  auto find = [&](Index x) {
-    while (parent[std::size_t(x)] != x) {
-      parent[std::size_t(x)] = parent[std::size_t(parent[std::size_t(x)])];
-      x = parent[std::size_t(x)];
-    }
-    return x;
-  };
   // a fresh identity is only minted for a class that survives, so the
-  // created id space stays dense
-  auto mint = [&](Index cls) {
+  // created id space stays dense; a position only originals state mints for
+  // a class that names the smallest of them, which is where its position is
+  // read from
+  const auto mint = [&](const identity_key<Index> &winner) {
+    auto cls = winner[1];
+    if (winner[0] == Index(original_identity_rank)) {
+      if (class_offsets.size() == 0)
+        class_offsets.push_back(Index(0));
+      statements.push_back({plane_vertex_name<Index>(winner[1]), Index(-1),
+                            Index(-1), Index(-1)});
+      class_offsets.push_back(Index(statements.size()));
+      cls = Index(class_offsets.size()) - Index(2);
+    }
     created_class.push_back(cls);
     return n_points + Index(created_class.size()) - Index(1);
   };
-  // the identity a closed class speaks, stated by its smallest member:
-  // an existing created identity, else one minted for the class that
-  // states the position, else — only originals here — one minted for a
-  // class that NAMES the smallest of them, which is where its position
-  // is read from
-  auto elect = [&](const position_row_t &row) -> Index {
-    if (row.rank == Index(0))
-      return row.id;
-    if (row.rank == Index(1))
-      return mint(row.id);
-    if (class_offsets.size() == 0)
-      class_offsets.push_back(Index(0));
-    statements.push_back(
-        {plane_vertex_name<Index>(row.id), Index(-1), Index(-1), Index(-1)});
-    class_offsets.push_back(Index(statements.size()));
-    return mint(Index(class_offsets.size()) - Index(2));
+  const auto key_of = [](const position_row_t &row) {
+    return identity_key<Index>{row.rank, row.id};
   };
 
+  // the sorted positions are the coincidences, each ascending, in the order
+  // their identities are minted
   std::size_t collapses = 0;
   std::size_t begin = 0;
   while (begin < positions.size()) {
@@ -334,46 +421,24 @@ auto collapse_plane_identities(
     while (end < positions.size() &&
            positions[end].point == positions[begin].point)
       ++end;
-    // a lone statement of a position: a class holding no identity yet is
-    // born here, an original keeps its own
-    if (end - begin == 1) {
-      if (positions[begin].rank == Index(1))
-        class_id[std::size_t(positions[begin].id)] = elect(positions[begin]);
+    // a lone statement of a position is no coincidence: a class holding no
+    // identity yet is born here, an original keeps its own
+    if (end - begin == 1 &&
+        positions[begin].rank != Index(fresh_identity_rank)) {
       begin = end;
       continue;
     }
-    ++collapses;
-    const auto first = Index(participants.size());
-    for (auto i = begin; i < end; ++i) {
-      participants.push_back(Index(i));
-      parent.push_back(Index(participants.size()) - Index(1));
-      winner.push_back(Index(-1));
-    }
-    for (auto k = first + Index(1); k < Index(participants.size()); ++k) {
-      const auto a = find(first);
-      const auto b = find(k);
-      if (a != b)
-        parent[std::size_t(a > b ? a : b)] = a < b ? a : b;
-    }
-    for (auto k = first; k < Index(participants.size()); ++k) {
-      const auto &row = positions[std::size_t(participants[std::size_t(k)])];
-      const auto root = find(k);
-      // the positions are sorted, so a class is elected by the first
-      // statement of it the scan reaches
-      if (winner[std::size_t(root)] == Index(-1))
-        winner[std::size_t(root)] = elect(row);
-      const auto target = winner[std::size_t(root)];
-      if (row.rank == Index(1))
-        class_id[std::size_t(row.id)] = target;
-      else if (row.rank == Index(0)) {
-        if (row.id != target)
-          mergers.push_back({Index(1), row.id, target});
-      } else
-        mergers.push_back({Index(0), row.id, target});
-    }
+    collapses += std::size_t(end - begin > 1);
+    const auto target = elect_identity_component<Index>(
+        tf::make_mapped_range(tf::slice(tf::make_range(positions), begin, end),
+                              key_of),
+        mint, mergers);
+    for (auto i = begin; i < end; ++i)
+      if (positions[i].rank == Index(fresh_identity_rank))
+        class_id[std::size_t(positions[i].id)] = target;
     begin = end;
   }
-  // the class's own losing members, in name currency: a class that NAMES
+  // the class's own losing members, in name currency: a class that names
   // an existing point states the rewrite when the gate moved it, and a
   // class that names an original vertex always states one — originals
   // never survive a coincidence
@@ -399,6 +464,8 @@ auto collapse_plane_identities(
     }
   }
   merges = std::move(mergers);
+  if (near_window > Int(0))
+    near_rows.append(std::move(positions), Index(0));
   return collapses;
 }
 

@@ -28,7 +28,10 @@ public:
   using def_t = plane_edge_def<Index>;
 
   auto edge_defs() const { return tf::make_range(_defs); }
-  auto n_canon() const -> Index { return _n_canon; }
+  auto n_canon() const -> Index {
+    return _def_offsets.size() == 0 ? Index(0)
+                                    : Index(_def_offsets.size()) - Index(1);
+  }
   auto canon_group(Index id) const {
     return tf::slice(tf::make_range(_defs),
                      std::size_t(_def_offsets[std::size_t(id)]),
@@ -49,7 +52,12 @@ public:
   auto edges() const -> const tf::offset_block_buffer<Index, Index> & {
     return _edges;
   }
-  auto n_canon() -> Index & { return _n_canon; }
+  /// The tier holds nothing, not even an offset.
+  auto clear() -> void {
+    _defs.clear();
+    _def_offsets.clear();
+    _edges.clear();
+  }
 
   /// Whether both offset structures index exactly what they claim: the
   /// canonical spans over the definitions, and the plane CSR over its rows.
@@ -62,9 +70,7 @@ public:
       return offsets.size() == n_blocks + 1 && offsets[0] == Index(0) &&
              offsets[offsets.size() - 1] == Index(n_data);
     };
-    if (_n_canon < Index(0))
-      return false;
-    return bounds(_def_offsets, _defs.size(), std::size_t(_n_canon)) &&
+    return bounds(_def_offsets, _defs.size(), std::size_t(n_canon())) &&
            bounds(_edges.offsets_buffer(), _edges.data_buffer().size(),
                   _edges.size());
   }
@@ -73,7 +79,6 @@ private:
   tf::buffer<def_t> _defs;
   tf::buffer<Index> _def_offsets;
   tf::offset_block_buffer<Index, Index> _edges;
-  Index _n_canon = 0;
 };
 
 } // namespace tf::intersect::graph

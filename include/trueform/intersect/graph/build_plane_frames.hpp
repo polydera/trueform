@@ -16,16 +16,16 @@
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
 #include "../../core/views/sequence_range.hpp"
-#include "../../exact/make_supported_plane_frame.hpp"
 #include "../../exact/plane_frame.hpp"
 #include "./face_descriptor.hpp"
+#include "./make_plane_face_frame.hpp"
 #include <cstddef>
 #include <cstdint>
 
 namespace tf::intersect::graph {
 
-/// Per plane: the projection its arrangement is computed in, read off
-/// the member that named it.
+/// Per plane: the projection its arrangement is computed in, the frame of
+/// the member that named it (@ref make_plane_face_frame).
 template <typename Index, typename Int, typename PlaneFaces,
           typename ApplyToFace, typename GetPoint>
 auto build_plane_frames(Index n_planes, const PlaneFaces &plane_faces,
@@ -42,10 +42,9 @@ auto build_plane_frames(Index n_planes, const PlaneFaces &plane_faces,
         const auto tag = std::int16_t(descriptors[std::size_t(member)].tag);
         const auto object = descriptors[std::size_t(member)].object;
         apply_to_face(tag, object, [&](const auto &face) {
-          frames[std::size_t(p)] = tf::exact::make_supported_plane_frame<Int>(
-              [&](const auto &consider) {
-                for (const auto corner : face)
-                  consider(get_point(tag, Index(corner)));
+          frames[std::size_t(p)] = make_plane_face_frame<Int>(
+              face, [&](std::size_t corner) {
+                return get_point(tag, Index(face[corner]));
               });
         });
       },

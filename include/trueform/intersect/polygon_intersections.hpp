@@ -43,6 +43,7 @@
 #include "./records/make_pair_group_gate.hpp"
 #include "./records/pair_group_gate.hpp"
 #include "./records/point_delivery.hpp"
+#include "./records/state_rim_edge_names.hpp"
 #include "./records/tagged_intersection.hpp"
 #include "tbb/task_group.h"
 
@@ -110,7 +111,7 @@ public:
       run_self_primitives(form, 0, lattice, ws);
 
     auto apply_to_form = [&form](int, auto &&f) { f(form); };
-    finalize_identity(ws, apply_to_form, Index(1), true, sos);
+    finalize_identity(ws, apply_to_form, Index(1), true, sos, lattice);
   }
 
   /// Two forms of possibly different policies. Cross records always;
@@ -148,7 +149,7 @@ public:
         f(form1);
     };
     finalize_identity(ws, apply_to_form, Index(2),
-                      bool(config.mode & tf::intersect_mode::within), sos);
+                      bool(config.mode & tf::intersect_mode::within), sos, lattice);
   }
 
   /// N forms. Cross records for every pair; per-form self records when
@@ -187,7 +188,7 @@ public:
     tg.wait();
 
     auto apply_to_form = [forms](int tag, auto &&f) { f(forms[tag]); };
-    finalize_identity(ws, apply_to_form, n, with_self, sos);
+    finalize_identity(ws, apply_to_form, n, with_self, sos, lattice);
   }
 
   /// The face carrier: every face a point was delivered to, its own
@@ -291,6 +292,10 @@ public:
     _vertex_identifications.clear();
     _identities.clear();
   }
+
+  /// The rim vertices the band landed on another form's edge that this
+  /// build stated as vertex-on-edge facts (@ref state_rim_edge_names).
+  auto edge_names_stated() const -> std::size_t { return _edge_names_stated; }
 
 private:
   template <typename Offsets, typename Data>
@@ -420,10 +425,11 @@ private:
   /// ticket pass: `{flat face, point}`, eight bytes, and only for the
   /// faces some product fan touches. Where nothing is a product there are
   /// no marks, no tickets, and no second sort.
-  template <typename ApplyToForm>
+  template <typename ApplyToForm, typename Lattice>
   auto finalize_identity(tf::local_value<workspace_t> &ws,
                          const ApplyToForm &apply_to_form, Index n_tags,
-                         bool with_self, bool sos) -> void {
+                         bool with_self, bool sos, const Lattice &lattice)
+      -> void {
     auto &raw = _raw;
     auto &parameters = _parameters;
     raw.clear();
@@ -448,6 +454,23 @@ private:
       tf::intersect::dedup_generator_records(raw);
     tf::intersect::identify_vertices(raw, parameters,
                                      _vertex_identifications);
+    // the rim vertices the band landed on another form's edge enter the
+    // raw set as vertex-on-edge facts, read where the lattice placed them
+    const auto edge_names = lattice.edge_names();
+    _edge_names_stated = 0;
+    if (edge_names.size() != 0 && !sos) {
+      tf::buffer<Index> face_offsets;
+      face_offsets.push_back(Index(0));
+      for (Index t = 0; t < n_tags; ++t)
+        apply_to_form(int(t), [&](const auto &form) {
+          face_offsets.push_back(face_offsets[std::size_t(t)] +
+                                 Index(form.faces().size()));
+        });
+      _edge_names_stated = tf::intersect::state_rim_edge_names<Index, Int>(
+          edge_names, _vertex_offsets, face_offsets,
+          lattice.reader(apply_to_form), apply_to_form,
+          lattice.tolerance_int(), raw, parameters);
+    }
     if (raw.size() == 0)
       return tf::intersect::group_intersection_carriers(
           _intersections, _deliveries, n_tags, _intersections_offsets,
@@ -660,6 +683,7 @@ private:
   tf::buffer<Index> _tag_offsets;
   tf::buffer<Index> _vertex_offsets;
   tf::buffer<std::array<Index, 2>> _vertex_identifications;
+  std::size_t _edge_names_stated = 0;
   tf::intersect::identity_scratch<Index, Int> _scratch;
   tf::buffer<intersection_t> _raw;
   tf::buffer<parameters_t> _parameters;

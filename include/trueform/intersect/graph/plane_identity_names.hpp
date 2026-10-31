@@ -28,8 +28,9 @@ namespace tf::intersect::graph {
 /// triple of a seam junction, `{3, u, v, plane}` an original edge cut
 /// by a plane, `{4, u0, v0, u1, v1}` two original edges, and `{5, a0,
 /// a1, b0, b1}` the two exact generation-input pieces a PA recovery
-/// crossing joins, each stated by its ordered flat endpoint pair. Equal
-/// names are one point BY CONSTRUCTION.
+/// crossing joins, each stated by its ordered flat endpoint pair, and `{6,
+/// a, b}` a refinement split on the piece of ordered flat endpoints `a, b`.
+/// Equal names are one point BY CONSTRUCTION.
 template <typename Index> using plane_name = std::array<Index, 5>;
 
 template <typename Index> auto plane_point_name(Index id) -> plane_name<Index> {

@@ -34,13 +34,19 @@ namespace tf::intersect::graph {
 /// has no rung, while each of its component SIGNS is one
 /// @ref tf::exact::det2_sign away.
 ///
+/// The line itself is published in the language its class states it in: the
+/// original edge's run `edge`, or, where no original edge names the piece,
+/// the producing pair's `carrier`, whose `valid` says which is set.
+///
 /// `valid` false is a stated REFUSAL: the piece's definitions do not name one
 /// line, so no order around it is meaningful and the consumer is told so
 /// rather than handed a number.
-struct plane_edge_radial_authority {
+template <typename Int> struct plane_edge_radial_authority {
   int axis = 0;
   int sign = 0;
   bool valid = false;
+  std::array<typename tf::exact::meta<Int>::T1, 3> edge{};
+  plane_pair_carrier<Int> carrier{};
 };
 
 /// THE ONE PRODUCER of a piece's radial line, read off the complete
@@ -84,11 +90,11 @@ template <typename Index, typename Int, typename Definitions,
 auto make_plane_edge_radial_authority(
     const Definitions &definitions, const DescriptorOfFace &descriptor_of_face,
     const ApplyToFace &apply_to_face, const GetPoint &get_point)
-    -> plane_edge_radial_authority {
+    -> plane_edge_radial_authority<Int> {
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;
 
-  plane_edge_radial_authority authority;
+  plane_edge_radial_authority<Int> authority;
 
   const auto magnitude = [](const T1 &value) {
     return value < T1(0) ? T1(-value) : value;
@@ -235,6 +241,7 @@ auto make_plane_edge_radial_authority(
     authority.axis = axis;
     authority.sign = line[std::size_t(axis)] > T1(0) ? 1 : -1;
     authority.valid = true;
+    authority.edge = line;
     return authority;
   }
 
@@ -282,6 +289,7 @@ auto make_plane_edge_radial_authority(
   authority.axis = axis;
   authority.sign = component[std::size_t(axis)] * stated;
   authority.valid = true;
+  authority.carrier = carrier;
   return authority;
 }
 

@@ -60,7 +60,11 @@ public:
   auto descriptors() const { return tf::make_range(_descriptors); }
   auto edge_defs() { return tf::make_range(_edge_defs); }
   auto edge_defs() const { return tf::make_range(_edge_defs); }
-  auto n_canon() const -> Index { return _n_canon; }
+  auto n_canon() const -> Index {
+    return _edge_defs_offsets.size() == 0
+               ? Index(0)
+               : Index(_edge_defs_offsets.size()) - Index(1);
+  }
   auto canon_group(Index id) const {
     return tf::slice(tf::make_range(_edge_defs),
                      std::size_t(_edge_defs_offsets[std::size_t(id)]),
@@ -84,8 +88,6 @@ public:
   auto frame(Index p) const -> const frame_t & {
     return _frames[std::size_t(p)];
   }
-  /// Per plane: the name its carriers share.
-  auto plane_names() const { return tf::make_range(_plane_names); }
   auto face_orientation() const { return tf::make_range(_face_orientation); }
   auto face_contour() const { return tf::make_range(_face_contour); }
 
@@ -93,24 +95,27 @@ public:
     _descriptors.clear();
     _edge_defs.clear();
     _edge_defs_offsets.clear();
-    _n_canon = 0;
     _edges.clear();
     _plane_of.clear();
     _n_planes = 0;
     _plane_offsets.clear();
     _plane_data.clear();
     _frames.clear();
-    _plane_names.clear();
     _face_orientation.clear();
     _face_contour.clear();
   }
 
+  /// `plane_names[p]` receives the name plane `p`'s carriers share: the
+  /// graph names its planes, the identity substrate seats the names (@ref
+  /// tf::arrangement::identity_substrate::seat_local_planes).
   template <typename Ibp, typename ApplyToFace, typename ApplyToForm,
             typename GetPoint, typename SideNonManifold>
   auto build(const Ibp &ibp, const ApplyToFace &apply_to_face,
              const ApplyToForm &apply_to_form, const GetPoint &get_point,
-             const SideNonManifold &side_non_manifold) -> void {
+             const SideNonManifold &side_non_manifold,
+             tf::buffer<tf::exact::canonical_plane<Int>> &plane_names) -> void {
     clear();
+    plane_names.clear();
     // ONE carrier, two currencies at the same block position: a face is
     // here because a pair record names it or because a delivery does, and
     // either block may be empty
@@ -131,7 +136,7 @@ public:
     // a single definition is read and nothing closes a pairwise relation
     // to reach it.
     name_plane_carriers<Index, Int>(_descriptors, apply_to_form, get_point,
-                                    _plane_of, _n_planes, _plane_names);
+                                    _plane_of, _n_planes, plane_names);
     build_plane_csr<Index>(_plane_of, _n_planes, _plane_offsets, _plane_data);
     build_plane_frames<Index, Int>(_n_planes, plane_faces(), _descriptors,
                                    apply_to_face, get_point, _frames);
@@ -140,7 +145,7 @@ public:
                                          _face_orientation);
     tf::buffer<Index> emission_to_canon;
     canonicalize_plane_edge_defs<Index>(_edge_defs, _edge_defs_offsets,
-                                        _n_canon, emission_to_canon);
+                                        emission_to_canon);
     build_plane_edges<Index>(_n_planes, plane_faces(), face_def_offsets,
                              emission_to_canon, _edges);
   }
@@ -157,11 +162,8 @@ private:
   Index _n_planes = 0;
   tf::buffer<Index> _plane_offsets;
   tf::buffer<Index> _plane_data;
-  Index _n_canon = 0;
   // per plane: the projection its arrangement is computed in
   tf::buffer<frame_t> _frames;
-  // per plane: the name every one of its carriers states
-  tf::buffer<tf::exact::canonical_plane<Int>> _plane_names;
   // per face group: its winding in its plane's projection
   tf::buffer<std::int8_t> _face_orientation;
   // per face group: -1 = no interior contour edges, -2 = several

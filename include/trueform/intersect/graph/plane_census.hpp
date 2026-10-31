@@ -18,7 +18,9 @@ namespace tf::intersect::graph {
 
 /// What one local arrangement counted, stage by stage: the detection's
 /// work and its findings, the closure's classes, the gate's collapses,
-/// and the definition tables in and out.
+/// and the definition tables in and out. A detection's census sums into the
+/// arrangement's; `cross_root_merges`, `defs_in` and `defs_out` are the
+/// arrangement's own, stated where it holds them and never summed.
 struct plane_census {
   std::size_t canonical_edges = 0;
   std::size_t pairs_tested = 0;
@@ -59,11 +61,8 @@ struct plane_census {
     undecided_order += o.undecided_order;
     classes += o.classes;
     same_root_collapses += o.same_root_collapses;
-    cross_root_merges += o.cross_root_merges;
     splits_out_of_span += o.splits_out_of_span;
     splits_on_endpoint += o.splits_on_endpoint;
-    defs_in += o.defs_in;
-    defs_out += o.defs_out;
     return *this;
   }
 };

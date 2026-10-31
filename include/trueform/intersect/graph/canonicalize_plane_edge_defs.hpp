@@ -30,10 +30,8 @@ namespace tf::intersect::graph {
 template <typename Index>
 auto canonicalize_plane_edge_defs(tf::buffer<plane_edge_def<Index>> &edge_defs,
                                   tf::buffer<Index> &edge_defs_offsets,
-                                  Index &n_canon,
                                   tf::buffer<Index> &emission_to_canon) -> void {
   using def_t = plane_edge_def<Index>;
-  n_canon = 0;
   edge_defs_offsets.clear();
   if (edge_defs.size() == 0)
     return;
@@ -48,7 +46,7 @@ auto canonicalize_plane_edge_defs(tf::buffer<plane_edge_def<Index>> &edge_defs,
                         return !plane_def_key_less(x, y) &&
                                !plane_def_key_less(y, x);
                       });
-  n_canon = Index(edge_defs_offsets.size()) - 1;
+  const auto n_canon = Index(edge_defs_offsets.size()) - 1;
   emission_to_canon.allocate(edge_defs.size());
   tf::parallel_for_each(
       tf::make_sequence_range(n_canon),

@@ -26,6 +26,7 @@
 #include "./plane_edge_def.hpp"
 #include "./plane_identity_collapse.hpp"
 #include "./plane_identity_names.hpp"
+#include "./rebuild_plane_blocks.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
 #include <array>
@@ -221,10 +222,10 @@ auto rebuild_plane_canon_spans(
     const tf::buffer<Index> &untouched_rank, const tf::buffer<Index> &new_base,
     const tf::buffer<Index> &group_of_canon, Index untouched_groups,
     tf::buffer<plane_edge_def<Index>> &defs, tf::buffer<Index> &def_offsets)
-    -> Index {
+    -> void {
   def_offsets.clear();
   if (defs.size() == 0)
-    return 0;
+    return;
   // {first piece, the untouched group whose key it shares or -1}
   struct piece_group_t {
     Index at;
@@ -292,7 +293,6 @@ auto rebuild_plane_canon_spans(
           defs[i].id = group;
       },
       tf::checked);
-  return n_canon;
 }
 
 /// The plane CSR rebuilt off the OLD one: an untouched definition moved
@@ -307,31 +307,20 @@ auto rebuild_plane_edge_csr(const Graph &g, const tf::buffer<Index> &new_base,
                             const tf::buffer<Index> &final_of_emission,
                             tf::offset_block_buffer<Index, Index> &edges)
     -> void {
-  auto &offsets = edges.offsets_buffer();
   auto &data = edges.data_buffer();
-  const auto n_planes = g.n_planes();
-  offsets.allocate(std::size_t(n_planes) + 1);
-  offsets[0] = 0;
   const auto old_defs = g.edge_defs();
-  tf::parallel_for_each(
-      tf::make_sequence_range(n_planes),
-      [&](Index p) {
+  rebuild_plane_blocks(
+      std::size_t(g.n_planes()),
+      [&](std::size_t block) {
         Index count = 0;
-        for (const auto e : g.plane_edges(p))
+        for (const auto e : g.plane_edges(Index(block)))
           count += pieces[std::size_t(old_defs[std::size_t(e)].id)];
-        offsets[std::size_t(p) + 1] = count;
+        return count;
       },
-      tf::checked);
-  for (std::size_t i = 1; i <= std::size_t(n_planes); ++i)
-    offsets[i] += offsets[i - 1];
-  data.allocate(std::size_t(offsets[std::size_t(n_planes)]));
-  tf::parallel_for_each(
-      tf::make_sequence_range(n_planes),
-      [&](Index p) {
-        const auto begin = std::size_t(offsets[std::size_t(p)]);
+      [&](std::size_t block, std::size_t begin) {
         auto write = begin;
         bool cut = false;
-        for (const auto e : g.plane_edges(p)) {
+        for (const auto e : g.plane_edges(Index(block))) {
           const auto canon = old_defs[std::size_t(e)].id;
           const auto instance = Index(e) - old_group_begin[std::size_t(canon)];
           const auto group = group_of_canon[std::size_t(canon)];
@@ -350,7 +339,7 @@ auto rebuild_plane_edge_csr(const Graph &g, const tf::buffer<Index> &new_base,
           std::sort(data.begin() + std::ptrdiff_t(begin),
                     data.begin() + std::ptrdiff_t(write));
       },
-      tf::checked);
+      edges.offsets_buffer(), data, tf::checked);
 }
 
 /// The entrant planes' blocks, appended to the plane CSR.
@@ -428,8 +417,8 @@ auto respan_plane_defs(
     const tf::buffer<plane_edge_def<Index>> &entrant_instance_defs,
     tf::buffer<plane_edge_def<Index>> &defs, tf::buffer<Index> &def_offsets,
     tf::offset_block_buffer<Index, Index> &edges,
-    Index entrant_stamp_base = Index(-1),
-    Index entrant_plane_count = Index(-1)) -> Index {
+    Index entrant_stamp_base = Index(-1), Index entrant_plane_count = Index(-1))
+    -> void {
   using def_t = plane_edge_def<Index>;
   const auto n_canon = g.n_canon();
   const auto n_groups = split_edge.size();
@@ -586,9 +575,9 @@ auto respan_plane_defs(
       },
       tf::checked);
 
-  const auto rebuilt = rebuild_plane_canon_spans(
-      g, parts, insert, insert_group, untouched_base, untouched_rank, new_base,
-      group_of_canon, rank_at, defs, def_offsets);
+  rebuild_plane_canon_spans(g, parts, insert, insert_group, untouched_base,
+                            untouched_rank, new_base, group_of_canon, rank_at,
+                            defs, def_offsets);
   rebuild_plane_edge_csr(g, new_base, pieces, old_group_begin, group_of_canon,
                          piece_base, final_of_emission, edges);
   if (entrant_parts.size() != 0 || has_entrant_instances ||
@@ -630,7 +619,6 @@ auto respan_plane_defs(
       append_entrant_plane_edges(entrant_rows, edges,
                                  std::size_t(entrant_plane_count));
   }
-  return rebuilt;
 }
 
 /// The merge table applied to EVERY definition, and the canonicalization
@@ -654,13 +642,13 @@ auto fuse_plane_defs(const tf::buffer<std::array<Index, 3>> &merges,
                      tf::buffer<plane_edge_def<Index>> &defs,
                      tf::buffer<Index> &def_offsets,
                      tf::offset_block_buffer<Index, Index> &edges,
-                     tf::buffer<Index> *final_group_of_old = nullptr) -> Index {
+                     tf::buffer<Index> *final_group_of_old = nullptr) -> void {
   using def_t = plane_edge_def<Index>;
   const auto n_defs = Index(defs.size());
   if (n_defs == 0) {
     if (final_group_of_old)
       final_group_of_old->clear();
-    return 0;
+    return;
   }
   const auto n_old_canon = Index(def_offsets.size()) - Index(1);
   tf::buffer<Index> old_group_of_position;
@@ -713,7 +701,7 @@ auto fuse_plane_defs(const tf::buffer<std::array<Index, 3>> &merges,
     auto &offsets = edges.offsets_buffer();
     std::fill(offsets.begin(), offsets.end(), Index(0));
     edges.data_buffer().clear();
-    return 0;
+    return;
   }
   def_offsets.reserve(defs.size() + 1);
   tf::compute_offsets(defs, std::back_inserter(def_offsets), Index(0),
@@ -779,7 +767,6 @@ auto fuse_plane_defs(const tf::buffer<std::array<Index, 3>> &merges,
       tf::checked);
   offsets = std::move(block_offsets);
   data = std::move(block_data);
-  return n_canon;
 }
 
 } // namespace tf::intersect::graph

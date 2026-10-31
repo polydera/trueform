@@ -18,10 +18,10 @@
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../exact/canonical_plane.hpp"
-#include "../../exact/make_supported_plane_frame.hpp"
 #include "../../exact/plane_frame.hpp"
 #include "../../exact/plane_frame_winding.hpp"
 #include "./face_descriptor.hpp"
+#include "./make_plane_face_frame.hpp"
 #include "./name_plane_carriers.hpp"
 #include "./plane_graph.hpp"
 #include "./seat_named_planes.hpp"
@@ -35,16 +35,18 @@ namespace tf::intersect::graph {
 /// seated by @ref tf::intersect::graph::seat_named_planes, the cut planes
 /// standing.
 ///
+/// `plane_names` holds the cut planes' names and gains the new planes'.
 /// Per entrant, `entrant_plane_of` is its plane and `entrant_orientations`
 /// its winding in that plane's frame; `entrant_planes` holds the frames of
-/// the new planes, read off their smallest entrant; `seated` lists, per
-/// plane of the whole carrier space, the entrants it holds. Returns the
-/// number of new planes.
+/// the new planes and `plane_names` their names, read off their smallest
+/// entrant; `seated` lists, per plane of the whole carrier space, the
+/// entrants it holds. Returns the number of new planes.
 template <typename Index, typename Int, typename ApplyToForm, typename GetPoint>
 auto seat_entrant_planes(
     const plane_graph<Index, Int> &g,
     const tf::buffer<face_descriptor<Index>> &entrant_descriptors,
     const ApplyToForm &apply_to_form, const GetPoint &get_point,
+    tf::buffer<tf::exact::canonical_plane<Int>> &plane_names,
     tf::buffer<Index> &entrant_plane_of,
     tf::buffer<tf::exact::plane_frame<Int>> &entrant_planes,
     tf::buffer<std::int8_t> &entrant_orientations,
@@ -64,8 +66,8 @@ auto seat_entrant_planes(
       tf::checked(64));
 
   tf::buffer<Index> run_first;
-  const auto n_new = seat_named_planes<Index, Int>(
-      names, g.plane_names(), n_cut, entrant_plane_of, run_first);
+  const auto n_new = seat_named_planes<Index, Int>(names, plane_names, n_cut,
+                                                   entrant_plane_of, run_first);
 
   const auto position_reader = [&](Index e) {
     const auto &d = entrant_descriptors[std::size_t(e)];
@@ -73,6 +75,10 @@ auto seat_entrant_planes(
       return get_point(std::int16_t(tag), Index(corner));
     };
   };
+  plane_names.reallocate(std::size_t(n_cut + n_new));
+  for (Index r = 0; r < n_new; ++r)
+    plane_names[std::size_t(n_cut + r)] =
+        names[std::size_t(run_first[std::size_t(r)])];
   entrant_planes.allocate(std::size_t(n_new));
   tf::parallel_for_each(
       tf::make_sequence_range(n_new),
@@ -83,11 +89,9 @@ auto seat_entrant_planes(
         apply_to_form(d.tag, [&](const auto &form) {
           const auto face = form.faces()[d.object];
           entrant_planes[std::size_t(r)] =
-              tf::exact::make_supported_plane_frame<Int>(
-                  [&](const auto &consider) {
-                    for (const auto corner : face)
-                      consider(position_of(corner));
-                  });
+              make_plane_face_frame<Int>(face, [&](std::size_t corner) {
+                return position_of(face[corner]);
+              });
         });
       },
       tf::checked);
