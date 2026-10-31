@@ -23,6 +23,7 @@
 #include "../../core/reallocate.hpp"
 #include "../../core/views/blocked_range.hpp"
 #include "../../exact/make_supported_plane_frame.hpp"
+#include "../../exact/plane_support.hpp"
 #include "../../exact/vertex.hpp"
 #include "../../exact_coordinate_converter.hpp"
 #include "../../intersect/graph/loop.hpp"
@@ -102,11 +103,10 @@ auto cut_iso_faces(
       const auto polygon = polygons[object];
       // an n-gon's leading corners may be collinear, so the projection
       // comes from the corners the face's carrier actually stands on
-      const auto frame = tf::exact::make_supported_plane_frame<Int>(
-          [&](const auto &consider) {
-            for (const auto &corner : polygon)
-              consider(conv(corner));
-          });
+      tf::exact::plane_support<Int> support;
+      for (const auto &corner : polygon)
+        support.offer(conv(corner));
+      const auto frame = tf::exact::make_supported_plane_frame<Int>(support);
       const std::pair<int, int> axes{frame.ax0, frame.ax1};
       const auto face = faces[object];
       prepare_iso_face_cut<Index, Int>(face_records, face, n_original,

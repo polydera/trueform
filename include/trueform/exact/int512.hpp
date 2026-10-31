@@ -14,6 +14,7 @@
 
 #include "./int128.hpp"
 #include "./int256.hpp"
+#include "./wide_from_double.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -299,6 +300,10 @@ public:
       : _limb{v.lo(), v.hi(),
               v.is_negative() ? ~limb_type(0) : limb_type(0),
               v.is_negative() ? ~limb_type(0) : limb_type(0)} {}
+
+  /// The integer part of `v`, as the native cast forms it
+  /// (@ref tf::exact::wide_from_double).
+  explicit int512(double v) noexcept : int512(wide_from_double<int512>(v)) {}
 
   constexpr explicit int512(limb_type l0, limb_type l1, limb_type l2,
                             limb_type l3) noexcept

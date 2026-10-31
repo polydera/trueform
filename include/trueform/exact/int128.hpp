@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cstdint>
+#include "./wide_from_double.hpp"
 #include <type_traits>
 #include <utility>
 
@@ -418,6 +419,9 @@ public:
 
   constexpr int128(limb_type lo, limb_type hi) noexcept : _lo(lo), _hi(hi) {}
   constexpr int128(uint128 v) noexcept : _lo(v.lo()), _hi(v.hi()) {}
+  /// The integer part of `v`, as the native cast forms it
+  /// (@ref tf::exact::wide_from_double).
+  explicit int128(double v) noexcept : int128(wide_from_double<int128>(v)) {}
 
   template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
   constexpr explicit operator T() const noexcept {

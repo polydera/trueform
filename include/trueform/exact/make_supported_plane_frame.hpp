@@ -12,7 +12,6 @@
  */
 #pragma once
 
-#include "../core/point.hpp"
 #include "./meta.hpp"
 #include "./plane_frame.hpp"
 #include "./plane_support.hpp"
@@ -22,22 +21,20 @@
 
 namespace tf::exact {
 
-/// THE ONE PRODUCER of a carrier's exact frame, read off the points the
-/// carrier stands on (@ref tf::exact::plane_support). Points are OFFERED, in
-/// the caller's own order, and the first three that are not collinear decide
-/// the plane. A carrier that offers only two distinct points IS A LINE: its
-/// normal is zero, and its axes are the pair holding the LINE'S OWN dominant
-/// direction, so the projection stays injective on the carrier and a
-/// coincidence in the projection IS a coincidence in space. One distinct point
-/// is a point; nothing separates it, so its axes are `{0, 1}`.
-template <typename Int, typename OfferPoints>
-auto make_supported_plane_frame(const OfferPoints &offer_points)
+/// THE ONE PRODUCER of a carrier's exact frame: the reading of the points
+/// the carrier stands on (@ref tf::exact::plane_support), as
+/// @ref tf::exact::make_canonical_plane is the reading of its name, so a
+/// carrier's frame and its name are one verdict. A complete support decides
+/// the plane. A support of two points IS A LINE: its normal is zero, and its
+/// axes are the pair holding the LINE'S OWN dominant direction, so the
+/// projection stays injective on the carrier and a coincidence in the
+/// projection IS a coincidence in space. One point is a point; nothing
+/// separates it, so its axes are `{0, 1}`.
+template <typename Int>
+auto make_supported_plane_frame(const tf::exact::plane_support<Int> &support)
     -> tf::exact::plane_frame<Int> {
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;
-  tf::exact::plane_support<Int> support;
-  offer_points([&](const tf::point<Int, 3> &point) { support.offer(point); });
-
   tf::exact::plane_frame<Int> frame;
   if (support.size == 3) {
     const auto axes = tf::exact::projection_axes<Int>(support.normal);

@@ -13,6 +13,7 @@
 #pragma once
 
 #include "./float_filter_sound.hpp"
+#include "./incircle/filter_sign.hpp"
 #include "./meta.hpp"
 #include "./vertex.hpp"
 #include <type_traits>
@@ -31,8 +32,8 @@ namespace tf::exact {
 /// | bdx bdy bdx^2+bdy^2 |
 /// | cdx cdy cdx^2+cdy^2 |
 template <typename Int>
-auto incircle(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
-              const pt2<Int> &d) -> typename meta<Int>::T2 {
+auto incircle_value(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
+                    const pt2<Int> &d) -> typename meta<Int>::T2 {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
 
@@ -57,7 +58,7 @@ auto incircle(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
 /// 2^30 evaluate lifts and minors in T1 with three T2 products -- one
 /// exact evaluation, no filter; otherwise the exact determinant runs
 /// directly (measured faster than a floating-point filter). int64
-/// coordinates run a Shewchuk semi-static double filter first, wherever
+/// coordinates run @ref tf::exact::incircle::filter_sign first, wherever
 /// @ref tf::exact::float_filter_sound holds -- T2 is int256 there and the
 /// filter wins decisively on local operands -- falling back to the exact
 /// determinant only when it cannot decide. The sign is exact in every path.
@@ -66,14 +67,14 @@ auto incircle_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
                    const pt2<Int> &d) -> int {
   using T1 = typename meta<Int>::T1;
   using T2 = typename meta<Int>::T2;
-  T1 adxi = T1(a[0]) - T1(d[0]), adyi = T1(a[1]) - T1(d[1]);
-  T1 bdxi = T1(b[0]) - T1(d[0]), bdyi = T1(b[1]) - T1(d[1]);
-  T1 cdxi = T1(c[0]) - T1(d[0]), cdyi = T1(c[1]) - T1(d[1]);
 
   if constexpr (std::is_same_v<Int, int32>) {
     // lifts and 2x2 minors fit T1 (<= 2^61); each lift*minor fits T2
     // (sum 3*2^122 < 2^127); neighbouring triangulation vertices are
     // local, so this covers virtually every call
+    const T1 adxi = T1(a[0]) - T1(d[0]), adyi = T1(a[1]) - T1(d[1]);
+    const T1 bdxi = T1(b[0]) - T1(d[0]), bdyi = T1(b[1]) - T1(d[1]);
+    const T1 cdxi = T1(c[0]) - T1(d[0]), cdyi = T1(c[1]) - T1(d[1]);
     const T1 lim30 = T1(1) << 30;
     auto in30 = [&](T1 v) { return v > -lim30 && v < lim30; };
     if (in30(adxi) && in30(adyi) && in30(bdxi) && in30(bdyi) &&
@@ -89,41 +90,21 @@ auto incircle_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
     }
   }
 
-  const T1 lim = T1(1) << 52;
-  auto small = [&](T1 v) { return v > -lim && v < lim; };
-  if (float_filter_sound && !std::is_same_v<Int, int32> && small(adxi) &&
-      small(adyi) && small(bdxi) && small(bdyi) && small(cdxi) &&
-      small(cdyi)) {
-    double adx = double(adxi), ady = double(adyi);
-    double bdx = double(bdxi), bdy = double(bdyi);
-    double cdx = double(cdxi), cdy = double(cdyi);
-    double bdxcdy = bdx * cdy, cdxbdy = cdx * bdy;
-    double cdxady = cdx * ady, adxcdy = adx * cdy;
-    double adxbdy = adx * bdy, bdxady = bdx * ady;
-    double alift = adx * adx + ady * ady;
-    double blift = bdx * bdx + bdy * bdy;
-    double clift = cdx * cdx + cdy * cdy;
-    double det = alift * (bdxcdy - cdxbdy) + blift * (cdxady - adxcdy) +
-                 clift * (adxbdy - bdxady);
-    auto abs = [](double v) { return v < 0 ? -v : v; };
-    double permanent = (abs(bdxcdy) + abs(cdxbdy)) * alift +
-                       (abs(cdxady) + abs(adxcdy)) * blift +
-                       (abs(adxbdy) + abs(bdxady)) * clift;
-    constexpr double eps = 1.1102230246251565e-16; // 2^-53
-    constexpr double icc_bound = (10.0 + 96.0 * eps) * eps;
-    double errbound = icc_bound * permanent;
-    if (det > errbound || det < -errbound)
-      return det > 0 ? 1 : -1;
+  if constexpr (float_filter_sound && !std::is_same_v<Int, int32>) {
+    const int filtered = incircle::filter_sign<Int>(a, b, c, d);
+    if (filtered)
+      return filtered;
   }
 
-  {
-    T2 alift = T2(adxi) * adxi + T2(adyi) * adyi;
-    T2 blift = T2(bdxi) * bdxi + T2(bdyi) * bdyi;
-    T2 clift = T2(cdxi) * cdxi + T2(cdyi) * cdyi;
-    T2 det = alift * (T2(bdxi) * cdyi - T2(bdyi) * cdxi) +
-             blift * (T2(cdxi) * adyi - T2(cdyi) * adxi) +
-             clift * (T2(adxi) * bdyi - T2(adyi) * bdxi);
-    return (det > 0) ? 1 : (det < 0) ? -1 : 0;
-  }
+  const T1 adxi = T1(a[0]) - T1(d[0]), adyi = T1(a[1]) - T1(d[1]);
+  const T1 bdxi = T1(b[0]) - T1(d[0]), bdyi = T1(b[1]) - T1(d[1]);
+  const T1 cdxi = T1(c[0]) - T1(d[0]), cdyi = T1(c[1]) - T1(d[1]);
+  T2 alift = T2(adxi) * adxi + T2(adyi) * adyi;
+  T2 blift = T2(bdxi) * bdxi + T2(bdyi) * bdyi;
+  T2 clift = T2(cdxi) * cdxi + T2(cdyi) * cdyi;
+  T2 det = alift * (T2(bdxi) * cdyi - T2(bdyi) * cdxi) +
+           blift * (T2(cdxi) * adyi - T2(cdyi) * adxi) +
+           clift * (T2(adxi) * bdyi - T2(adyi) * bdxi);
+  return (det > 0) ? 1 : (det < 0) ? -1 : 0;
 }
 } // namespace tf::exact

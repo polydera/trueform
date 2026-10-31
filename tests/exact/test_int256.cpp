@@ -10,6 +10,7 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 #include <random>
 #include <trueform/exact/int128.hpp>
 #include <trueform/exact/int256.hpp>

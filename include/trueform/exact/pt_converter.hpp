@@ -69,7 +69,14 @@ struct pt_converter
 
 /// The whole family funnels here, so this is where an unstated `RealT` and an
 /// unstated `IntT` are decided: the coordinate type first, then the lattice
-/// that type calls for.
+/// that type calls for. A real input is centred on its box and scaled by the
+/// largest power of two at or below `0.99 * max(IntT) / extent`, and the
+/// lattice spans between half and all of that range. A power of two scales
+/// exactly, so the scale adds no rounding: what remains is the centring
+/// subtraction in the real type, exact wherever its difference is
+/// representable (always for operands within a factor of two of each other)
+/// and otherwise off by at most half its ulp, which matters only for
+/// geometry far from the origin, and the final rounding onto the lattice.
 template <typename IntT = tf::none_t, typename RealT = tf::none_t,
           std::size_t Dims, typename Policy>
 auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
@@ -92,7 +99,12 @@ auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
     constexpr auto cRangeIntMax =
         static_cast<RealT>(0.99) *
         static_cast<RealT>(std::numeric_limits<IntT>::max());
-    auto scale = max_extent > 0 ? cRangeIntMax / max_extent : RealT(1);
+    RealT scale = 1;
+    if (max_extent > 0) {
+      int exponent = 0;
+      std::frexp(cRangeIntMax / max_extent, &exponent);
+      scale = std::ldexp(RealT(1), exponent - 1);
+    }
 
     return pt_converter<IntT, RealT, Dims>{{scale, center}};
   }

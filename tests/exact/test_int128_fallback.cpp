@@ -25,6 +25,7 @@
 
 #include <trueform/exact/int128.hpp>
 
+#include <cmath>
 #include <cstdint>
 #include <random>
 
@@ -201,5 +202,6 @@ TEST_CASE("int128 fallback: the ring agrees with the compiler",
     REQUIRE((a.portable == b.portable) == (a.compiler == b.compiler));
   }
 }
+
 
 #endif

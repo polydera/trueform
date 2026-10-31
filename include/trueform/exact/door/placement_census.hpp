@@ -11,7 +11,6 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-
 #include <cstdint>
 
 namespace tf::exact::door {
@@ -21,36 +20,42 @@ namespace tf::exact::door {
 /// could hold within the band keeps its input point — so it is counted
 /// and published, never silent.
 struct placement_census {
-  /// Pooled faces a corner of which could not stand on its pool's plane
-  /// within the band, so they keep their exact planes.
+  /// THE BAND THAT ACTED, in world units: the request taken to the
+  /// smallest actionable tolerance containing it and the widest the pair
+  /// search can carry. A caller reads here what was HONOURED, never what
+  /// was asked, and zero exactly when no band ran.
+  double effective_tolerance = 0.0;
+  /// The pool: its committed planes, the faces that answer to one, and
+  /// among those the faces a corner of which could not stand on its pool's
+  /// plane within the band, so they keep their exact planes.
+  std::int64_t pools = 0;
+  std::int64_t pooled_faces = 0;
   std::int64_t released_pool_faces = 0;
-  /// `(vertex, face)` pairs the discovery admitted.
-  std::int64_t contacts = 0;
-  /// Planes the contacts pulled together, each one committed plane or none.
-  std::int64_t groups = 0;
-  /// Groups committed to the plane a face of theirs already stands on.
-  std::int64_t exact_commits = 0;
-  /// Groups committed to a small-normal plane their corners moved onto.
-  std::int64_t moved_commits = 0;
-  /// Groups whose corners no plane could hold within the band: their faces
-  /// keep their own exact planes and are no drop target.
-  std::int64_t uncommittable = 0;
-  /// Vertices that owed a committed plane and moved onto it.
+  /// The vertices on boundary edges, the only candidates for a landing.
+  std::int64_t rim_vertices = 0;
+  /// Rim vertices exactly on another form's face: no gap, no landing.
+  std::int64_t on_face = 0;
+  /// Rim vertices a rim edge of which already crosses another form's edge:
+  /// the input states the meeting, and the vertex is left where it is.
+  std::int64_t crossing = 0;
+  /// Per feature, the rim vertices whose nearest feature of another form
+  /// within the band it is, and of those the ones that did not land on it.
+  std::int64_t corner_targets = 0;
+  std::int64_t corner_refused = 0;
+  std::int64_t edge_targets = 0;
+  std::int64_t edge_refused = 0;
+  std::int64_t face_targets = 0;
+  std::int64_t face_refused = 0;
+  /// Faces a rim vertex lands inside of that had no pool plane: those the
+  /// grid committed to a plane their corners could follow, and those it
+  /// could not.
+  std::int64_t target_planes = 0;
+  std::int64_t target_planes_refused = 0;
+  /// Vertices that owed the committed planes of their own faces and could
+  /// not stand on all of them within the band.
+  std::int64_t ride_refused = 0;
+  /// Vertices that moved.
   std::int64_t moved = 0;
-  /// Vertices that owed committed planes and kept their input point,
-  /// because no lattice point on all of them stood within the band.
-  std::int64_t refused = 0;
-  /// Contacts whose face committed no plane, so their vertex was not
-  /// pulled by them.
-  std::int64_t unheld_contacts = 0;
-  /// The exact identifications the input states between forms and the
-  /// placement kept: a vertex on a closed face, two edges crossing.
-  std::int64_t kept_on_face = 0;
-  std::int64_t kept_edges = 0;
-  /// Rounds the placement ran before every kept identification held, and
-  /// the vertices pinned to their input points so that it would.
-  std::int64_t rounds = 0;
-  std::int64_t pinned = 0;
 };
 
 } // namespace tf::exact::door

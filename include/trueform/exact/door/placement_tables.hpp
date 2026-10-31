@@ -12,12 +12,15 @@
  */
 #pragma once
 
+#include "../../core/algorithm/compute_offsets.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
+#include "../../core/algorithm/parallel_iota.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
 #include "../../core/frame_of.hpp"
 #include "../../core/point.hpp"
 #include "../../core/range.hpp"
+#include "../../core/small_vector.hpp"
 #include "../../core/transformed.hpp"
 #include "../../core/views/drop.hpp"
 #include "../../core/views/indirect_range.hpp"
@@ -26,7 +29,11 @@
 #include "../vertex_converter.hpp"
 #include "./make_support_plane.hpp"
 
+#include "tbb/parallel_sort.h"
+
+#include <algorithm>
 #include <cstddef>
+#include <iterator>
 
 namespace tf::exact::door {
 
@@ -34,13 +41,22 @@ namespace tf::exact::door {
 /// vertex of every form at once, so the facts it asks are stated in one
 /// flat space first: the lattice point of every vertex, the exact plane
 /// every face stands on, the corners of every face and the faces of every
-/// vertex — the two sides of one incidence — the other forms' faces every
-/// vertex was admitted against, and the exact identifications every vertex
-/// keeps, each a CSR. A tag is then nothing
-/// but an offset into those.
+/// vertex — the two sides of one incidence — each a CSR. A tag is then
+/// nothing but an offset into those.
 ///
 /// A face that names no plane keeps the zero quadruple, which no plane
 /// can take, so a constraint list carries no validity bit beside it.
+///
+/// ONE POSITION IS ONE VERTEX. Two forms may state one lattice point as a
+/// vertex each — a wall two domains share, a surface and the solid it
+/// bounds — and the input thereby states that the two coincide. The band
+/// must not part what the input joined, so every vertex at one lattice
+/// point carries the faces of every vertex at that point: `incidence` is
+/// the union over the coincidence class, and every decision the placement
+/// takes from a vertex's faces — what it rides, what it keeps, where it
+/// stands — is then the same decision for the whole class. `twins` lists,
+/// per vertex, the other vertices at its point, for the facts stated per
+/// vertex that the class must share.
 template <typename Index, typename Int, typename RealType>
 struct placement_tables {
   tf::buffer<tf::point<Int, 3>> points;
@@ -49,14 +65,14 @@ struct placement_tables {
   tf::buffer<Index> corners;
   tf::buffer<Index> incidence_offsets;
   tf::buffer<Index> incidence;
-  tf::buffer<Index> contact_offsets;
-  tf::buffer<Index> contacts;
-  /// Per vertex the exact identifications it keeps: a face row `f >= 0`
-  /// for a face it stands on exactly, `-1 - k` for the plane `k` of
-  /// `held_planes` an exact edge contact of its spans.
-  tf::buffer<Index> held_offsets;
-  tf::buffer<Index> held;
-  tf::buffer<tf::exact::canonical_plane<Int>> held_planes;
+  tf::buffer<Index> twin_offsets;
+  tf::buffer<Index> twins;
+
+  /// The other vertices at a vertex's lattice point.
+  auto twins_of(std::size_t vertex) const {
+    return tf::make_range(twins.begin() + twin_offsets[vertex],
+                          twins.begin() + twin_offsets[vertex + 1]);
+  }
 
   /// The flat corners of a flat face.
   auto face_corners(std::size_t face) const {
@@ -71,7 +87,7 @@ struct placement_tables {
 
   /// `vertex_offsets` and `face_offsets` are the caller's flat prefixes,
   /// so these tables and the placed table they feed share one
-  /// addressing. The contacts are the discovery's, stated after.
+  /// addressing.
   template <typename ApplyToForm>
   auto build(const tf::exact::vertex_converter<Int, RealType, 3> &converter,
              const ApplyToForm &apply_to_form, Index n_tags,
@@ -174,6 +190,113 @@ struct placement_tables {
             },
             tf::checked);
       });
+    join_coincident_vertices();
+  }
+
+private:
+  /// The coincidence classes: the vertices sorted by lattice point, the
+  /// runs of equal points the classes, each member of a class of more than
+  /// one given the union of the class's faces and the class's other
+  /// members as twins.
+  auto join_coincident_vertices() -> void {
+    const auto n_vertices = points.size();
+    tf::buffer<Index> order;
+    order.allocate(n_vertices);
+    tf::parallel_iota(order, Index(0));
+    tbb::parallel_sort(order.begin(), order.end(), [this](Index a, Index b) {
+      const auto &p = points[std::size_t(a)];
+      const auto &q = points[std::size_t(b)];
+      return p != q ? p < q : a < b;
+    });
+    tf::buffer<Index> class_offsets;
+    tf::compute_offsets(order, std::back_inserter(class_offsets), 0,
+                        [this](Index a, Index b) {
+                          return points[std::size_t(a)] ==
+                                 points[std::size_t(b)];
+                        });
+    if (class_offsets.size() == 0)
+      class_offsets.push_back(0);
+    const auto n_classes = class_offsets.size() - 1;
+    tf::buffer<Index> class_of;
+    class_of.allocate(n_vertices);
+    tf::parallel_for_each(
+        tf::make_sequence_range(n_classes),
+        [&](std::size_t c) {
+          for (auto k = class_offsets[c]; k < class_offsets[c + 1]; ++k)
+            class_of[std::size_t(order[std::size_t(k)])] = Index(c);
+        },
+        tf::checked);
+    // counts and one prefix for both tables, then disjoint writes per class
+    tf::buffer<Index> joined_offsets;
+    joined_offsets.allocate(n_vertices + 1);
+    twin_offsets.allocate(n_vertices + 1);
+    joined_offsets[0] = Index(0);
+    twin_offsets[0] = Index(0);
+    struct class_t {
+      tf::small_vector<Index, 32> faces;
+    };
+    tf::buffer<Index> class_size;
+    class_size.allocate(n_classes);
+    tf::parallel_for_each(
+        tf::make_sequence_range(n_classes),
+        [&](std::size_t c, class_t &local) {
+          const auto members = class_offsets[c + 1] - class_offsets[c];
+          local.faces.clear();
+          for (auto k = class_offsets[c]; k < class_offsets[c + 1]; ++k) {
+            const auto v = std::size_t(order[std::size_t(k)]);
+            for (auto f = incidence_offsets[v]; f < incidence_offsets[v + 1];
+                 ++f)
+              local.faces.push_back(incidence[std::size_t(f)]);
+          }
+          if (members > 1) {
+            std::sort(local.faces.begin(), local.faces.end());
+            local.faces.erase(std::unique(local.faces.begin(), local.faces.end()),
+                              local.faces.end());
+          }
+          class_size[c] = Index(local.faces.size());
+          for (auto k = class_offsets[c]; k < class_offsets[c + 1]; ++k) {
+            const auto v = std::size_t(order[std::size_t(k)]);
+            joined_offsets[v + 1] = Index(local.faces.size());
+            twin_offsets[v + 1] = members - 1;
+          }
+        },
+        class_t{}, tf::checked);
+    for (std::size_t v = 1; v <= n_vertices; ++v) {
+      joined_offsets[v] += joined_offsets[v - 1];
+      twin_offsets[v] += twin_offsets[v - 1];
+    }
+    tf::buffer<Index> joined;
+    joined.allocate(std::size_t(joined_offsets[n_vertices]));
+    twins.allocate(std::size_t(twin_offsets[n_vertices]));
+    tf::parallel_for_each(
+        tf::make_sequence_range(n_classes),
+        [&](std::size_t c, class_t &local) {
+          const auto members = class_offsets[c + 1] - class_offsets[c];
+          local.faces.clear();
+          for (auto k = class_offsets[c]; k < class_offsets[c + 1]; ++k) {
+            const auto v = std::size_t(order[std::size_t(k)]);
+            for (auto f = incidence_offsets[v]; f < incidence_offsets[v + 1];
+                 ++f)
+              local.faces.push_back(incidence[std::size_t(f)]);
+          }
+          if (members > 1) {
+            std::sort(local.faces.begin(), local.faces.end());
+            local.faces.erase(std::unique(local.faces.begin(), local.faces.end()),
+                              local.faces.end());
+          }
+          for (auto k = class_offsets[c]; k < class_offsets[c + 1]; ++k) {
+            const auto v = std::size_t(order[std::size_t(k)]);
+            std::copy(local.faces.begin(), local.faces.end(),
+                      joined.begin() + joined_offsets[v]);
+            auto at = twins.begin() + twin_offsets[v];
+            for (auto j = class_offsets[c]; j < class_offsets[c + 1]; ++j)
+              if (j != k)
+                *at++ = order[std::size_t(j)];
+          }
+        },
+        class_t{}, tf::checked);
+    incidence_offsets = std::move(joined_offsets);
+    incidence = std::move(joined);
   }
 };
 

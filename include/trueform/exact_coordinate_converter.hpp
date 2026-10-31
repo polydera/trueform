@@ -23,9 +23,9 @@
 namespace tf {
 
 /// @ingroup exact_coordinate_converter
-/// @brief Conversion of point coordinates to an exact integer grid that
-///        fills the full int range (~0.99 * max for the target int type).
-///        Identity for integer input.
+/// @brief Conversion of point coordinates to an exact integer grid scaled
+///        by the largest power of two that keeps the input within 0.99 of
+///        the target int type's range. Identity for integer input.
 ///
 /// Every factory below leaves `IntT` and `RealT` unstated by default: the
 /// coordinate type comes from the input, and the lattice from that coordinate

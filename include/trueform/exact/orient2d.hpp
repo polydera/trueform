@@ -12,8 +12,12 @@
  */
 #pragma once
 
+#include "./float_filter_sound.hpp"
+#include "./int32.hpp"
 #include "./meta.hpp"
+#include "./orient2d_filter_sign.hpp"
 #include "./vertex.hpp"
+#include <type_traits>
 
 namespace tf::exact {
 
@@ -39,12 +43,19 @@ auto distance2(const pt2<Int> &a, const pt2<Int> &b) ->
   return T2(dx) * dx + T2(dy) * dy;
 }
 
-/// Exact orient2d sign for 2D points. Direct wide-integer evaluation:
-/// measured faster than a floating-point filter on both int32 and int64
-/// lattices.
+/// Exact orient2d sign for 2D points. int32 coordinates evaluate directly
+/// in their wide integers; wider ones run
+/// @ref tf::exact::orient2d_filter_sign first, wherever
+/// @ref tf::exact::float_filter_sound holds, and the exact determinant only
+/// where it cannot decide. The sign is exact in every path.
 template <typename Int>
 auto orient2d_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c)
     -> int {
+  if constexpr (float_filter_sound && !std::is_same_v<Int, int32>) {
+    const int filtered = orient2d_filter_sign<Int>(a, b, c);
+    if (filtered)
+      return filtered;
+  }
   auto det = orient2d(a, b, c);
   return (det > 0) ? 1 : (det < 0) ? -1 : 0;
 }

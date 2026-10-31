@@ -2,13 +2,14 @@
  * @file test_door_placement.cpp
  * @brief The door: where an input vertex stands once a tolerance is given.
  *
- * THE BAND IS A SPARSE SET OF PULLS; everywhere it does not act it is
- * tolerance zero. A vertex moves only when a contact or a pool pulled it,
- * and then only onto a lattice point that lies EXACTLY on every plane it
- * owes, within the band of where it stood. Both halves are asserted here
- * rather than measured: the exact solves land on their planes, and every
- * placement, however adversarial the planes, either stands within the band
- * on all of them or leaves the vertex where it was.
+ * A TOLERANCE DOES TWO THINGS. Faces whose directions agree within the band
+ * pool onto one committed plane and their vertices ride it; and a rim
+ * vertex — on an edge one face holds — within the band of another form's
+ * face lands exactly on the nearest feature of that face: the corner's
+ * point, the lattice point nearest its projection onto an edge (and a name
+ * on that edge), or a lattice point on the face's committed plane. Every
+ * placement stands on what the vertex rides, within the band of where it
+ * stood, or the vertex keeps its input point and the census counts it.
  *
  * Every lattice the library resolves is driven: a float input names int32
  * and a double input int64. The generic-direction scene separates them — an
@@ -49,6 +50,7 @@
 #include <trueform/exact/door/segments_cross.hpp>
 #include <trueform/exact/door/segments_touch.hpp>
 #include <trueform/exact/door/wide_dot.hpp>
+#include <trueform/exact/door/within_band_of_edge_span.hpp>
 #include <trueform/exact/input_lattice.hpp>
 #include <trueform/exact/meta.hpp>
 #include <trueform/exact/orient3d.hpp>
@@ -309,6 +311,47 @@ auto adversarial_planes(std::uint32_t seed) -> std::vector<plane_t> {
   return planes;
 }
 
+/// The band of the rim scenes, against a box of side two centred on the
+/// origin.
+constexpr double rim_band = 1e-3;
+
+/// An open quad of two triangles, every vertex on its rim.
+template <typename RealType>
+auto rim_quad(const std::array<std::array<double, 3>, 4> &corners)
+    -> tf::polygons_buffer<index_t, RealType, 3, 3> {
+  tf::polygons_buffer<index_t, RealType, 3, 3> mesh;
+  for (const auto &q : corners)
+    mesh.points_buffer().emplace_back(RealType(q[0]), RealType(q[1]),
+                                      RealType(q[2]));
+  mesh.faces_buffer().emplace_back(0, 1, 2);
+  mesh.faces_buffer().emplace_back(0, 2, 3);
+  return mesh;
+}
+
+/// An open triangle, every vertex on its rim.
+template <typename RealType>
+auto rim_triangle(const std::array<std::array<double, 3>, 3> &corners)
+    -> tf::polygons_buffer<index_t, RealType, 3, 3> {
+  tf::polygons_buffer<index_t, RealType, 3, 3> mesh;
+  for (const auto &q : corners)
+    mesh.points_buffer().emplace_back(RealType(q[0]), RealType(q[1]),
+                                      RealType(q[2]));
+  mesh.faces_buffer().emplace_back(0, 1, 2);
+  return mesh;
+}
+
+/// A horizontal sheet inside the box whose rim edge at `x` runs parallel to
+/// the box's `x = 1` face, its ends inside the two triangles of that face
+/// and far from the diagonal between them.
+template <typename RealType>
+auto rim_face_scene(double x) -> scene_t<RealType> {
+  scene_t<RealType> scene;
+  scene.add(tf::make_box_mesh<index_t>(RealType(2), RealType(2), RealType(2)));
+  scene.add(rim_quad<RealType>(
+      {{{-0.5, -0.5, 0.3}, {x, -0.5, 0.3}, {x, 0.5, 0.3}, {-0.5, 0.5, 0.3}}}));
+  return scene;
+}
+
 } // namespace
 
 TEST_CASE("door: the rounding divide answers every numerator its type holds",
@@ -540,12 +583,16 @@ TEMPLATE_TEST_CASE("door: a tolerance of zero is the identity", "[exact][door]",
   }
 }
 
-TEST_CASE("door: a band below one lattice unit is still the identity",
+TEST_CASE("door: a band below one lattice unit is honoured at one unit",
           "[exact][door]") {
   scene_t<real_t> scene;
   scene.add(tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)));
   scene.build(1e-12);
-  REQUIRE(scene.lattice.tolerance_int() == int_t(0));
+  REQUIRE(scene.lattice.tolerance_int() == int_t(1));
+  const auto effective = scene.lattice.census().effective_tolerance;
+  REQUIRE(effective == double(scene.lattice.converter().coords
+                                  .deconvert_tolerance(int_t(1))));
+  REQUIRE(effective > 1e-12);
   REQUIRE(scene.lattice.moved_points().size() == 0);
 }
 
@@ -559,7 +606,15 @@ TEMPLATE_TEST_CASE("door: a form nothing pulls is read and exported as at "
   scene.build(1e-4);
 
   REQUIRE(scene.lattice.tolerance_int() > lattice_int_t(0));
-  REQUIRE(scene.lattice.moved_points().size() == 0);
+  // nothing lands: both forms are closed and far apart. The turned box's
+  // faces are two planes each and pool, which moves their corners; every
+  // vertex the band left alone is read and exported as at zero
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.rim_vertices == 0);
+  REQUIRE(census.corner_targets + census.edge_targets + census.face_targets ==
+          0);
+  REQUIRE(scene.lattice.moved_points().size() <=
+          std::size_t(4 * census.pools));
   const auto reader = scene.lattice.reader(scene.apply_to_form());
   const auto &converter = scene.lattice.converter();
   for (index_t tag = 0; tag < index_t(2); ++tag) {
@@ -568,8 +623,9 @@ TEMPLATE_TEST_CASE("door: a form nothing pulls is read and exported as at "
     const auto points = form.points();
     const auto base = scene.lattice.vertex_offsets()[std::size_t(tag)];
     for (index_t id = 0; id < index_t(points.size()); ++id) {
-      REQUIRE(reader(int(tag), id) ==
-              converter.convert(tf::transformed(points[id], frame)));
+      if (reader(int(tag), id) !=
+          converter.convert(tf::transformed(points[id], frame)))
+        continue;
       const auto exported = reader.real_point_in(points, frame, base, id);
       const auto input =
           tf::point<TestType, 3>(tf::transformed(points[id], frame));
@@ -659,14 +715,17 @@ TEMPLATE_TEST_CASE("door: two banded walls of four planes become one plane",
   REQUIRE(tf::exact::make_canonical_plane<lattice_int_t>(first) ==
           tf::exact::make_canonical_plane<lattice_int_t>(second));
 
-  // AND IT IS THE OPERANDS' OWN PLANE. What the walls came to rest on stands
-  // on original vertices that did not move at all, which no grid plane can
-  // promise — and at int32, where the door's naming pitch and the chart's are
-  // the same number, it is the whole of what the partition changed here.
-  int unmoved = 0;
+  // AND EVERY VERTEX IS WITHIN THE BAND OF WHERE IT STOOD: the plane is a
+  // dense one the lattice holds, laid where the walls are, and no vertex is
+  // asked to move further than the band to reach it.
   for (std::size_t k = 0; k < placed.size(); ++k)
-    unmoved += placed[k] == input[k] ? 1 : 0;
-  REQUIRE(unmoved >= 3);
+    REQUIRE(tf::exact::door::admits_placement<lattice_int_t>(
+        input[k],
+        std::array<typename tf::exact::meta<lattice_int_t>::T1, 3>{
+            typename tf::exact::meta<lattice_int_t>::T1(placed[k][0]),
+            typename tf::exact::meta<lattice_int_t>::T1(placed[k][1]),
+            typename tf::exact::meta<lattice_int_t>::T1(placed[k][2])},
+        scene.lattice.tolerance_int()));
 }
 
 TEMPLATE_TEST_CASE("door: the pooled scene is byte-inert at a zero band",
@@ -694,8 +753,9 @@ TEMPLATE_TEST_CASE("door: the pooled scene is byte-inert at a zero band",
   }
 }
 
-TEST_CASE("door: two forms whose corners nearly coincide land on one integer",
-          "[exact][door]") {
+TEST_CASE("door: two closed forms whose faces nearly coincide pool them and "
+          "weld the shared corner",
+          "[exact][door][pool]") {
   const real_t scatter = real_t(1e-5);
   scene_t<real_t> scene;
   scene.add(tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1)));
@@ -711,6 +771,15 @@ TEST_CASE("door: two forms whose corners nearly coincide land on one integer",
     for (index_t b = index_t(8); b < index_t(16); ++b)
       if (placed[std::size_t(a)] == placed[std::size_t(b)])
         ++welds;
+  // a closed form has no rim, so no vertex lands on a feature; the three
+  // pairs of nearly coincident faces pool, and the one corner both forms
+  // hold rides all three pools onto one lattice point
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.rim_vertices == 0);
+  REQUIRE(census.pools == 3);
+  REQUIRE(census.pooled_faces == 12);
+  REQUIRE(census.released_pool_faces == 0);
+  REQUIRE(scene.lattice.moved_points().size() > 0);
   REQUIRE(welds == index_t(1));
 }
 
@@ -761,21 +830,23 @@ TEMPLATE_TEST_CASE("door: a tilted near-miss drops onto the plane its face "
   scene.add(visitor);
   scene.build(band);
   const auto &census = scene.lattice.census();
-  REQUIRE(census.contacts == 1);
+  // the visitor's first corner is a rim vertex whose nearest feature within
+  // the band is the inside of the face
+  REQUIRE(census.face_targets == 1);
   const auto placed = scene.placed_all();
-  if (std::is_same<TestType, double>::value) {
-    // the face commits a small-normal plane its corners and its visitor all
-    // reach within the band, and the visitor drops onto it exactly
-    REQUIRE(census.moved_commits == 1);
+  // the face's two triangles are two exact planes a hair apart and quantize
+  // to different keys, so the landing needs a dense plane of the face's own
+  // direction its corners can follow within the band: the 64-bit lattice
+  // holds one and the visitor lands on it exactly; the 32-bit lattice, its
+  // band a few hundred units wide, holds none, and the landing is refused
+  // and counted rather than placed off the face
+  if constexpr (sizeof(TestType) == 8) {
+    REQUIRE(census.face_refused == 0);
     REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(
                 placed[std::size_t(face[0])], placed[std::size_t(face[1])],
                 placed[std::size_t(face[2])], placed[8]) == 0);
   } else {
-    // the face is far larger than the band at this width: no small-normal
-    // plane keeps its corners within the band, so it stays its exact self,
-    // the visitor keeps its input point, and the census says so
-    REQUIRE(census.uncommittable == 1);
-    REQUIRE(census.unheld_contacts == 1);
+    REQUIRE(census.face_refused == 1);
     REQUIRE(scene.lattice.moved_points().size() == 0);
   }
 }
@@ -783,11 +854,10 @@ TEMPLATE_TEST_CASE("door: a tilted near-miss drops onto the plane its face "
 TEMPLATE_TEST_CASE("door: a wall beside a pooled one does not fold",
                    "[exact][door][pool]", float, double) {
   using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
-  // two walls a hair apart, the first carrying a perpendicular flange. A
-  // face commits to a plane only when every corner of it lands, so no face
-  // is ever left half on its plane: the second wall pools and comes out
-  // flat, and the flanged one — whose faces carry feature corners and
-  // speak for no pool — keeps every vertex where the input put it.
+  // two walls a hair apart, the first carrying a perpendicular flange. The
+  // walls pool onto one plane, flange corners and all — a crease vertex
+  // rides the pools of its own faces like any other — and the flange's far
+  // corners, on no pool, stay where the input put them.
   const double tilt = 5e-7, lift = 6e-5;
   tf::polygons_buffer<index_t, TestType, 3, 3> flanged;
   for (const auto &q :
@@ -808,15 +878,18 @@ TEMPLATE_TEST_CASE("door: a wall beside a pooled one does not fold",
                                        TestType(lift), TestType(tilt)));
   scene.build(1e-4);
   REQUIRE(scene.lattice.moved_points().size() > 0);
+  REQUIRE(scene.lattice.census().pools == 1);
+  REQUIRE(scene.lattice.census().pooled_faces == 4);
   const auto placed = scene.placed_all();
   const auto &converter = scene.lattice.converter();
   const auto first = scene.operands[0]->form();
-  for (index_t id = 0; id < index_t(6); ++id)
+  for (index_t id = 4; id < index_t(6); ++id)
     REQUIRE(placed[std::size_t(id)] ==
             converter.convert(
                 tf::transformed(first.points()[id], tf::frame_of(first))));
-  REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(placed[6], placed[7],
-                                                  placed[8], placed[9]) == 0);
+  for (const index_t id : {0, 1, 2, 3, 6, 7, 8, 9})
+    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(
+                placed[0], placed[1], placed[3], placed[std::size_t(id)]) == 0);
 }
 
 TEST_CASE("door: two segments touch exactly when they share a point",
@@ -874,4 +947,250 @@ TEST_CASE("door: a point stands on a closed face exactly or not at all",
   // a face bounding no area holds nothing
   const std::array<p_t, 3> sliver{p_t{0, 0, 0}, p_t{4, 0, 0}, p_t{8, 0, 0}};
   REQUIRE_FALSE(tf::exact::door::point_on_face(p_t{2, 0, 0}, sliver));
+}
+
+TEMPLATE_TEST_CASE("door: a rim a third of the band short of a face lands on "
+                   "the face's plane",
+                   "[exact][door][rim]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  auto scene = rim_face_scene<TestType>(1 - rim_band / 3);
+  scene.build(rim_band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.rim_vertices == 4);
+  REQUIRE(census.face_targets == 2);
+  REQUIRE(census.face_refused == 0);
+  REQUIRE(census.corner_targets == 0);
+  REQUIRE(census.edge_targets == 0);
+  REQUIRE(scene.lattice.moved_points().size() == 2);
+  const auto box = lattice_faces<TestType>(scene, 0).first;
+  const auto input = lattice_faces<TestType>(scene, 1).first;
+  const auto placed = scene.placed_all();
+  // the box stands where it stood, and the face's plane is the one its
+  // corners 1, 3, 5 state
+  for (std::size_t v = 0; v < 8; ++v)
+    REQUIRE(placed[v] == box[v]);
+  for (const std::size_t v : {std::size_t(1), std::size_t(2)}) {
+    // the premise: the input stands off the face
+    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(placed[1], placed[3],
+                                                    placed[5], input[v]) != 0);
+    REQUIRE(tf::exact::orient3d_sign<lattice_int_t>(placed[1], placed[3],
+                                                    placed[5],
+                                                    placed[8 + v]) == 0);
+  }
+
+  auto zero = rim_face_scene<TestType>(1 - rim_band / 3);
+  zero.build(0.0);
+  REQUIRE(zero.lattice.moved_points().size() == 0);
+  REQUIRE(zero.lattice.census().face_targets == 0);
+}
+
+TEMPLATE_TEST_CASE("door: a rim a third of the band off a box edge lands on "
+                   "the edge and is named on it",
+                   "[exact][door][rim]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  // a sheet in the plane x = y whose rim edge runs beside the box edge from
+  // corner 3 to corner 7, a third of the band in along the diagonal
+  const double e = rim_band / (3 * std::sqrt(2.0));
+  scene_t<TestType> scene;
+  auto box = tf::make_box_mesh<index_t>(TestType(2), TestType(2), TestType(2));
+  scene.add(box);
+  scene.add(rim_quad<TestType>({{{0, 0, -0.5},
+                                 {1 - e, 1 - e, -0.5},
+                                 {1 - e, 1 - e, 0.5},
+                                 {0, 0, 0.5}}}));
+  scene.build(rim_band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.edge_targets == 2);
+  REQUIRE(census.edge_refused == 0);
+  REQUIRE(census.corner_targets == 0);
+  REQUIRE(census.face_targets == 0);
+  const auto names = scene.lattice.edge_names();
+  REQUIRE(names.size() == 2);
+  const auto input = lattice_faces<TestType>(scene, 1).first;
+  const auto placed = scene.placed_all();
+  for (std::size_t k = 0; k < names.size(); ++k) {
+    const auto row = names[k];
+    REQUIRE(row[0] == index_t(9 + k));
+    const auto corners = box.faces()[row[1]];
+    const auto a = corners[std::size_t(row[2])];
+    const auto b = corners[(std::size_t(row[2]) + 1) % 3];
+    REQUIRE(std::min(a, b) == 3);
+    REQUIRE(std::max(a, b) == 7);
+    tf::exact::door::edge_span_distance<lattice_int_t> distance{};
+    // the premise: the input stands farther than a lattice unit off the edge
+    REQUIRE_FALSE(tf::exact::door::within_band_of_edge_span<lattice_int_t>(
+        input[std::size_t(1 + k)], placed[3], placed[7], lattice_int_t(1),
+        distance));
+    REQUIRE(tf::exact::door::within_band_of_edge_span<lattice_int_t>(
+        placed[std::size_t(row[0])], placed[3], placed[7], lattice_int_t(1),
+        distance));
+  }
+}
+
+TEMPLATE_TEST_CASE("door: a rim a third of the band from a box corner lands "
+                   "on the corner",
+                   "[exact][door][rim]", float, double) {
+  // the sheet stands in the plane x = y, which holds corner 7
+  const double e = rim_band / (3 * std::sqrt(3.0));
+  scene_t<TestType> scene;
+  scene.add(tf::make_box_mesh<index_t>(TestType(2), TestType(2), TestType(2)));
+  scene.add(rim_triangle<TestType>(
+      {{{1 - e, 1 - e, 1 - e}, {0, 0, 0}, {0.5, 0.5, 0}}}));
+  scene.build(rim_band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.corner_targets == 1);
+  REQUIRE(census.corner_refused == 0);
+  REQUIRE(census.edge_targets == 0);
+  REQUIRE(census.face_targets == 0);
+  const auto placed = scene.placed_all();
+  REQUIRE(placed[8] == placed[7]);
+  REQUIRE(placed[7] == lattice_faces<TestType>(scene, 0).first[7]);
+}
+
+TEMPLATE_TEST_CASE("door: a rim one and a half bands short of a face lands "
+                   "nowhere",
+                   "[exact][door][rim]", float, double) {
+  auto scene = rim_face_scene<TestType>(1 - 1.5 * rim_band);
+  scene.build(rim_band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.rim_vertices == 4);
+  REQUIRE(census.on_face == 0);
+  REQUIRE(census.corner_targets == 0);
+  REQUIRE(census.edge_targets == 0);
+  REQUIRE(census.face_targets == 0);
+  REQUIRE(scene.lattice.moved_points().size() == 0);
+  REQUIRE(scene.lattice.edge_names().size() == 0);
+}
+
+TEMPLATE_TEST_CASE("door: a rim vertex exactly on a face lands nowhere",
+                   "[exact][door][rim]", float, double) {
+  scene_t<TestType> scene;
+  scene.add(tf::make_box_mesh<index_t>(TestType(2), TestType(2), TestType(2)));
+  scene.add(
+      rim_triangle<TestType>({{{1, 0.5, 0.3}, {0, 0, 0.3}, {0, 0.6, 0.3}}}));
+  scene.build(rim_band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.rim_vertices == 3);
+  REQUIRE(census.on_face == 1);
+  REQUIRE(census.corner_targets == 0);
+  REQUIRE(census.edge_targets == 0);
+  REQUIRE(census.face_targets == 0);
+  REQUIRE(scene.lattice.moved_points().size() == 0);
+}
+
+TEMPLATE_TEST_CASE("door: an interior vertex a third of the band from a face "
+                   "does not move",
+                   "[exact][door][rim]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  // a generically turned box whose lowest-x corner stands a third of the
+  // band off the inside of the other box's x = 1 face: no face of it is
+  // near-parallel to that face, and no vertex of a closed box is on a rim
+  auto turned = rotated_box<TestType>();
+  std::size_t lowest = 0;
+  for (std::size_t i = 1; i < turned.points_buffer().size(); ++i)
+    if (turned.points_buffer()[i][0] < turned.points_buffer()[lowest][0])
+      lowest = i;
+  const auto at = tf::point<TestType, 3>(turned.points_buffer()[lowest]);
+  const auto dx = TestType(1 + rim_band / 3) - at[0];
+  const auto dy = TestType(0.2) - at[1];
+  const auto dz = TestType(0.1) - at[2];
+  for (std::size_t i = 0; i < turned.points_buffer().size(); ++i) {
+    turned.points_buffer()[i][0] += dx;
+    turned.points_buffer()[i][1] += dy;
+    turned.points_buffer()[i][2] += dz;
+  }
+  // the premise: that corner stands within the band of the face
+  const double gap = double(turned.points_buffer()[lowest][0]) - 1.0;
+  REQUIRE(gap > 0.0);
+  REQUIRE(gap < rim_band);
+
+  scene_t<TestType> scene;
+  scene.add(tf::make_box_mesh<index_t>(TestType(2), TestType(2), TestType(2)));
+  scene.add(std::move(turned));
+  scene.build(rim_band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.rim_vertices == 0);
+  REQUIRE(census.corner_targets == 0);
+  REQUIRE(census.edge_targets == 0);
+  REQUIRE(census.face_targets == 0);
+  // the turned box's faces are two planes each and may pool, which is a
+  // ride within the band and never a landing: the corner keeps its gap
+  REQUIRE(scene.lattice.moved_points().size() <=
+          std::size_t(4 * census.pools));
+  const auto placed = scene.placed(index_t(1), index_t(lowest));
+  const auto input = scene.lattice.converter().convert(
+      scene.operands[1]->mesh.points()[lowest]);
+  REQUIRE(tf::exact::door::admits_placement<lattice_int_t>(
+      input,
+      std::array<typename tf::exact::meta<lattice_int_t>::T1, 3>{
+          typename tf::exact::meta<lattice_int_t>::T1(placed[0]),
+          typename tf::exact::meta<lattice_int_t>::T1(placed[1]),
+          typename tf::exact::meta<lattice_int_t>::T1(placed[2])},
+      scene.lattice.tolerance_int()));
+}
+
+
+TEMPLATE_TEST_CASE("door: two grid cubes a fraction of a band apart pool "
+                   "their facing sides onto one plane each",
+                   "[exact][door][pool]", float, double) {
+  using lattice_int_t = tf::exact::resolve_int_type<tf::none_t, TestType>;
+  using lattice_wide_t = typename tf::exact::meta<lattice_int_t>::T1;
+  // two cubes of side two, every face an 8 x 8 grid, the second lifted by
+  // three tenths of the band: their top sides are two exact planes in one
+  // key and pool, their bottom sides likewise, and their four other sides
+  // are the same exact planes already and pool nothing
+  const double band = 1e-3;
+  auto lower = tf::make_box_mesh<index_t>(TestType(2), TestType(2),
+                                          TestType(2), index_t(8), index_t(8),
+                                          index_t(8));
+  auto upper = lower;
+  for (std::size_t i = 0; i < upper.points_buffer().size(); ++i)
+    upper.points_buffer()[i][2] =
+        TestType(double(upper.points_buffer()[i][2]) + 0.3 * band);
+  const auto n_points = lower.points_buffer().size();
+  std::vector<std::array<double, 3>> grid(n_points);
+  for (std::size_t i = 0; i < n_points; ++i)
+    for (std::size_t k = 0; k < 3; ++k)
+      grid[i][k] = double(lower.points_buffer()[i][k]);
+  const auto n_faces = lower.faces_buffer().size();
+
+  scene_t<TestType> scene;
+  scene.add(std::move(lower));
+  scene.add(std::move(upper));
+  scene.build(band);
+  const auto &census = scene.lattice.census();
+  REQUIRE(census.pools == 2);
+  REQUIRE(census.pooled_faces == std::int64_t(4 * n_faces / 6));
+  REQUIRE(census.released_pool_faces == 0);
+
+  const auto reader = scene.lattice.reader(scene.apply_to_form());
+  for (index_t tag = 0; tag < index_t(2); ++tag) {
+    const auto input = lattice_faces<TestType>(scene, tag).first;
+    std::vector<tf::point<lattice_int_t, 3>> placed;
+    for (std::size_t i = 0; i < n_points; ++i)
+      placed.push_back(reader.point_of_flat(
+          index_t(std::size_t(tag) * n_points + i)));
+    // every move within the band
+    for (std::size_t i = 0; i < n_points; ++i)
+      REQUIRE(tf::exact::door::admits_placement<lattice_int_t>(
+          input[i],
+          std::array<lattice_wide_t, 3>{lattice_wide_t(placed[i][0]),
+                                        lattice_wide_t(placed[i][1]),
+                                        lattice_wide_t(placed[i][2])},
+          scene.lattice.tolerance_int()));
+  }
+  // per pooled side, one plane holds every vertex of BOTH cubes' sides
+  for (const double side : {-1.0, 1.0}) {
+    std::vector<tf::point<lattice_int_t, 3>> on_side;
+    for (index_t tag = 0; tag < index_t(2); ++tag)
+      for (std::size_t i = 0; i < n_points; ++i)
+        if (grid[i][2] == side)
+          on_side.push_back(reader.point_of_flat(
+              index_t(std::size_t(tag) * n_points + i)));
+    REQUIRE(on_side.size() == 162);
+    tf::exact::canonical_plane<lattice_int_t> plane{};
+    REQUIRE(tf::exact::door::make_support_plane<lattice_int_t>(on_side, plane));
+    for (const auto &p : on_side)
+      REQUIRE(tf::exact::orient3d_plane_sign<lattice_int_t>(plane, p) == 0);
+  }
 }

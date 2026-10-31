@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../meta.hpp"
+#include "../wide_from_double.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -41,9 +42,6 @@ auto wide_placement_bound() -> typename tf::exact::meta<Int>::T1 {
 /// needs the clamp is outside the lattice the certificate can admit, so
 /// clamping decides nothing the certificate does not then refuse.
 ///
-/// A double past 2^53 is already an integer, and its mantissa and
-/// exponent state it exactly at any width — so the value is carried at
-/// the rung's own width and never through a 64-bit rounding.
 template <typename Int>
 auto round_to_wide(double v) -> typename tf::exact::meta<Int>::T1 {
   using T1 = typename tf::exact::meta<Int>::T1;
@@ -54,16 +52,7 @@ auto round_to_wide(double v) -> typename tf::exact::meta<Int>::T1 {
     return -bound;
   if (!(v < limit))
     return bound;
-  const double rounded = std::round(v);
-  int exponent = 0;
-  const double fraction = std::frexp(rounded, &exponent);
-  if (exponent <= 53)
-    return T1(std::llround(rounded));
-  const bool negative = fraction < 0.0;
-  const auto mantissa = static_cast<std::int64_t>(
-      std::ldexp(negative ? -fraction : fraction, 53));
-  const T1 magnitude = T1(mantissa) << unsigned(exponent - 53);
-  return negative ? -magnitude : magnitude;
+  return wide_from_double<T1>(std::round(v));
 }
 
 } // namespace tf::exact::door

@@ -16,18 +16,15 @@
 #include "../../core/algorithm/generic_generate.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/distance.hpp"
-#include "../../core/frame_of.hpp"
 #include "../../core/point.hpp"
 #include "../../core/segment.hpp"
-#include "../../core/small_vector.hpp"
-#include "../../core/views/indirect_range.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "../../spatial/search.hpp"
 #include "../tag_of_flat_vertex.hpp"
 #include "../vertex_converter.hpp"
 #include "./placement_tables.hpp"
-#include "./point_on_face.hpp"
 #include "./segments_cross.hpp"
+#include "../../topology/manifold_edge_peer.hpp"
 
 #include "tbb/parallel_sort.h"
 
@@ -48,43 +45,18 @@ template <typename Index> struct exact_contacts {
   tf::buffer<std::array<Index, 4>> edges;
 };
 
-/// Every vertex on another form's closed face, exactly. A vertex on a face
-/// stands within the band of it, so the discovery admitted the face and the
-/// exact test is asked of the admissions alone.
-template <typename Index, typename Int, typename RealType>
-auto gather_face_contacts(const placement_tables<Index, Int, RealType> &tables,
-                          exact_contacts<Index> &out) -> void {
-  struct local_t {
-    tf::small_vector<tf::point<Int, 3>, 8> corners;
-  };
-  out.on_face.clear();
-  tf::generic_generate(
-      tf::make_sequence_range(tables.points.size()), out.on_face,
-      [&tables](std::size_t v, tf::buffer<std::array<Index, 2>> &into,
-                local_t &local) {
-        for (auto k = tables.contact_offsets[v];
-             k < tables.contact_offsets[v + 1]; ++k) {
-          const auto f = tables.contacts[std::size_t(k)];
-          local.corners.clear();
-          for (const auto c : tables.face_corners(std::size_t(f)))
-            local.corners.push_back(tables.points[std::size_t(c)]);
-          if (point_on_face(tables.points[v], local.corners))
-            into.push_back({Index(v), f});
-        }
-      },
-      local_t{});
-  tbb::parallel_sort(out.on_face.begin(), out.on_face.end());
-}
-
-/// Every edge of a vertex in `scan` crossing another form's edge, exactly,
-/// added to `out.edges`. The edges a placement can disturb are the edges of
-/// the vertices it moved, so only those are walked: each against every other
-/// form's tree, pruned by the segment's own distance to a node's box against
-/// the lattice's rounding, and
-/// the faces that survive offer their edges to the exact test. Two crossing
-/// segments stand at distance zero on the lattice, so a pair whose distance
-/// taken in double exceeds that evaluation's own error cannot cross and
-/// never reaches the exact predicate.
+/// Every RIM edge of a vertex in `scan` crossing another form's edge,
+/// exactly, added to `out.edges`. A rim edge's crossing is a meeting the
+/// input states with the vertex's own edge, which its landing would undo;
+/// a crossing an interior edge of its faces makes is not the rim's and is
+/// left to the arrangement. The edges a placement can disturb are the rim
+/// edges of the vertices it would move, so only those are walked: each
+/// against every other form's tree, pruned by the segment's own distance to
+/// a node's box against the lattice's rounding, and the faces that survive
+/// offer their edges to the exact test. Two crossing segments stand at
+/// distance zero on the lattice, so a pair whose distance taken in double
+/// exceeds that evaluation's own error cannot cross and never reaches the
+/// exact predicate.
 template <typename Index, typename Int, typename RealType, typename ApplyToForm>
 auto gather_edge_contacts(
     const placement_tables<Index, Int, RealType> &tables,
@@ -104,14 +76,31 @@ auto gather_edge_contacts(
             tf::exact::tag_of_flat_vertex(vertex_offsets, Index(v));
         for (auto k = tables.incidence_offsets[v];
              k < tables.incidence_offsets[v + 1]; ++k) {
-          const auto corners = tables.face_corners(
-              std::size_t(tables.incidence[std::size_t(k)]));
+          const auto f = tables.incidence[std::size_t(k)];
+          const auto corners = tables.face_corners(std::size_t(f));
           const auto n = corners.size();
-          for (std::size_t i = 0; i < n; ++i) {
-            if (std::size_t(corners[i]) != v)
+          // the rim edges at the vertex: the face's edge leaving it and
+          // the one arriving, each only where its form holds no peer
+          std::array<Index, 2> rim{Index(-1), Index(-1)};
+          apply_to_form(tag, [&](const auto &form) {
+            const auto &link = form.manifold_edge_link();
+            const auto local = Index(f - face_offsets[std::size_t(tag)]);
+            for (std::size_t i = 0; i < n; ++i) {
+              if (std::size_t(corners[i]) != v)
+                continue;
+              if (link[local][Index(i)].face_peer ==
+                  tf::manifold_edge_peer<Index>::boundary)
+                rim[0] = corners[(i + 1) % n];
+              const auto before = (i + n - 1) % n;
+              if (link[local][Index(before)].face_peer ==
+                  tf::manifold_edge_peer<Index>::boundary)
+                rim[1] = corners[before];
+            }
+          });
+          for (const auto w : rim) {
+            if (w == Index(-1))
               continue;
-            for (const auto w :
-                 {corners[(i + 1) % n], corners[(i + n - 1) % n]}) {
+            {
               const auto &a0 = tables.points[v];
               const auto &a1 = tables.points[std::size_t(w)];
               const auto lattice_segment = [](const tf::point<Int, 3> &p,

@@ -11,10 +11,10 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../difference_image.hpp"
 #include "../meta.hpp"
 #include "../vertex.hpp"
 #include <cmath>
-#include <cstdint>
 
 namespace tf::exact::insphere {
 
@@ -22,33 +22,31 @@ namespace tf::exact::insphere {
 /// integer differences, or zero when the bound cannot decide; Shewchuk's
 /// insphere A-bound,
 /// https://www.cs.cmu.edu/afs/cs/project/quake/public/code/predicates.c
-/// A difference is admitted below 2^52, which every 32-bit coordinate pair
+/// A difference is admitted below 2^52 through
+/// @ref tf::exact::difference_image, which every 32-bit coordinate pair
 /// meets by its width alone. The bound holds where
 /// @ref tf::exact::float_filter_sound does.
 template <typename Int, typename Coord>
 auto filter_sign(const pt3<Coord> &a, const pt3<Coord> &b, const pt3<Coord> &c,
                  const pt3<Coord> &d, const pt3<Coord> &e) -> int {
   using T1 = typename meta<Int>::T1;
-  const T1 axi = T1(a[0]) - e[0], ayi = T1(a[1]) - e[1], azi = T1(a[2]) - e[2];
-  const T1 bxi = T1(b[0]) - e[0], byi = T1(b[1]) - e[1], bzi = T1(b[2]) - e[2];
-  const T1 cxi = T1(c[0]) - e[0], cyi = T1(c[1]) - e[1], czi = T1(c[2]) - e[2];
-  const T1 dxi = T1(d[0]) - e[0], dyi = T1(d[1]) - e[1], dzi = T1(d[2]) - e[2];
-  if constexpr (sizeof(Coord) > sizeof(std::int32_t)) {
-    const auto exact_double = [](T1 v) {
-      const T1 limit = T1(1) << 52;
-      return v > -limit && v < limit;
-    };
-    if (!(exact_double(axi) && exact_double(ayi) && exact_double(azi) &&
-          exact_double(bxi) && exact_double(byi) && exact_double(bzi) &&
-          exact_double(cxi) && exact_double(cyi) && exact_double(czi) &&
-          exact_double(dxi) && exact_double(dyi) && exact_double(dzi)))
-      return 0;
-  }
-
-  const double ax = double(axi), ay = double(ayi), az = double(azi);
-  const double bx = double(bxi), by = double(byi), bz = double(bzi);
-  const double cx = double(cxi), cy = double(cyi), cz = double(czi);
-  const double dx = double(dxi), dy = double(dyi), dz = double(dzi);
+  double ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz;
+  const auto exact = [](difference_image_kind kind) {
+    return kind == difference_image_kind::exact;
+  };
+  if (!(exact(difference_image<T1>(a[0], e[0], ax)) &&
+        exact(difference_image<T1>(a[1], e[1], ay)) &&
+        exact(difference_image<T1>(a[2], e[2], az)) &&
+        exact(difference_image<T1>(b[0], e[0], bx)) &&
+        exact(difference_image<T1>(b[1], e[1], by)) &&
+        exact(difference_image<T1>(b[2], e[2], bz)) &&
+        exact(difference_image<T1>(c[0], e[0], cx)) &&
+        exact(difference_image<T1>(c[1], e[1], cy)) &&
+        exact(difference_image<T1>(c[2], e[2], cz)) &&
+        exact(difference_image<T1>(d[0], e[0], dx)) &&
+        exact(difference_image<T1>(d[1], e[1], dy)) &&
+        exact(difference_image<T1>(d[2], e[2], dz))))
+    return 0;
   const double axby = ax * by, bxay = bx * ay;
   const double bxcy = bx * cy, cxby = cx * by;
   const double cxdy = cx * dy, dxcy = dx * cy;

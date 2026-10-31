@@ -13,6 +13,7 @@
 #pragma once
 
 #include "./int128.hpp"
+#include "./wide_from_double.hpp"
 
 #include <cstdint>
 #include <type_traits>
@@ -255,6 +256,10 @@ public:
   constexpr int256(tf::exact::int128 v) noexcept
       : _lo(static_cast<limb_type>(v)),
         _hi(v < 0 ? ~limb_type(0) : limb_type(0)) {}
+
+  /// The integer part of `v`, as the native cast forms it
+  /// (@ref tf::exact::wide_from_double).
+  explicit int256(double v) noexcept : int256(wide_from_double<int256>(v)) {}
 
   constexpr explicit int256(limb_type lo, limb_type hi) noexcept
       : _lo(lo), _hi(hi) {}
