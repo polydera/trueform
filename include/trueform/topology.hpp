@@ -91,6 +91,8 @@
 #include "./topology/face_membership.hpp"            // IWYU pragma: export
 #include "./topology/face_split_by_edges.hpp"        // IWYU pragma: export
 #include "./topology/find_eulerian_paths.hpp"        // IWYU pragma: export
+#include "./topology/has_flaps.hpp"                  // IWYU pragma: export
+#include "./topology/has_holes.hpp"                  // IWYU pragma: export
 #include "./topology/hole_patcher.hpp"               // IWYU pragma: export
 #include "./topology/is_closed.hpp"                  // IWYU pragma: export
 #include "./topology/is_on_same_edge.hpp"            // IWYU pragma: export

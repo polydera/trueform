@@ -15,6 +15,15 @@
 
 namespace tf::topology::cdt {
 
+/// Walk from the triangle a refinement point was born in to the triangle
+/// holding it, or to the first constrained edge the walk would cross.
+///
+/// The walk is bounded at 1024 steps; past it the point is reported as
+/// unplaced and the refinement skips it like any candidate it cannot place.
+/// A skipped candidate costs density, never validity: the refinement's
+/// terminal reason is the target re-checked over every triangle at its end
+/// (@ref tf::cdt_refine_status), so a triangle a skipped point would have
+/// cut reads as `stalled` unless later insertions resolved it.
 template <typename Owner>
 auto locate_constrained_delaunay_refinement_point(
     const Owner &owner, typename Owner::index_type from,

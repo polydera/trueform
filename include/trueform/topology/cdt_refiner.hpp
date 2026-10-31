@@ -232,8 +232,11 @@ public:
     }
   }
 
-  /// @brief Index map between input point space and prepared output point
-  /// space. After a refused build it is valid only when
+  /// @brief Index map between input point space and output point space:
+  /// `kept_ids()[output]` is the input that survived the weld, or the
+  /// sentinel `f().size()` for a vertex the build created, recovery's
+  /// crossings and the refinement's Steiner points alike. After a refused
+  /// build it states only the prepared points, and is valid only when
   /// `has_prepared_input_index_map()` returns true.
   auto index_map() const -> const tf::index_map_buffer<Index> & {
     return _producer.index_map();

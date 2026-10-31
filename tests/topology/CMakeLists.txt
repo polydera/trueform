@@ -24,6 +24,7 @@ add_executable(trueform_topology_tests
   test_face_orientation.cpp
   test_euler_characteristic.cpp
   test_boundary_rims.cpp
+  test_hole_flap_predicates.cpp
   test_vertex_split.cpp
 )
 

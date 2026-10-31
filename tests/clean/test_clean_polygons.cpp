@@ -15,6 +15,7 @@
  * Copyright (c) 2025 Ziga Sajovic, XLAB
  */
 
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #include <trueform/trueform.hpp>
@@ -1387,4 +1388,109 @@ TEMPLATE_TEST_CASE("clean_polygons_dynamic_soup_duplicate_mixed_faces", "[clean]
     // Duplicates removed: 1 triangle + 1 quad
     REQUIRE(result.faces().size() == 2);
     REQUIRE(result.points().size() == 5);
+}
+
+// =============================================================================
+// clean_polygons_closed_input_has_no_closed_rims
+// =============================================================================
+
+namespace {
+/// A cleaned closed surface is open only where a closed boundary rim stands.
+/// An open rim ends at a non-manifold hinge: the witness of a double-sided
+/// fin keep-one reduced to one side. A closed rim carried by one face is the
+/// floating remnant of an isolated duplicate pair.
+struct clean_rim_verdict {
+  std::size_t holes = 0;
+  std::size_t fin_witnesses = 0;
+  std::size_t floating_remnants = 0;
+};
+
+template <typename Polygons>
+auto clean_rim_verdict_of(const Polygons &polygons) -> clean_rim_verdict {
+  clean_rim_verdict verdict;
+  const auto rims = tf::make_boundary_rims(polygons);
+  for (std::size_t r = 0; r < rims.size(); ++r) {
+    if (!rims.closed[r]) {
+      ++verdict.fin_witnesses;
+      continue;
+    }
+    const auto faces = rims.faces[r];
+    const bool one_face =
+        std::all_of(faces.begin(), faces.end(),
+                    [&](const auto face) { return face == faces[0]; });
+    if (one_face)
+      ++verdict.floating_remnants;
+    else
+      ++verdict.holes;
+  }
+  return verdict;
+}
+
+template <typename index_t, typename real_t>
+auto clean_rims_box() -> tf::polygons_buffer<index_t, real_t, 3, 3> {
+  return tf::make_box_mesh<index_t>(real_t(1), real_t(1), real_t(1));
+}
+} // namespace
+
+TEMPLATE_TEST_CASE("clean_polygons_closed_input_has_no_closed_rims",
+                   "[clean][clean_polygons]",
+                   (tf::test::type_pair<std::int32_t, float>),
+                   (tf::test::type_pair<std::int64_t, double>)) {
+  using index_t = typename TestType::index_type;
+  using real_t = typename TestType::real_type;
+
+  SECTION("closed surfaces stay without rims") {
+    const auto box = clean_rims_box<index_t, real_t>();
+    const auto sphere =
+        tf::make_sphere_mesh<index_t>(real_t(1), index_t(12), index_t(16));
+    for (const auto *mesh : {&box, &sphere}) {
+      REQUIRE(tf::is_closed(mesh->polygons()));
+      auto result = tf::cleaned(mesh->polygons());
+      const auto verdict = clean_rim_verdict_of(result.polygons());
+      CHECK(verdict.holes == 0);
+      CHECK(verdict.fin_witnesses == 0);
+      CHECK(verdict.floating_remnants == 0);
+    }
+  }
+
+  SECTION("a double-sided fin keeps one side, its free edges an open rim") {
+    // Two coincident opposite faces hinged on a box edge: closed as given,
+    // and keep-one leaves the fin's two free edges as one rim that ends at
+    // the hinge.
+    auto mesh = clean_rims_box<index_t, real_t>();
+    const auto hinge = mesh.faces()[0];
+    const index_t p = hinge[0], q = hinge[1];
+    const auto mid =
+        (mesh.points()[p].as_vector() + mesh.points()[q].as_vector()) /
+        real_t(2);
+    mesh.points_buffer().emplace_back(mid[0], mid[1], mid[2] + real_t(2));
+    const auto r = index_t(mesh.points().size() - 1);
+    mesh.faces_buffer().emplace_back(p, q, r);
+    mesh.faces_buffer().emplace_back(q, p, r);
+    REQUIRE(tf::is_closed(mesh.polygons()));
+    auto result = tf::cleaned(mesh.polygons());
+    REQUIRE(result.faces().size() == mesh.faces().size() - 1);
+    const auto verdict = clean_rim_verdict_of(result.polygons());
+    CHECK(verdict.holes == 0);
+    CHECK(verdict.fin_witnesses == 1);
+    CHECK(verdict.floating_remnants == 0);
+  }
+
+  SECTION("an isolated duplicate pair floats as one face") {
+    auto mesh = clean_rims_box<index_t, real_t>();
+    const auto base = index_t(mesh.points().size());
+    mesh.points_buffer().emplace_back(real_t(3), real_t(0), real_t(0));
+    mesh.points_buffer().emplace_back(real_t(4), real_t(0), real_t(0));
+    mesh.points_buffer().emplace_back(real_t(3), real_t(1), real_t(0));
+    mesh.faces_buffer().emplace_back(base, index_t(base + 1),
+                                     index_t(base + 2));
+    mesh.faces_buffer().emplace_back(base, index_t(base + 2),
+                                     index_t(base + 1));
+    REQUIRE(tf::is_closed(mesh.polygons()));
+    auto result = tf::cleaned(mesh.polygons());
+    const auto verdict = clean_rim_verdict_of(result.polygons());
+    CHECK(verdict.holes == 0);
+    CHECK(verdict.fin_witnesses == 0);
+    CHECK(verdict.floating_remnants == 1);
+  }
 }

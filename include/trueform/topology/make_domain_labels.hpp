@@ -162,7 +162,7 @@ auto make_domain_labels(const tf::polygons<Policy> &polygons,
         merges.push_back({anchor_side, merges[i][0]});
     }
 
-    // Float coords go through make_pt_converter (AABB-scaled to ~99%
+    // Float coords go through make_pt_converter (AABB-scaled within 99%
     // of int_max); integer coords are identity-mapped. Same pattern as
     // hole_patcher / planar_graph_regions.
     auto get_point = [&]() {

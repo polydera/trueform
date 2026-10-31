@@ -19,6 +19,7 @@
 #include "./adopt_constrained_delaunay_refinement_faces.hpp"
 #include "./adopt_constrained_delaunay_refinement_points.hpp"
 #include "./clear_constrained_delaunay_refinement.hpp"
+#include "./extend_constrained_delaunay_refinement_index_map.hpp"
 #include "./finalize_constrained_delaunay_refinement_splits.hpp"
 #include "./make_constrained_delaunay_refinement_constraints.hpp"
 #include "./refine_constrained_delaunay.hpp"
@@ -55,6 +56,7 @@ auto build_constrained_delaunay_refinement(
   owner._refine_status = refine_constrained_delaunay(
       owner, std::clamp(double(config.min_quality), 0.0, 0.45));
   finalize_constrained_delaunay_refinement_splits(owner);
+  extend_constrained_delaunay_refinement_index_map(owner);
   return owner._ok = true;
 }
 

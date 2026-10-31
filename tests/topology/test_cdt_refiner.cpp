@@ -214,6 +214,28 @@ TEST_CASE("cdt_refiner refines a needle fan with boundary splits",
   REQUIRE(constraints_present(in, r));
 }
 
+TEST_CASE("cdt_refiner index map speaks for every output point",
+          "[cdt_refiner]") {
+  planar_input in;
+  in.ring(48, 0, 0, 10, 0.25, 7);
+  Refiner r;
+  REQUIRE(run(in, r));
+  const auto &map = r.index_map();
+  const auto n_input = refiner_index_t(map.f().size());
+  REQUIRE(std::size_t(map.kept_ids().size()) == std::size_t(r.points().size()));
+  std::size_t created = 0;
+  for (std::size_t output = 0; output < std::size_t(map.kept_ids().size());
+       ++output) {
+    const auto input = map.kept_ids()[output];
+    if (input == n_input) {
+      ++created;
+      continue;
+    }
+    REQUIRE(map.f()[std::size_t(input)] == refiner_index_t(output));
+  }
+  REQUIRE(created > 0);
+}
+
 TEST_CASE("cdt_refiner split records are canonical dyadics", "[cdt_refiner]") {
   planar_input in;
   in.loop({in.add(0, 0), in.add(40, 0), in.add(40, 2), in.add(0, 2)});

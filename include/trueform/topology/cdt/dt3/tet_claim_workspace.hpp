@@ -22,10 +22,6 @@ namespace tf::topology::cdt::dt3 {
 /// neighbors and coplanar hull predicate dependencies. Failed attempts release
 /// all claims before retrying. Only the barrier transfers free rows or
 /// publishes the state lane.
-///
-/// Sustained insertion follows Geogram PDEL, revision
-/// 69803f75c7e3cc3b78fea2906b9b0a15d3ec8401:
-/// https://github.com/BrunoLevy/geogram/blob/69803f75c7e3cc3b78fea2906b9b0a15d3ec8401/src/lib/geogram/delaunay/parallel_delaunay_3d.cpp
 template <typename Index> struct tet_claim_workspace {
   tet_claim_words ownership;
   tf::buffer<Index> free_next, tail;

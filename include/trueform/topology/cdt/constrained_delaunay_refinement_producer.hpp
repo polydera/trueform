@@ -22,6 +22,7 @@
 #include "../cdt_refine_config.hpp"
 #include "../cdt_refine_status.hpp"
 #include "../cdt_region_mode.hpp"
+#include "../constrained_delaunay_triangulator.hpp"
 #include "./build_constrained_delaunay_refinement.hpp"
 #include "./clear_constrained_delaunay_refinement.hpp"
 #include "./constrained_delaunay_refinement_face_constraint_owners.hpp"
@@ -78,6 +79,20 @@ public:
   /// The fact the adopted labels carry, owned by the seed CDT.
   auto region_mode() const -> tf::cdt_region_mode {
     return owner()._cdt.region_mode();
+  }
+
+  /// The constrained triangulation the refinement grew from, as the last
+  /// successful build left it: the refinement adopted its faces and never
+  /// moves them.
+  auto seed() const
+      -> const tf::constrained_delaunay_triangulator<Index, Coord, Int> & {
+    return owner()._cdt;
+  }
+
+  /// State the seed's regions in `mode`. The refinement's own labels were
+  /// adopted at build, so its product does not move.
+  auto relabel_seed(tf::cdt_region_mode mode) -> void {
+    owner()._cdt.build_regions(mode);
   }
 
   auto ok() const -> bool { return owner()._ok; }
