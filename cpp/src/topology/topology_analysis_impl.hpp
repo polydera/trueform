@@ -31,15 +31,18 @@
 #include "trueform/cpp/topology/vertex_link.hpp"
 
 #include "trueform/core/algorithm/parallel_transform.hpp"
+#include "trueform/core/buffer.hpp"
 #include "trueform/core/policy/frame.hpp"
 #include "trueform/core/polygons_buffer.hpp"
 #include "trueform/core/static_size.hpp"
+#include "trueform/core/transformed.hpp"
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/reindex/return_index_map.hpp"
 #include "trueform/topology.hpp"
 #include "trueform/topology/policy/face_membership.hpp"
 #include "trueform/topology/policy/manifold_edge_link.hpp"
 #include "trueform/topology/policy/vertex_link.hpp"
+#include "trueform/topology/traversal/neighborhood_applier.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -234,6 +237,29 @@ auto neighborhoods(const mesh<Index, Real, Dims, Ngon> &value, Real radius,
       value.points() | tf::tag(value.vertex_link()) | tf::tag(value.frame());
   return offset_blocked_buffer<Index, Index>::from_buffer(
       tf::make_neighborhoods(points, radius, inclusive));
+}
+
+template <typename Index, typename Real, std::size_t Dims, std::size_t Ngon>
+auto neighborhood(const mesh<Index, Real, Dims, Ngon> &value, Index seed,
+                  Real radius, bool inclusive) -> nd_array<Index> {
+  if (std::isnan(radius) || radius <= Real{0})
+    throw std::invalid_argument(
+        "neighborhood: radius must be positive and not NaN");
+  if (seed < Index{0} ||
+      static_cast<std::size_t>(seed) >= value.number_of_points())
+    throw std::out_of_range("neighborhood: seed out of range");
+  const auto points = value.points();
+  const auto frame = value.frame();
+  tf::buffer<Index> reached;
+  tf::topology::neighborhood_applier<Index> applier;
+  applier(
+      value.vertex_link(), seed,
+      [&points, &frame](Index from, Index to) {
+        return tf::transformed(points[from] - points[to], frame).length2();
+      },
+      radius, [&reached](Index id) { reached.push_back(id); }, inclusive);
+  const auto count = static_cast<int>(reached.size());
+  return nd_array<Index>::from_buffer(std::move(reached), {count});
 }
 
 template <typename Index, std::enable_if_t<is_supported_index_v<Index>, int>>

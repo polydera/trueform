@@ -21,6 +21,7 @@
 #include "trueform/topology/label_connected_components.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <utility>
 
@@ -65,6 +66,38 @@ auto label_offset_blocked_connected_components(
   };
   labels.n_components = tf::label_connected_components<Index>(
       labels.labels, apply, expected_number_of_components);
+  return {nd_array<Index>::from_buffer(std::move(labels.labels),
+                                       {static_cast<int>(size)}),
+          static_cast<Index>(labels.n_components)};
+}
+
+template <typename Index>
+auto label_masked_connected_components(
+    const offset_blocked_buffer<Index, Index> &connectivity,
+    const nd_array<std::int8_t> &mask, Index expected_number_of_components)
+    -> connected_components_result<Index> {
+  if (!connectivity.is_valid())
+    throw std::invalid_argument(
+        "label_connected_components: connectivity must be valid");
+  require_component_hint(expected_number_of_components);
+  const auto size = static_cast<Index>(connectivity.size());
+  if (!mask.is_valid() || mask.ndim() != 1 ||
+      mask.length() != static_cast<std::size_t>(size))
+    throw std::invalid_argument(
+        "label_connected_components: mask must hold one byte per element");
+  const auto range = connectivity.make_range();
+  for (const auto block : range)
+    for (const auto peer : block)
+      require_connectivity_value(peer, size, false);
+
+  tf::connected_component_labels<Index> labels;
+  labels.labels.allocate(static_cast<std::size_t>(size));
+  auto apply = [&range](Index id, const auto &fn) {
+    for (const auto peer : range[id])
+      fn(peer);
+  };
+  labels.n_components = tf::label_connected_components_masked<Index>(
+      labels.labels, mask.make_range(), apply, expected_number_of_components);
   return {nd_array<Index>::from_buffer(std::move(labels.labels),
                                        {static_cast<int>(size)}),
           static_cast<Index>(labels.n_components)};

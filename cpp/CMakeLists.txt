@@ -46,6 +46,10 @@ tf_cpp_add_shards(
   src/geometry/curvature_float_int64_3d.cpp
   src/geometry/curvature_double_int32_3d.cpp
   src/geometry/curvature_double_int64_3d.cpp
+  src/geometry/surface_fields_float_int32_3d.cpp
+  src/geometry/surface_fields_float_int64_3d.cpp
+  src/geometry/surface_fields_double_int32_3d.cpp
+  src/geometry/surface_fields_double_int64_3d.cpp
   src/geometry/edges_float_int32_3d.cpp
   src/geometry/edges_float_int64_3d.cpp
   src/geometry/edges_double_int32_3d.cpp

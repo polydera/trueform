@@ -428,6 +428,10 @@ TEMPLATE_TEST_CASE("async mesh measurements take every matrix carrier",
       return dynamic_box<TestType>();
   }();
 
+  // a cache shared by concurrent jobs is filled before it is shared, and the
+  // door is all these entries ask of it
+  owned.mesh().require_indices();
+
   auto area =
       tf::cpp::async::area<Index, Real, TestType::dims, tf::dynamic_size>(
           owned.mesh());

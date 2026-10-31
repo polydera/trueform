@@ -5,6 +5,8 @@
 #include <trueform/cpp/csg/csg_graph.hpp>
 #include <trueform/cpp/csg/csg_intersection_curves.hpp>
 #include <trueform/cpp/csg/csg_mesh.hpp>
+#include <trueform/cpp/csg/csg_number_of_sheet_conflicts.hpp>
+#include <trueform/cpp/csg/csg_sheet_rim_volumes.hpp>
 
 #include <cstdint>
 #include <iostream>
@@ -93,6 +95,8 @@ int main() {
   const auto mapped = tf::cpp::make_csg_mesh_with_index_map(graph, expression);
   const auto created = tf::cpp::csg_created_points(graph);
   const auto curves = tf::cpp::csg_intersection_curves(graph);
+  const auto rims = tf::cpp::csg_sheet_rim_volumes(graph);
+  const auto conflicts = tf::cpp::csg_number_of_sheet_conflicts(graph);
   const auto domains = tf::cpp::make_csg_domains(graph, config);
   const auto selected_domains =
       tf::cpp::make_csg_domains(graph, expression, config);
@@ -126,6 +130,8 @@ int main() {
       mapped.number_of_tags == index_type{2} &&
       mapped.point_f_offsets.length() == 3 && created.shape_at(1) == 3 &&
       created.shape_at(0) > 0 && curves.size() > 0 &&
+      rims.shape_at(0) == 0 && rims.shape_at(1) == 2 &&
+      conflicts == index_type{0} &&
       domains.ids.length() == domains.meshes.size() &&
       selected_domains.ids.length() == selected_domains.meshes.size() &&
       arrays_equal(domains.ids, domain_labels.ids) &&

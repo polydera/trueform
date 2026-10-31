@@ -202,11 +202,11 @@ template <typename T> auto mean(const nd_array<T> &array) -> double {
 
 template <typename T>
 auto mean(const nd_array<T> &array, int axis)
-    -> nd_array<std::conditional_t<std::is_same_v<T, double>, double, float>> {
+    -> nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>> {
   const auto layout = make_axis_layout(array.raw_shape(), axis, "mean");
   const auto result_length =
       static_cast<std::size_t>(layout.outer) * layout.inner;
-  tf::buffer<std::conditional_t<std::is_same_v<T, double>, double, float>>
+  tf::buffer<std::conditional_t<std::is_same_v<T, float>, float, double>>
       buffer;
   buffer.allocate(result_length);
   auto *output = buffer.data();
@@ -221,20 +221,19 @@ auto mean(const nd_array<T> &array, int axis)
           static_cast<double>(data[outer * layout.reduced * layout.inner +
                                    reduced * layout.inner + inner]);
     output[static_cast<std::size_t>(flat_index)] = static_cast<
-        std::conditional_t<std::is_same_v<T, double>, double, float>>(
+        std::conditional_t<std::is_same_v<T, float>, float, double>>(
         accumulator * inverse);
   };
   tf::parallel_for_each(
       tf::make_sequence_range(static_cast<int>(result_length)), reduce_one,
       checked_work(layout.reduced));
-  return nd_array<std::conditional_t<std::is_same_v<T, double>, double,
-                                     float>>::from_buffer(std::move(buffer),
-                                                          layout.output_shape);
+  return nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>>::
+      from_buffer(std::move(buffer), layout.output_shape);
 }
 
 template <typename T>
 auto norm(const nd_array<T> &array)
-    -> std::conditional_t<std::is_same_v<T, double>, double, float> {
+    -> std::conditional_t<std::is_same_v<T, float>, float, double> {
   auto squared = tf::make_mapped_range(array.make_range(), [](T value) {
     const auto converted = static_cast<double>(value);
     return converted * converted;
@@ -242,17 +241,17 @@ auto norm(const nd_array<T> &array)
   const auto total =
       tf::reduce(squared, std::plus<double>{}, 0.0, checked_work(1));
   return static_cast<
-      std::conditional_t<std::is_same_v<T, double>, double, float>>(
+      std::conditional_t<std::is_same_v<T, float>, float, double>>(
       std::sqrt(total));
 }
 
 template <typename T>
 auto norm(const nd_array<T> &array, int axis)
-    -> nd_array<std::conditional_t<std::is_same_v<T, double>, double, float>> {
+    -> nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>> {
   const auto layout = make_axis_layout(array.raw_shape(), axis, "norm");
   const auto result_length =
       static_cast<std::size_t>(layout.outer) * layout.inner;
-  tf::buffer<std::conditional_t<std::is_same_v<T, double>, double, float>>
+  tf::buffer<std::conditional_t<std::is_same_v<T, float>, float, double>>
       buffer;
   buffer.allocate(result_length);
   auto *output = buffer.data();
@@ -268,15 +267,14 @@ auto norm(const nd_array<T> &array, int axis)
       accumulator += value * value;
     }
     output[static_cast<std::size_t>(flat_index)] = static_cast<
-        std::conditional_t<std::is_same_v<T, double>, double, float>>(
+        std::conditional_t<std::is_same_v<T, float>, float, double>>(
         std::sqrt(accumulator));
   };
   tf::parallel_for_each(
       tf::make_sequence_range(static_cast<int>(result_length)), reduce_one,
       checked_work(layout.reduced));
-  return nd_array<std::conditional_t<std::is_same_v<T, double>, double,
-                                     float>>::from_buffer(std::move(buffer),
-                                                          layout.output_shape);
+  return nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>>::
+      from_buffer(std::move(buffer), layout.output_shape);
 }
 
 template <typename T> auto argmin(const nd_array<T> &array) -> std::int32_t {
@@ -358,11 +356,11 @@ auto all(const nd_array<std::int8_t> &array, int axis)
   template auto max<T>(const nd_array<T> &, int) -> nd_array<T>;               \
   template auto mean<T>(const nd_array<T> &) -> double;                        \
   template auto mean<T>(const nd_array<T> &, int) -> nd_array<                 \
-      std::conditional_t<std::is_same_v<T, double>, double, float>>;           \
+      std::conditional_t<std::is_same_v<T, float>, float, double>>;            \
   template auto norm<T>(const nd_array<T> &)                                   \
-      -> std::conditional_t<std::is_same_v<T, double>, double, float>;         \
+      -> std::conditional_t<std::is_same_v<T, float>, float, double>;          \
   template auto norm<T>(const nd_array<T> &, int) -> nd_array<                 \
-      std::conditional_t<std::is_same_v<T, double>, double, float>>;           \
+      std::conditional_t<std::is_same_v<T, float>, float, double>>;            \
   template auto argmin<T>(const nd_array<T> &) -> std::int32_t;                \
   template auto argmin<T>(const nd_array<T> &, int) -> nd_array<std::int32_t>; \
   template auto argmax<T>(const nd_array<T> &) -> std::int32_t;                \

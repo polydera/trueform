@@ -13,6 +13,8 @@
 #include "carriers.hpp"
 #include "fixtures.hpp"
 #include "trueform/core/polygons_buffer.hpp"
+#include "trueform/cpp/core/build_face_membership.hpp"
+#include "trueform/cpp/core/build_manifold_edge_link.hpp"
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/cpp/geometry/make_box_mesh.hpp"
 #include "trueform/cpp/topology.hpp"
@@ -373,6 +375,10 @@ TEST_CASE("all topology async APIs have exact futures, and an array-taking one "
           make_array<std::int64_t>({0, 1, 2}, {3}),
           make_array<std::int64_t>({1, 0}, {2}));
 
+  // a cache shared by concurrent jobs is filled before it is shared
+  tf::cpp::build_face_membership(mesh);
+  tf::cpp::build_manifold_edge_link(mesh);
+
   auto f0 = tf::cpp::async::is_closed(mesh);
   auto f1 = tf::cpp::async::is_open(mesh);
   auto f2 = tf::cpp::async::is_manifold(mesh);
@@ -528,6 +534,8 @@ TEST_CASE("custom resolvers submit once and async exceptions propagate",
       tf::cpp::test::polygons_of<std::int64_t, double, 2>({0, 1, 2},
                                                           {0, 0, 1, 0, 0, 1})};
   const auto typed_mesh = typed_owner.mesh();
+  // a cache shared by concurrent jobs is filled before it is shared
+  tf::cpp::build_face_membership(typed_mesh);
   auto typed_edges =
       tf::cpp::async::boundary_edges(boundary_resolver, typed_mesh);
   auto typed_paths =
@@ -690,6 +698,8 @@ TEST_CASE("every boundary async lane submits exactly once",
 
   auto square = tf::cpp::test::two_triangle_mesh<float>();
   const auto square_mesh = square.mesh();
+  // a cache shared by concurrent jobs is filled before it is shared
+  tf::cpp::build_face_membership(square_mesh);
   auto square_edges = tf::cpp::async::boundary_edges(resolver, square_mesh);
   auto square_paths = tf::cpp::async::boundary_paths(resolver, square_mesh);
   CHECK(square_edges.get().shape_at(0) == 4);
@@ -699,6 +709,7 @@ TEST_CASE("every boundary async lane submits exactly once",
       tf::cpp::test::polygons_of<std::int64_t, double, 2>(
           {0, 1, 2, 0, 2, 3}, {0, 0, 1, 0, 1, 1, 0, 1})};
   const auto typed_mesh = typed.mesh();
+  tf::cpp::build_face_membership(typed_mesh);
   auto typed_edges = tf::cpp::async::boundary_edges(resolver, typed_mesh);
   auto typed_paths = tf::cpp::async::boundary_paths(resolver, typed_mesh);
   auto typed_curves = tf::cpp::async::boundary_curves(resolver, typed_mesh);

@@ -27,21 +27,24 @@ using a_forms = forms_range_t<std::int32_t, float, Ngon>;
 #define TF_CPP_INSTANTIATE_PAIR_BUILDERS(Ngon0, Ngon1)                         \
   template pair_arrangement_t<a<Ngon0>, a<Ngon1>>                              \
   build_pair_arrangement<a<Ngon0>, a<Ngon1>>(                                  \
-      const a<Ngon0> &, const a<Ngon1> &, tf::arrangement_config);             \
+      const a<Ngon0> &, const a<Ngon1> &, tf::arrangement_config,              \
+      tf::arrangement::near_identity_request);                                 \
   template pair_csg_graph_t<a<Ngon0>, a<Ngon1>>                                \
   build_pair_csg_graph<a<Ngon0>, a<Ngon1>>(const a<Ngon0> &, const a<Ngon1> &, \
                                            sheets_t, tf::arrangement_config)
 
 #define TF_CPP_INSTANTIATE_SELF_BUILDERS(Ngon)                                 \
   template self_arrangement_t<a<Ngon>> build_self_arrangement<a<Ngon>>(        \
-      const a<Ngon> &, tf::arrangement_config);                                \
+      const a<Ngon> &, tf::arrangement_config,                                 \
+      tf::arrangement::near_identity_request);                                 \
   template self_csg_graph_t<a<Ngon>> build_self_csg_graph<a<Ngon>>(            \
       const a<Ngon> &, tf::arrangement_config)
 
 #define TF_CPP_INSTANTIATE_RANGE_BUILDERS(Ngon)                                \
   template range_arrangement_t<a_forms<Ngon>>                                  \
-  build_range_arrangement<a_forms<Ngon>>(a_forms<Ngon>,                        \
-                                         tf::arrangement_config)
+  build_range_arrangement<a_forms<Ngon>>(                                      \
+      a_forms<Ngon>, tf::arrangement_config,                                   \
+      tf::arrangement::near_identity_request)
 
 TF_CPP_MATRIX_FOR_EACH_NGON_PAIR(TF_CPP_INSTANTIATE_PAIR_BUILDERS)
 TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_SELF_BUILDERS)

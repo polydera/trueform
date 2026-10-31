@@ -59,10 +59,10 @@ TF_CPP_ASYNC_REDUCTION(min, (T), (nd_array<T>));
 TF_CPP_ASYNC_REDUCTION(max, (T), (nd_array<T>));
 TF_CPP_ASYNC_REDUCTION(
     mean, (double),
-    (nd_array<std::conditional_t<std::is_same_v<T, double>, double, float>>));
+    (nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>>));
 TF_CPP_ASYNC_REDUCTION(
-    norm, (std::conditional_t<std::is_same_v<T, double>, double, float>),
-    (nd_array<std::conditional_t<std::is_same_v<T, double>, double, float>>));
+    norm, (std::conditional_t<std::is_same_v<T, float>, float, double>),
+    (nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>>));
 TF_CPP_ASYNC_REDUCTION(argmin, (std::int32_t), (nd_array<std::int32_t>));
 TF_CPP_ASYNC_REDUCTION(argmax, (std::int32_t), (nd_array<std::int32_t>));
 

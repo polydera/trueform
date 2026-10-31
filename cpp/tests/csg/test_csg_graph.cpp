@@ -439,6 +439,31 @@ TEMPLATE_TEST_CASE("csg graph answers the sheet selection reads",
       std::out_of_range);
 }
 
+TEMPLATE_TEST_CASE("csg graph names the volumes that hold a sheet's free rim",
+                   "[cpp][csg][graph][sheets]", float, double) {
+  using index_t = tf::cpp::default_index_t;
+  const auto dividing = sheet_and_box<TestType>();
+  const auto divided = tf::cpp::make_csg_graph(meshes_of(dividing), {0});
+  const auto none = tf::cpp::csg_sheet_rim_volumes(divided);
+  CHECK(none.raw_shape() == tf::small_vector<int, 3>{0, 2});
+  CHECK(tf::cpp::csg_number_of_sheet_conflicts(divided) == index_t{0});
+
+  // a half-unit sheet floating at the box's mid-height: its whole rim is
+  // inside the box
+  std::vector<csg_owned<index_t, TestType>> floating;
+  floating.reserve(2);
+  floating.push_back(
+      {tf::cpp::make_plane_mesh(TestType{0.5}, TestType{0.5})});
+  floating.push_back(
+      {tf::cpp::make_box_mesh(TestType{1}, TestType{1}, TestType{1})});
+  const auto held = tf::cpp::make_csg_graph(meshes_of(floating), {0});
+  const auto pairs = tf::cpp::csg_sheet_rim_volumes(held);
+  REQUIRE(pairs.raw_shape() == tf::small_vector<int, 3>{1, 2});
+  CHECK(pairs[0] == index_t{0});
+  CHECK(pairs[1] == index_t{1});
+  CHECK(tf::cpp::csg_number_of_sheet_conflicts(held) == index_t{0});
+}
+
 TEMPLATE_TEST_CASE("csg graph domains take a boundary selection only",
                    "[cpp][csg][graph][domains][selection]", float, double) {
   const auto owners = boxes<TestType>();

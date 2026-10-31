@@ -12,6 +12,7 @@ add_executable(trueform_cpp_geometry_tests
   test_quality.cpp
   test_registration.cpp
   test_smoothing.cpp
+  test_surface_fields.cpp
   test_triangulate.cpp
 )
 target_link_libraries(trueform_cpp_geometry_tests PRIVATE

@@ -32,22 +32,34 @@ template <typename Index = default_index_t> struct connected_components_result {
   Index n_components;
 };
 
+/// A MASKED labelling walks only the vertices whose mask byte is nonzero and
+/// crosses only between two of them; a vertex the mask leaves out is labelled
+/// -1 and counts toward no component.
+///
 /// The carriers name no index of their own, so the ENTRY is what states which
 /// widths this build answers for: an index the matrix left out has no overload,
 /// and naming it fails where it is called.
 #define TF_CPP_DECLARE_LABEL_CONNECTED_COMPONENTS(Index)                       \
   auto label_connected_components(                                             \
       const offset_blocked_buffer<Index, Index> &connectivity)                 \
-      ->connected_components_result<Index>;                                    \
+      -> connected_components_result<Index>;                                   \
   auto label_connected_components(                                             \
       const offset_blocked_buffer<Index, Index> &connectivity,                 \
       Index expected_number_of_components)                                     \
-      ->connected_components_result<Index>;                                    \
+      -> connected_components_result<Index>;                                   \
   auto label_connected_components(const nd_array<Index> &connectivity)         \
-      ->connected_components_result<Index>;                                    \
+      -> connected_components_result<Index>;                                   \
   auto label_connected_components(const nd_array<Index> &connectivity,         \
                                   Index expected_number_of_components)         \
-      ->connected_components_result<Index>
+      -> connected_components_result<Index>;                                   \
+  auto label_connected_components(                                             \
+      const offset_blocked_buffer<Index, Index> &connectivity,                 \
+      const nd_array<std::int8_t> &mask)                                       \
+      -> connected_components_result<Index>;                                   \
+  auto label_connected_components(                                             \
+      const offset_blocked_buffer<Index, Index> &connectivity,                 \
+      const nd_array<std::int8_t> &mask, Index expected_number_of_components)  \
+      -> connected_components_result<Index>
 
 TF_CPP_MATRIX_FOR_EACH_INDEX(TF_CPP_DECLARE_LABEL_CONNECTED_COMPONENTS)
 

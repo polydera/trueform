@@ -334,6 +334,9 @@ TEST_CASE("async IO has exact futures, custom resolvers, and owning captures",
   auto obj = bytes_from_string(triangle_obj());
   const auto source = tf::cpp::test::triangle_mesh<double>();
   tf::cpp::test::counting_resolver resolver;
+  // a cache shared by concurrent jobs is filled before it is shared, and the
+  // door is all a writer asks of it
+  source.mesh().require_indices();
 
   auto stl_read = tf::cpp::async::read_stl(obj.raw_data(), 0);
   auto obj_read =

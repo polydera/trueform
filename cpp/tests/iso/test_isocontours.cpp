@@ -14,6 +14,8 @@
 #include "nd_array.hpp"
 #include "parity_checks.hpp"
 
+#include "trueform/cpp/core/build_manifold_edge_link.hpp"
+#include "trueform/cpp/core/build_tree.hpp"
 #include "trueform/cpp/iso/async/isocontours.hpp"
 #include "trueform/cpp/iso/isocontours.hpp"
 
@@ -108,6 +110,10 @@ TEMPLATE_TEST_CASE("isocontours borrow the mesh and copy the field arrays",
   const auto square = isocontour_square<TestType>();
   auto scalars = isocontour_scalars<TestType>();
   auto cuts = tf::cpp::test::make_nd_array<TestType>({-0.5, 0.5}, {2});
+
+  // a cache shared by concurrent jobs is filled before it is shared
+  tf::cpp::build_tree(square.mesh());
+  tf::cpp::build_manifold_edge_link(square.mesh());
 
   auto single_future =
       tf::cpp::async::isocontours(square.mesh(), scalars, TestType{0});

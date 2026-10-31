@@ -135,13 +135,27 @@ TEST_CASE("reductions preserve the complete dtype and result matrix",
   CHECK(tf::cpp::max(wide_values) == wide);
 
   const auto integers = make_array<std::int32_t>({1, 2}, {2});
+  const auto floats = make_array<float>({1, 2}, {2});
   const auto doubles = make_array<double>({1, 2}, {2});
   static_assert(std::is_same_v<decltype(tf::cpp::mean(integers, 0)),
+                               tf::cpp::nd_array<double>>);
+  static_assert(std::is_same_v<decltype(tf::cpp::norm(integers)), double>);
+  static_assert(std::is_same_v<decltype(tf::cpp::norm(integers, 0)),
+                               tf::cpp::nd_array<double>>);
+  static_assert(std::is_same_v<decltype(tf::cpp::mean(floats, 0)),
                                tf::cpp::nd_array<float>>);
-  static_assert(std::is_same_v<decltype(tf::cpp::norm(integers)), float>);
+  static_assert(std::is_same_v<decltype(tf::cpp::norm(floats)), float>);
   static_assert(std::is_same_v<decltype(tf::cpp::mean(doubles, 0)),
                                tf::cpp::nd_array<double>>);
   static_assert(std::is_same_v<decltype(tf::cpp::norm(doubles)), double>);
+
+  // 3000000001 and 3000000002 lie between two binary32 numbers 256 apart.
+  const auto large = make_array<std::int64_t>({3000000001, 4}, {2});
+  CHECK(tf::cpp::norm(large) == 3000000001.0);
+  const auto large_column =
+      make_array<std::int64_t>({3000000001, 3000000003}, {2, 1});
+  check_values(tf::cpp::mean(large_column, 0), {3000000002.0});
+  check_values(tf::cpp::norm(large, 0), {3000000001.0});
 }
 
 TEST_CASE("boolean reductions return scalar and axis results",
@@ -300,7 +314,7 @@ TEST_CASE("async reductions preserve scalar, axis, and boolean result types",
   const auto axis_values = make_array<std::int32_t>({1, 2, 3, 4, 5, 6}, {2, 3});
   auto axis = tf::cpp::async::mean(axis_values, 1);
   static_assert(
-      std::is_same_v<decltype(axis), std::future<tf::cpp::nd_array<float>>>);
+      std::is_same_v<decltype(axis), std::future<tf::cpp::nd_array<double>>>);
   const auto means = axis.get();
   CHECK(means[0] == Catch::Approx(2.0));
   CHECK(means[1] == Catch::Approx(5.0));

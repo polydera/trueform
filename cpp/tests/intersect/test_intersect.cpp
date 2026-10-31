@@ -13,6 +13,8 @@
 #include "carriers.hpp"
 #include "parity_checks.hpp"
 
+#include "trueform/cpp/core/build_manifold_edge_link.hpp"
+#include "trueform/cpp/core/build_tree.hpp"
 #include "trueform/cpp/intersect/async/has_self_intersections.hpp"
 #include "trueform/cpp/intersect/async/intersection_curves.hpp"
 #include "trueform/cpp/intersect/async/self_intersection_curves.hpp"
@@ -300,6 +302,12 @@ TEMPLATE_TEST_CASE("exact intersection async entries read what they borrow",
   const auto crossing = self_crossing_mesh<TestType>();
   const std::vector<typename owned<TestType>::mesh_type> meshes{
       horizontal.mesh(), vertical.mesh()};
+
+  // a cache shared by concurrent jobs is filled before it is shared
+  for (const auto &mesh : meshes) {
+    tf::cpp::build_tree(mesh);
+    tf::cpp::build_manifold_edge_link(mesh);
+  }
 
   auto pair_future =
       tf::cpp::async::intersection_curves(horizontal.mesh(), vertical.mesh());

@@ -13,6 +13,7 @@
 #include "carriers.hpp"
 #include "nd_array.hpp"
 
+#include "trueform/cpp/core/build_half_edges.hpp"
 #include "trueform/cpp/geometry/make_box_mesh.hpp"
 #include "trueform/cpp/geometry/make_sphere_mesh.hpp"
 #include "trueform/cpp/geometry/mean_edge_length.hpp"
@@ -415,6 +416,9 @@ TEMPLATE_LIST_TEST_CASE("typed remesh futures retain the regions they carry",
   tf::simplify_config<Real> simplify;
   simplify.iterations = 0;
   simplify.parallel = false;
+
+  // a cache shared by concurrent jobs is filled before it is shared
+  tf::cpp::build_half_edges(source.mesh());
 
   auto decimated =
       tf::cpp::async::decimated(source.mesh(), Real{1}, decimate, regions);

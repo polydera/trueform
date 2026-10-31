@@ -12,6 +12,7 @@
  */
 #include "carriers.hpp"
 
+#include "trueform/cpp/core/build_tree.hpp"
 #include "trueform/cpp/geometry/async/chamfer_error.hpp"
 #include "trueform/cpp/geometry/async/fit_icp.hpp"
 #include "trueform/cpp/geometry/async/fit_knn.hpp"
@@ -1254,6 +1255,9 @@ TEMPLATE_TEST_CASE(
 
     auto future_source = dimensional_cloud<TestType, Dims>(points.deep_copy());
     auto future_target = dimensional_cloud<TestType, Dims>(shifted.deep_copy());
+    // a cache shared by concurrent jobs is filled before it is shared
+    tf::cpp::build_tree(future_source.point_cloud());
+    tf::cpp::build_tree(future_target.point_cloud());
     auto owned_fit = tf::cpp::async::fit_knn(future_source.point_cloud(),
                                              future_target.point_cloud());
     auto owned_icp = tf::cpp::async::fit_icp(
@@ -1278,6 +1282,8 @@ TEMPLATE_TEST_CASE(
         dimensional_cloud<TestType, Dims>(points.deep_copy());
     auto resolver_target =
         dimensional_cloud<TestType, Dims>(shifted.deep_copy());
+    tf::cpp::build_tree(resolver_source.point_cloud());
+    tf::cpp::build_tree(resolver_target.point_cloud());
     auto resolver_fit = tf::cpp::async::fit_knn(counting_resolver{&submissions},
                                                 resolver_source.point_cloud(),
                                                 resolver_target.point_cloud());
@@ -1303,6 +1309,8 @@ TEMPLATE_TEST_CASE("async registration preserves result and option semantics",
   auto shifted = translated(points, 0.01, -0.005, 0.008);
   auto source = cloud(points);
   auto target = cloud(shifted);
+  // every job reads the target's tree and nothing of the source's
+  tf::cpp::build_tree(target.point_cloud());
 
   tf::cpp::fit_icp_options<TestType> icp_options;
   icp_options.max_iterations = 0;

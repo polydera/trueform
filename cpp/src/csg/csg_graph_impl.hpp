@@ -16,6 +16,7 @@
 #include "../arrangement/graph_builders.hpp"
 #include "../intersect/config_validation.hpp"
 #include "trueform/core/algorithm/parallel_transform.hpp"
+#include "trueform/core/checked.hpp"
 #include "trueform/core/polygons_buffer.hpp"
 #include "trueform/cpp/core/mesh.hpp"
 #include "trueform/cpp/csg/csg_graph.hpp"
@@ -235,6 +236,26 @@ auto csg_created_points(const csg_graph<Index, Real> &graph) -> nd_array<Real> {
                          });
   return nd_array<Real>::from_buffer(std::move(output),
                                      {static_cast<int>(created.size()), 3});
+}
+
+template <typename Index, typename Real>
+auto csg_sheet_rim_volumes(const csg_graph<Index, Real> &graph)
+    -> nd_array<Index> {
+  const auto &data = csg_graph_detail::access::of(graph);
+  const auto &pairs = data.graph.sheet_rim_volumes();
+  tf::buffer<Index> output;
+  output.allocate(pairs.size() * 2);
+  tf::parallel_transform(
+      tf::make_range(pairs), tf::make_blocked_range<2>(tf::make_range(output)),
+      [](const auto &pair) { return pair; }, tf::checked);
+  return nd_array<Index>::from_buffer(std::move(output),
+                                      {static_cast<int>(pairs.size()), 2});
+}
+
+template <typename Index, typename Real>
+auto csg_number_of_sheet_conflicts(const csg_graph<Index, Real> &graph)
+    -> Index {
+  return csg_graph_detail::access::of(graph).graph.n_sheet_conflicts();
 }
 
 template <typename Index, typename Real>

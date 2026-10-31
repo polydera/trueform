@@ -46,4 +46,20 @@
       -> connected_components_result<Index> {                                  \
     return detail::label_dense_connected_components(                           \
         connectivity, expected_number_of_components);                          \
+  }                                                                            \
+                                                                               \
+  auto label_connected_components(                                             \
+      const offset_blocked_buffer<Index, Index> &connectivity,                 \
+      const nd_array<std::int8_t> &mask)                                       \
+      -> connected_components_result<Index> {                                  \
+    return detail::label_masked_connected_components(connectivity, mask,       \
+                                                     Index{2});                \
+  }                                                                            \
+                                                                               \
+  auto label_connected_components(                                             \
+      const offset_blocked_buffer<Index, Index> &connectivity,                 \
+      const nd_array<std::int8_t> &mask, Index expected_number_of_components)  \
+      -> connected_components_result<Index> {                                  \
+    return detail::label_masked_connected_components(                          \
+        connectivity, mask, expected_number_of_components);                    \
   }

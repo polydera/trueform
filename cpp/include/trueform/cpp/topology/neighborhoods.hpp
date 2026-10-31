@@ -29,6 +29,13 @@ auto neighborhoods(const mesh<Index, Real, Dims, Ngon> &value, Real radius,
                    bool inclusive = false)
     -> offset_blocked_buffer<Index, Index>;
 
+/// @brief The vertices reachable from one seed within a metric radius, in the
+/// order the walk reaches them: the walk crosses only vertices within it.
+/// @note Reads the VERTEX LINK.
+template <typename Index, typename Real, std::size_t Dims, std::size_t Ngon>
+auto neighborhood(const mesh<Index, Real, Dims, Ngon> &value, Index seed,
+                  Real radius, bool inclusive = false) -> nd_array<Index>;
+
 /// @brief The same, over a connectivity and points a caller already holds.
 ///
 /// Dims is explicit because nd_array stores dimensionality at runtime. Points
@@ -46,15 +53,22 @@ auto neighborhoods(const offset_blocked_buffer<Index, Index> &connectivity,
       const mesh<Index, Real, Dims, Ngon> &, Real, bool)                       \
       -> offset_blocked_buffer<Index, Index>
 
+#define TF_CPP_EXTERN_MESH_NEIGHBORHOOD(Index, Real, Dims, Ngon)               \
+  extern template auto neighborhood<Index, Real, Dims, Ngon>(                  \
+      const mesh<Index, Real, Dims, Ngon> &, Index, Real, bool)                \
+      -> nd_array<Index>
+
 #define TF_CPP_EXTERN_NEIGHBORHOODS(Index, Real, Dims)                         \
   extern template auto neighborhoods<Index, Real, Dims>(                       \
       const offset_blocked_buffer<Index, Index> &, const nd_array<Real> &,     \
       Real, bool) -> offset_blocked_buffer<Index, Index>
 
 TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_NGON(TF_CPP_EXTERN_MESH_NEIGHBORHOODS)
+TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS_NGON(TF_CPP_EXTERN_MESH_NEIGHBORHOOD)
 TF_CPP_MATRIX_FOR_EACH_INDEX_REAL_DIMS(TF_CPP_EXTERN_NEIGHBORHOODS)
 
 #undef TF_CPP_EXTERN_NEIGHBORHOODS
+#undef TF_CPP_EXTERN_MESH_NEIGHBORHOOD
 #undef TF_CPP_EXTERN_MESH_NEIGHBORHOODS
 
 } // namespace tf::cpp

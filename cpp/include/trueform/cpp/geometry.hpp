@@ -50,7 +50,9 @@
 #include "./geometry/chamfer_error.hpp"           // IWYU pragma: export
 #include "./geometry/chamfer_error_options.hpp"   // IWYU pragma: export
 #include "./geometry/dihedral_angles.hpp"         // IWYU pragma: export
+#include "./geometry/dirichlet_field.hpp"         // IWYU pragma: export
 #include "./geometry/face_quality.hpp"            // IWYU pragma: export
+#include "./geometry/geodesic_distances.hpp"      // IWYU pragma: export
 #include "./geometry/fit_icp.hpp"                 // IWYU pragma: export
 #include "./geometry/fit_knn.hpp"                 // IWYU pragma: export
 #include "./geometry/fit_obb.hpp"                 // IWYU pragma: export

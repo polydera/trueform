@@ -17,6 +17,8 @@
 #include "trueform/cpp/arrangement/mesh_arrangements.hpp"
 #include "trueform/cpp/arrangement/polygon_arrangements.hpp"
 #include "trueform/cpp/clean/mesh.hpp"
+#include "trueform/cpp/core/build_manifold_edge_link.hpp"
+#include "trueform/cpp/core/build_tree.hpp"
 #include "trueform/cpp/geometry/make_box_mesh.hpp"
 #include "trueform/cpp/geometry/make_sphere_mesh.hpp"
 #include "trueform/cpp/geometry/positively_oriented.hpp"
@@ -311,6 +313,14 @@ TEMPLATE_TEST_CASE("arrangement async entries read the operands they borrow",
   const auto crossing_owner = self_crossing_mesh<TestType>();
   const auto meshes = meshes_of(owners);
   const auto crossing = crossing_owner.mesh();
+
+  // a cache shared by concurrent jobs is filled before it is shared
+  for (const auto &mesh : meshes) {
+    tf::cpp::build_tree(mesh);
+    tf::cpp::build_manifold_edge_link(mesh);
+  }
+  tf::cpp::build_tree(crossing);
+  tf::cpp::build_manifold_edge_link(crossing);
 
   auto mesh_future = tf::cpp::async::mesh_arrangements(meshes);
   auto mesh_curves_future =
@@ -821,7 +831,8 @@ TEST_CASE("exact Python three-sphere arrangement fixture preserves topology",
   CHECK(tf::cpp::boundary_paths(refined_topology.mesh()).size() == 0);
 }
 
-TEST_CASE("arrangement facade never welds one form's rim onto another's wall",
+TEST_CASE("arrangement facade drops a rim within the band onto another form's "
+          "wall",
           "[cpp][arrangement][arrangements][python-parity][tolerance]") {
   using Real = float;
   using Index = std::int64_t;
@@ -844,9 +855,10 @@ TEST_CASE("arrangement facade never welds one form's rim onto another's wall",
   const Owned oriented{tf::cpp::orient_faces_consistently(cleaned.mesh())};
   const auto snapped_labels = tf::cpp::make_domain_labels(
       oriented.mesh(), tf::domain_config::ignore_open_fragments);
-  // the band is a licence to move a vertex onto a plane its OWN faces state,
-  // so a gap ten times smaller than it still separates two forms
-  CHECK(snapped_labels.number_of_domains() == Index{2});
+  // a vertex within the band of another form's plane drops onto it, so a gap
+  // narrower than the band welds the fin to the walls and halves the cube
+  // (outer + two halves)
+  CHECK(snapped_labels.number_of_domains() == Index{3});
 
   const auto exact =
       tf::cpp::mesh_arrangements(forms, {tf::intersect_mode::primitives, 0.0});

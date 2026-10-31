@@ -23,6 +23,10 @@
       ->csg_graph<Index, Real>;                                                \
   template auto csg_created_points(const csg_graph<Index, Real> &)             \
       -> nd_array<Real>;                                                       \
+  template auto csg_sheet_rim_volumes(const csg_graph<Index, Real> &)          \
+      -> nd_array<Index>;                                                      \
+  template auto csg_number_of_sheet_conflicts(const csg_graph<Index, Real> &)  \
+      -> Index;                                                                \
   template auto csg_intersection_curves(const csg_graph<Index, Real> &)        \
       -> tf::curves_buffer<Index, Real, 3>;                                    \
   template auto make_csg_mesh(const csg_graph<Index, Real> &)                  \

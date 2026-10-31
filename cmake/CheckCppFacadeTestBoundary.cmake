@@ -58,6 +58,8 @@ set(_allowed_direct_tokens
   "tf::curves_buffer"
   "tf::decimate_config"
   "tf::deg"
+  "tf::dirichlet_field_status"
+  "tf::dirichlet_order"
   "tf::domain_config"
   "tf::dynamic_size"
   "tf::has_frame_policy"

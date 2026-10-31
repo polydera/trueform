@@ -36,7 +36,10 @@ namespace tf::cpp {
       -> offset_blocked_buffer<std::int32_t, std::int32_t>;                    \
   template auto neighborhoods<std::int32_t, float, 3, Ngon>(                   \
       const mesh<std::int32_t, float, 3, Ngon> &, float, bool)                 \
-      -> offset_blocked_buffer<std::int32_t, std::int32_t>
+      -> offset_blocked_buffer<std::int32_t, std::int32_t>;                    \
+  template auto neighborhood<std::int32_t, float, 3, Ngon>(                    \
+      const mesh<std::int32_t, float, 3, Ngon> &, std::int32_t, float, bool)   \
+      -> nd_array<std::int32_t>
 
 TF_CPP_MATRIX_FOR_EACH_NGON(TF_CPP_INSTANTIATE_MESH_ANALYSIS)
 

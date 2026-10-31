@@ -28,5 +28,7 @@
 #include "./csg/csg_graph.hpp"                     // IWYU pragma: export
 #include "./csg/csg_intersection_curves.hpp"       // IWYU pragma: export
 #include "./csg/csg_mesh.hpp"                      // IWYU pragma: export
+#include "./csg/csg_number_of_sheet_conflicts.hpp" // IWYU pragma: export
+#include "./csg/csg_sheet_rim_volumes.hpp"         // IWYU pragma: export
 #include "./csg/make_boolean.hpp"                  // IWYU pragma: export
 #include "./csg/outer_shell.hpp"                   // IWYU pragma: export

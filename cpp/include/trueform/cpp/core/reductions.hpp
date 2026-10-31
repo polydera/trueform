@@ -38,14 +38,14 @@ auto max(const nd_array<T> &array, int axis) -> nd_array<T>;
 template <typename T> auto mean(const nd_array<T> &array) -> double;
 template <typename T>
 auto mean(const nd_array<T> &array, int axis)
-    -> nd_array<std::conditional_t<std::is_same_v<T, double>, double, float>>;
+    -> nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>>;
 
 template <typename T>
 auto norm(const nd_array<T> &array)
-    -> std::conditional_t<std::is_same_v<T, double>, double, float>;
+    -> std::conditional_t<std::is_same_v<T, float>, float, double>;
 template <typename T>
 auto norm(const nd_array<T> &array, int axis)
-    -> nd_array<std::conditional_t<std::is_same_v<T, double>, double, float>>;
+    -> nd_array<std::conditional_t<std::is_same_v<T, float>, float, double>>;
 
 template <typename T> auto argmin(const nd_array<T> &array) -> std::int32_t;
 template <typename T>
@@ -72,11 +72,11 @@ auto all(const nd_array<std::int8_t> &array, int axis) -> nd_array<std::int8_t>;
   extern template auto max<T>(const nd_array<T> &, int) -> nd_array<T>;        \
   extern template auto mean<T>(const nd_array<T> &) -> double;                 \
   extern template auto mean<T>(const nd_array<T> &, int) -> nd_array<          \
-      std::conditional_t<std::is_same_v<T, double>, double, float>>;           \
+      std::conditional_t<std::is_same_v<T, float>, float, double>>;            \
   extern template auto norm<T>(const nd_array<T> &)                            \
-      -> std::conditional_t<std::is_same_v<T, double>, double, float>;         \
+      -> std::conditional_t<std::is_same_v<T, float>, float, double>;          \
   extern template auto norm<T>(const nd_array<T> &, int) -> nd_array<          \
-      std::conditional_t<std::is_same_v<T, double>, double, float>>;           \
+      std::conditional_t<std::is_same_v<T, float>, float, double>>;            \
   extern template auto argmin<T>(const nd_array<T> &) -> std::int32_t;         \
   extern template auto argmin<T>(const nd_array<T> &, int)                     \
       -> nd_array<std::int32_t>;                                               \

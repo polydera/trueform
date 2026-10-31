@@ -26,7 +26,8 @@ template <std::size_t Ngon> using b = form_t<std::int32_t, float, Ngon>;
 #define TF_CPP_INSTANTIATE_PAIR_BUILDERS(Ngon0, Ngon1)                         \
   template pair_arrangement_t<a<Ngon0>, b<Ngon1>>                              \
   build_pair_arrangement<a<Ngon0>, b<Ngon1>>(                                  \
-      const a<Ngon0> &, const b<Ngon1> &, tf::arrangement_config);             \
+      const a<Ngon0> &, const b<Ngon1> &, tf::arrangement_config,              \
+      tf::arrangement::near_identity_request);                                 \
   template pair_csg_graph_t<a<Ngon0>, b<Ngon1>>                                \
   build_pair_csg_graph<a<Ngon0>, b<Ngon1>>(const a<Ngon0> &, const b<Ngon1> &, \
                                            sheets_t, tf::arrangement_config)
