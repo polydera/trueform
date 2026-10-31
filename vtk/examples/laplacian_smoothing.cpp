@@ -307,7 +307,7 @@ private:
 
     tf::parallel_for_each(
         tf::zip(neigh_points, neigh_neighbors),
-        [&](auto tup) {
+        [this](auto tup) {
           auto [pt, neighbors] = tup;
           pt = tf::laplacian_smoothed(pt, tf::make_points(neighbors), lambda_);
         },
