@@ -1,3 +1,39 @@
+## trueform v0.10.9
+
+Tetrahedral meshing. `tf::make_tet_mesh(polygons)` states the solid a
+closed surface winds as a constrained Delaunay tetrahedralization: the
+surface's faces, with coplanar triangles wound alike merged into one facet,
+become the constraints of an exact Delaunay tetrahedralization of their
+vertices, every segment and facet is recovered by flips first and points
+last, and the cells are carved by winding so the positively wound ones are
+kept. One instantiation serves each input type: a float surface on an
+int32 lattice in int64 sites, a double surface on an int64 lattice, the
+input quantized once; a constraint the frame splits too coarsely places its
+point below the frame site by site, so no climb and no second build. It
+returns the tetrahedra, the triangles covering each facet, the facets each
+input face lies in, and a report that names what was refused and why.
+
+The isotropic remesher splits a boundary edge soundly. Splitting a boundary
+edge minted its head half with the forward loop link only; a later collapse
+of a boundary edge spliced through the stale backward link and the
+compaction's fan walk read removed slots. The split now writes both links,
+and the half-edge structure checks that every live half-edge is named back
+by its loop links under verification.
+
+A carve that grows twice in a row is refused. The arrangement's carve
+re-arranges the faces a fused identity reaches; on a plane of needles
+narrower than a lattice cell every cut adds near-coincident diagonals whose
+re-arrangement multiplies the next round's targets, which ran until the
+machine's memory was gone. A round that states more targets than it was
+given, after a round that did the same, now refuses the carve as diverging
+(`reseat_refusal::diverged`), leaving the arrangement as built; every carve
+that converged before converges byte-identically.
+
+Underneath the tetrahedral mesher: `tf::delaunay_tetrahedralizer`, an exact
+incremental 3D Delaunay of integer lattice sites, parallel by claim bands,
+its cells published in one canonical order at any worker count; and the
+constraint recovery phases over it.
+
 ## trueform v0.10.8
 
 Geodesic distances. `tf::make_geodesic_distances(polygons, seeds[, radius])`
