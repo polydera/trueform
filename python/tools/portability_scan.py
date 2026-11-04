@@ -24,6 +24,10 @@ Checks:
         captured local goes undeclared, by value as much as by
         reference. List what the body reads in the capture list;
         capture-less lambdas are fine too
+  10.6  a lambda with an explicit capture list reading a const local of
+        the enclosing function that the list does not name -- Clang and
+        GCC read a const integral initialised from a constant without
+        capturing it, MSVC refuses the implicit capture (C3493). List it
   intrinsics: __int128 / __uint128 / __builtin_* outside tf::exact
         and vendored external code
 
@@ -157,6 +161,55 @@ for f in sources:
                            f"decomposes '{hit}' -- MSVC loses the enclosing "
                            "scope after the binding; list what the body reads "
                            "in the capture list")
+
+# only a const initialised from a constant (a qualified name or a literal)
+# is read without capture by Clang and GCC; one initialised at run time
+# fails on every compiler, so it is never a Windows-only finding
+CONST_LOCAL = re.compile(r"\s+const\s+[\w:<>]+\s+(\w+)\s*=\s*(?:[A-Za-z_][\w:]*|[\d.]+[uUlLfF]*)\s*;")
+EXPLICIT_CAPTURE = re.compile(r"^\[(?!\s*[&=]\s*(?:\]|,))[^\]]*\]$")
+for f in sources:
+    lines = open(f, encoding="utf-8").read().split("\n")
+    for i, ln in enumerate(lines):
+        m = CONST_LOCAL.match(ln)
+        if not m or re.match(r"\s*static\b", ln) or "constexpr" in ln:
+            continue
+        name = m.group(1)
+        end = min(i + 400, len(lines))
+        for j in range(i + 1, end):
+            if lines[j].startswith("}"):
+                end = j
+                break
+        # comments and string literals are not code; a structured
+        # binding's bracket list is not a capture list
+        window = "\n".join(STRING_LITERAL.sub('""', ln.split("//")[0])
+                           for ln in lines[i + 1:end])
+        for lm in re.finditer(r"(?<![\w\)\]&])(\[[^\]\n]*\])\s*(\([^)]*\))?[^{;]*\{", window):
+            captures = lm.group(1)
+            if not EXPLICIT_CAPTURE.match(captures):
+                continue
+            if re.search(r"\bauto\s*&{0,2}\s*$", window[:lm.start()].rsplit("\n", 1)[-1]):
+                continue
+            if re.search(r"\b" + name + r"\b", captures):
+                continue
+            if lm.group(2) and re.search(r"\b" + name + r"\b", lm.group(2)):
+                continue
+            start = lm.end()
+            depth, j = 1, start
+            while depth and j < len(window):
+                depth += (window[j] == "{") - (window[j] == "}")
+                j += 1
+            body = window[start:j]
+            # a declaration, a range-for variable or a structured binding
+            # of the same name inside the body shadows the local
+            if (re.search(r"[\w:<>]\s*&{0,2}\s*\b" + name + r"\s*[=;:(),]", body)
+                    or re.search(r"\[[^\]]*\b" + name + r"\b[^\]]*\]\s*=", body)):
+                continue
+            if re.search(r"(?<![\.\w>:])" + name + r"\b", body):
+                line = i + 1 + window[:lm.start()].count("\n") + 1
+                bad.append(f"{f}:{line} 10.6: const local '{name}' read in a "
+                           "lambda that does not list it -- MSVC refuses the "
+                           "implicit capture (C3493); list it")
+                break
 
 baseline_path = os.path.join(os.path.dirname(__file__),
                              "portability_baseline.txt")
