@@ -672,3 +672,32 @@ refuses `out_of_lattice`.
 | `make_hole_face_plans` | The carrying faces' plans over the surviving split set |
 | `fair_hole_patches` | The fairing stencil, solved over `tf::geometry`'s laplacian system (`geometry/laplacian/`) |
 | `hole_patch_seam_angle` | The seam lane |
+
+---
+
+## 15. tetmesh/
+
+Constrained Delaunay tetrahedralization of closed surfaces. Umbrella
+`trueform/tetmesh.hpp`; the machinery is `tf::tetmesh` under
+`tetmesh/entrance/`, `tetmesh/carve/` and `tetmesh/mesh/`, over the
+constraint wave in `topology/cdt/dt3/recovery/`.
+
+### Public Surface
+
+| Function / Structure | Return | Description |
+|----------|--------|-------------|
+| `make_tet_mesh<Int, OCT>(polygons)` | `(tetrahedra_buffer<Index, RealOut>, offset_block_buffer<Index, std::array<Index, 3>>, offset_block_buffer<Index, Index>, tet_mesh_report)` | The solid the surface winds: entrance, facet merging, Delaunay build, constraint wave, carving by winding, the positively wound cells kept. Coplanar triangles that meet wound alike are one facet (exact plane names, `tf::intersect::graph::name_plane_carriers`' law), recovered as one region whose interior is triangulated freely. Block `k` of the second holds the output triangles covering facet `k`, wound as it is; block `f` of the third the facets input face `f` lies in, ascending. One instantiation per input type: the cheapest rung that holds its precision (int32 lattice in int64 sites, 40 bits, for float; int64 in int64, 63, for double), the input quantized once. A constraint its frame splits too coarsely deepens past it site by site — a segment its own frame, a face the point it places — each such site standing below the frame as deep as the rung's deep lattice admits (float 23 bits on int64, double 20 on int64 in int128), and every output point is a site's exact position mapped back. Minted sites are bounded at `tet_execution_tuning::site_budget_ratio` per entrance site. `Int`, when stated, restricts the rung to that lattice; `OCT` is the floating-point output |
+| `tet_mesh_status` | — | `meshed`, `refused` (some constraint refused, for corners, depth, the site budget or the face budget; a mesh only if the surface still winds consistently), `unwound` (open or inconsistently wound), `rank_deficient`, `capacity` |
+| `tet_mesh_report` | — | `status`; `refused_segments`, `refused_depth` (segments and faces whose frames ran out at the deep lattice's cap), `refused_budget`, `refused_faces`; the lattice that ran: `rung`, `storage_bits`, `input_bits`, `frame_bits`, and the sites below its frame, `deep_sites` and `deepest`; the measured `corner_bits_needed` and `min_angle`, reported, never chosen by; `flat` (cells coplanar) and `inverted` (cells an export narrower than the lattice reads negative); and the wave's `census` |
+
+### The Tiers (`tf::tetmesh`)
+
+| Symbol | Purpose |
+|--------|---------|
+| `measure_tet_entrance_need(polygons)` | `tet_entrance_need`: the exact lattice's unit, offset and width, and the corner estimate (`measure_tet_corner_need`) |
+| `make_tet_entrance<Index, Int, Coord>(polygons, need, exact)` | The input onto the exact lattice through the integers, or at its own precision rounded once; its self-arrangement cuts crossings at their canonical identities; `origins` names each site's input point; sites stored at `2^frame_bits` of the lattice |
+| `tet_entrance_rung_types<R>` / `tet_entrance_budget<Int, Coord>` | The two rungs, int32 in int64 and int64 in int64, and each rung's width |
+| `tet_entrance_budget<Int, Coord>` | `width` the site width the predicates admit (`tf::topology::cdt::dt3::tet_site_width`); `lattice_bits = min(converter_bits, width − 10)`: the house converter's width less ten frame bits — float 30 + 10 on int32, double 53 + 10 on int64 |
+| `tf::topology::cdt::dt3::tet_deep_lattice<Int, Coord>` | Where a site below the frame is read: the lattice and coordinate an aligned decision runs on and `cap`, the depth it admits — 23 for int32 sites in int64 (read on int64), 20 for int64 in int64 (on int64 in int128). A site's position is its floor plus a canonical residual at its depth (`tet_position`), minted once (`tet_minted_position`) and read through one accessor (`tet_site_lanes`); a decision reads every corner at the deepest depth among them (`tet_with_sites`), on the floors while every site stands on the frame |
+| `carve_tet_complex(owner, faces, owned, carving)` | Every finite cell's winding number: regions joined across unprotected facets, crossings stated by the covering faces' orientation, walked from the unbounded region; `consistent` false when crossings disagree |
+| `emit_tet_mesh` / `emit_tet_face_children` | The kept cells and their points back in the input's coordinates; the covering triangles per input face |
