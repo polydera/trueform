@@ -7,6 +7,7 @@
 add_library(trueform_test_builders STATIC
   arrangement_builders_int32_double.cpp
   arrangement_builders_int32_float.cpp
+  arrangement_builders_int32_int32.cpp
   arrangement_builders_int64_double.cpp
   arrangement_pairs_int32_double.cpp
   arrangement_pairs_int32_float.cpp
@@ -19,6 +20,10 @@ add_library(trueform_test_builders STATIC
   csg_builders_int32_double.cpp
   csg_builders_int32_float.cpp
   csg_builders_int64_double.cpp
+  tetmesh_entrance_float.cpp
+  tetmesh_float.cpp
+  tetmesh_double.cpp
+  tetmesh_float_double.cpp
 )
 
 target_include_directories(trueform_test_builders PUBLIC

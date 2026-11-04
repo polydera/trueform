@@ -26,5 +26,6 @@
 #include "./reindex.hpp"     // IWYU pragma: export
 #include "./remesh.hpp"      // IWYU pragma: export
 #include "./spatial.hpp"     // IWYU pragma: export
+#include "./tetmesh.hpp"     // IWYU pragma: export
 #include "./topology.hpp"    // IWYU pragma: export
 #include "./volume.hpp"      // IWYU pragma: export
