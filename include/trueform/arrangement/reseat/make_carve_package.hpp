@@ -46,12 +46,14 @@ inline constexpr std::size_t carve_widen_cap = 8;
 
 /// The carve of `targets` into the built `world`, its identities read through
 /// `identities`, run to its fixed point: each round's delta states the
-/// targets the carved world would, a face the delta splits or a retirement
-/// reaches widens the reach, and `complete`
-/// adds to each package what is stated beside the carve before its
-/// retirements are read. A source face enters as it stands (`standing`).
-/// Returns the package to state, `ok`, or the refusal that leaves the world
-/// as built; `reach` counts what the carve reached on the way.
+/// targets the carved world would, a round that states more targets than it
+/// was given, after a round that did the same, is refused
+/// (`reseat_refusal::diverged`), a face the delta splits or a retirement
+/// reaches widens the reach, and `complete` adds to each package what is
+/// stated beside the carve before its retirements are read. A source face
+/// enters as it stands (`standing`). Returns the package to state, `ok`, or
+/// the refusal that leaves the world as built; `reach` counts what the carve
+/// reached on the way.
 template <typename Index, typename Int, typename World, typename Created,
           typename ApplyToForm, typename Reader, typename Converter,
           typename Complete, typename AlreadyNamed>
@@ -70,6 +72,8 @@ auto make_carve_package(
   if (targets.size() != 0)
     rounds.push_back(make_first_carve_round(targets, apply_to_form));
   tf::buffer<std::array<Index, 2>> forced;
+  std::size_t given = targets.size();
+  std::size_t prior = given;
   for (std::size_t round = 0, widen = 0;;) {
     reseat_package<Index, Int> package;
     std::size_t neighbours = 0;
@@ -110,10 +114,16 @@ auto make_carve_package(
           delta.world, tf::make_range(delta.identities.local_merges()),
           delta_created, no_standing, delta_forms, delta_reader, quantum);
       if (next.size() != 0) {
+        if (next.size() > given && given > prior) {
+          package.refusal = reseat_refusal::diverged;
+          return package;
+        }
         if (++round == carve_round_cap) {
           package.refusal = reseat_refusal::rounds_capped;
           return package;
         }
+        prior = given;
+        given = next.size();
         rounds.push_back(make_next_carve_round<Index, Int>(
             next, pieces, standing, forms, delta_forms));
         continue;

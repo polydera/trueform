@@ -24,6 +24,7 @@
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/point.hpp>
 #include <trueform/core/polygons_buffer.hpp>
+#include <trueform/exact/int32.hpp>
 #include <trueform/exact/orient3d.hpp>
 #include <trueform/exact/pt_converter.hpp>
 #include <trueform/exact/resolve_int_type.hpp>
@@ -598,4 +599,37 @@ TEST_CASE("reseat carve: a carved face answers its own retirement",
   REQUIRE(uncarved.size() == 1);
   REQUIRE(uncarved[0] ==
           std::array<carve_index_t, 2>{remote, carve_index_t(0)});
+}
+
+// In-plane slivers about one apex, crossed by two long slivers, on an
+// integer lattice, where no quantum refuses a seat: the gate fuses crossings
+// their carriers do not hold, and each round of the carve states more
+// targets than it was given. The second growth refuses the carve as
+// diverging after two delta worlds, and the world stands as built.
+TEST_CASE("reseat carve: a carve that grows twice in a row diverges",
+          "[arrangement][reseat]") {
+  using coord_t = tf::exact::int32;
+  const std::array<std::array<coord_t, 6>, 5> slivers{
+      {{0, 0, -742030, 6208352, -870092, 7258104},
+       {0, 0, -607541, 5074161, -728979, 6099348},
+       {0, 0, -597879, 5003805, -627763, 5248747},
+       {-600000, 5000000, 24061866, 4231053, 24061866, 4242746},
+       {-600000, 4981407, 24061866, 4212460, 24061866, 4224153}}};
+  tf::polygons_buffer<carve_index_t, coord_t, 3, 3> mesh;
+  for (const auto &sliver : slivers) {
+    const auto b = carve_index_t(mesh.points().size());
+    for (std::size_t c = 0; c < 3; ++c)
+      mesh.points_buffer().emplace_back(coord_t(0), sliver[2 * c],
+                                        sliver[2 * c + 1]);
+    mesh.faces_buffer().emplace_back(b, b + 1, b + 2);
+  }
+  auto operand = tf::test::make_tagged_operand(std::move(mesh));
+  const auto graph = tf::test::build_self_arrangement(operand.form(),
+                                                      tf::arrangement_config{});
+  const auto &census = graph.policy().reseat_census();
+  REQUIRE(graph.identities().local_merges().size() != 0);
+  REQUIRE(census.refusal == tf::arrangement::reseat::reseat_refusal::diverged);
+  REQUIRE(census.carves == 0);
+  REQUIRE(census.reach.delta_rounds == 2);
+  REQUIRE(graph.failed().size() == 0);
 }

@@ -22,6 +22,9 @@ enum class reseat_refusal : std::uint8_t {
   no_pieces,
   /// the carve's rounds ended with targets still standing
   rounds_capped,
+  /// a round stated more targets than it was given, after a round that did
+  /// the same
+  diverged,
   /// the faces the carve must restate kept growing past the widening budget
   reach_unbounded,
   /// a promoted face found no delta face to name its plane
