@@ -510,10 +510,10 @@ TEST_CASE("insphere: the six-site witness gives both neighbours one verdict",
 TEST_CASE("insphere: filtered signs agree with the full integer determinant",
           "[exact][insphere][filter]") {
   std::mt19937_64 generator(9302026);
-  std::size_t certified = 0, undecided = 0;
   for (unsigned bits : {1u, 8u, 30u, 37u, 40u, 50u, 52u, 60u, 63u}) {
     const auto span = (std::int64_t(1) << (bits - 1)) - 1;
     std::uniform_int_distribution<std::int64_t> coordinate(-span, span);
+    std::size_t undecided = 0;
     for (std::size_t trial = 0; trial < 512; ++trial) {
       std::array<insphere_pt64, 5> points;
       for (auto &point : points)
@@ -524,7 +524,6 @@ TEST_CASE("insphere: filtered signs agree with the full integer determinant",
       const int expected = value > 0 ? 1 : value < 0 ? -1 : 0;
       const int sign = tf::exact::insphere::filter_sign<insphere_i64>(
           points[0], points[1], points[2], points[3], points[4]);
-      certified += sign != 0;
       undecided += sign == 0;
       CAPTURE(bits, trial);
       REQUIRE((sign == 0 || sign == expected));
@@ -537,9 +536,12 @@ TEST_CASE("insphere: filtered signs agree with the full integer determinant",
         CHECK((exact > 0 ? 1 : exact < 0 ? -1 : 0) == expected);
       }
     }
+    // a one-bit span holds one point, so every trial there is a zero the
+    // filter defers; every wider span's random points are certified from
+    // rounded images as from exact ones
+    CAPTURE(bits);
+    CHECK(undecided == (bits == 1 ? 512 : 0));
   }
-  CHECK(certified > 1000);
-  CHECK(undecided > 1000);
 }
 
 TEST_CASE("insphere: filtering translates before conversion and defers ties",

@@ -18,13 +18,12 @@
 namespace tf::exact::incircle {
 
 /// The incircle sign certified in double precision, or zero when the bound
-/// cannot decide; Shewchuk's incircle A-bound,
-/// https://www.cs.cmu.edu/afs/cs/project/quake/public/code/predicates.c
+/// cannot decide.
 ///
 /// The images are the coordinate differences of
 /// @ref tf::exact::difference_image, exact below 2^52 and rounded to nearest
 /// above it, which a 64-bit lattice reaches across a few dozen of its own
-/// edges. From exact images the error is Shewchuk's (10 + 96 eps) eps times
+/// edges. From exact images the error is (10 + 96 eps) eps times
 /// the computed permanent. A rounded image carries relative error at most
 /// eps, so each degree-four monomial of the determinant moves by at most
 /// gamma_4 = 4 eps / (1 - 4 eps) of itself, and the determinant by gamma_4

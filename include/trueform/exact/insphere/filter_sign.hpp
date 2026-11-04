@@ -18,35 +18,41 @@
 
 namespace tf::exact::insphere {
 
-/// The insphere sign certified in double precision from exactly formed
-/// integer differences, or zero when the bound cannot decide; Shewchuk's
-/// insphere A-bound,
-/// https://www.cs.cmu.edu/afs/cs/project/quake/public/code/predicates.c
-/// A difference is admitted below 2^52 through
-/// @ref tf::exact::difference_image, which every 32-bit coordinate pair
-/// meets by its width alone. The bound holds where
-/// @ref tf::exact::float_filter_sound does.
+/// The insphere sign certified in double precision, or zero when the bound
+/// cannot decide.
+///
+/// The images are the coordinate differences of
+/// @ref tf::exact::difference_image, exact below 2^52 and rounded to nearest
+/// above it, which a 64-bit lattice reaches across a few dozen of its own
+/// edges. From exact images the error is (16 + 224 eps) eps times the
+/// computed permanent. A rounded image carries relative error at most eps,
+/// so each degree-five monomial of the determinant moves by at most
+/// gamma_5 = 5 eps / (1 - 5 eps) of itself, and the determinant by gamma_5
+/// times the permanent P of the exact differences. P is at most the
+/// computed permanent over (1 - eps)^5 for the images and (1 - eps)^9 for
+/// the at most nine roundings of a monomial's path through the computed
+/// permanent, so the total error stays below (21 + 400 eps) eps times the
+/// computed permanent plus terms of order eps^3, and (21 + 1024 eps) eps is
+/// the coefficient stated. A difference the native width cannot form is
+/// refused. The bound holds where @ref tf::exact::float_filter_sound does.
 template <typename Int, typename Coord>
 auto filter_sign(const pt3<Coord> &a, const pt3<Coord> &b, const pt3<Coord> &c,
                  const pt3<Coord> &d, const pt3<Coord> &e) -> int {
   using T1 = typename meta<Int>::T1;
   double ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz;
-  const auto exact = [](difference_image_kind kind) {
-    return kind == difference_image_kind::exact;
-  };
-  if (!(exact(difference_image<T1>(a[0], e[0], ax)) &&
-        exact(difference_image<T1>(a[1], e[1], ay)) &&
-        exact(difference_image<T1>(a[2], e[2], az)) &&
-        exact(difference_image<T1>(b[0], e[0], bx)) &&
-        exact(difference_image<T1>(b[1], e[1], by)) &&
-        exact(difference_image<T1>(b[2], e[2], bz)) &&
-        exact(difference_image<T1>(c[0], e[0], cx)) &&
-        exact(difference_image<T1>(c[1], e[1], cy)) &&
-        exact(difference_image<T1>(c[2], e[2], cz)) &&
-        exact(difference_image<T1>(d[0], e[0], dx)) &&
-        exact(difference_image<T1>(d[1], e[1], dy)) &&
-        exact(difference_image<T1>(d[2], e[2], dz))))
-    return 0;
+  const difference_image_kind kinds[12] = {
+      difference_image<T1>(a[0], e[0], ax), difference_image<T1>(a[1], e[1], ay),
+      difference_image<T1>(a[2], e[2], az), difference_image<T1>(b[0], e[0], bx),
+      difference_image<T1>(b[1], e[1], by), difference_image<T1>(b[2], e[2], bz),
+      difference_image<T1>(c[0], e[0], cx), difference_image<T1>(c[1], e[1], cy),
+      difference_image<T1>(c[2], e[2], cz), difference_image<T1>(d[0], e[0], dx),
+      difference_image<T1>(d[1], e[1], dy), difference_image<T1>(d[2], e[2], dz)};
+  bool rounded = false;
+  for (const auto kind : kinds) {
+    if (kind == difference_image_kind::refused)
+      return 0;
+    rounded = rounded || kind == difference_image_kind::rounded;
+  }
   const double axby = ax * by, bxay = bx * ay;
   const double bxcy = bx * cy, cxby = cx * by;
   const double cxdy = cx * dy, dxcy = dx * cy;
@@ -83,8 +89,10 @@ auto filter_sign(const pt3<Coord> &a, const pt3<Coord> &b, const pt3<Coord> &c,
                             (std::abs(axby) + std::abs(bxay)) * std::abs(cz)) *
                                dlift;
   constexpr double epsilon = 1.1102230246251565e-16;
-  constexpr double coefficient = (16.0 + 224.0 * epsilon) * epsilon;
-  const double error = coefficient * permanent;
+  constexpr double exact_coefficient = (16.0 + 224.0 * epsilon) * epsilon;
+  constexpr double rounded_coefficient = (21.0 + 1024.0 * epsilon) * epsilon;
+  const double error =
+      (rounded ? rounded_coefficient : exact_coefficient) * permanent;
   if (determinant > error)
     return -1;
   if (determinant < -error)

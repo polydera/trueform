@@ -18,12 +18,11 @@
 namespace tf::exact {
 
 /// The orient2d sign certified in double precision, or zero when the bound
-/// cannot decide; Shewchuk's orient2d A-bound,
-/// https://www.cs.cmu.edu/afs/cs/project/quake/public/code/predicates.c
+/// cannot decide.
 ///
 /// The images are the coordinate differences of
 /// @ref tf::exact::difference_image. From exact images the error is
-/// Shewchuk's (3 + 16 eps) eps times the computed permanent. A rounded image
+/// (3 + 16 eps) eps times the computed permanent. A rounded image
 /// carries relative error at most eps, so each degree-two product moves by
 /// at most gamma_2 = 2 eps / (1 - 2 eps) of itself, and the determinant by
 /// gamma_2 times the permanent of the exact differences; that permanent is
