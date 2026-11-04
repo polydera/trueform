@@ -11,22 +11,17 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "./encode_tet_site_keys.hpp"
-#include "./measure_tet_site_domain.hpp"
 #include "./prepare_tet_sites.hpp"
-#include "./rank_tet_sites.hpp"
+#include "./order_tetrahedralization_sites.hpp"
 
 namespace tf::topology::cdt::dt3 {
 
-/// Prepare and rank the sites; each insertion band orders its own sites when
-/// it is reached.
+/// Prepare the sites and state their insertion order.
 template <typename Owner, typename Sites>
 auto prepare_tet_claim_sites(Owner &owner, const Sites &sites) -> bool {
   if (!prepare_tet_sites<true>(owner, sites))
     return false;
-  rank_tet_sites<true>(owner);
-  owner._domain = measure_tet_site_domain<true>(owner);
-  encode_tet_site_keys<true>(owner, owner._domain);
+  order_tetrahedralization_sites<true>(owner);
   return true;
 }
 

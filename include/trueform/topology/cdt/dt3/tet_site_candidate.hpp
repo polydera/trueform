@@ -11,13 +11,13 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../../core/point.hpp"
+#include "./tet_position.hpp"
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
 template <typename Coord> struct tet_site_candidate {
-  tf::point<Coord, 3> pt;
+  tet_position<Coord> position;
   std::size_t ticket;
 };
 

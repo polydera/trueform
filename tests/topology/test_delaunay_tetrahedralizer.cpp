@@ -11,16 +11,19 @@
  * Author: Žiga Sajovic
  */
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/core/none.hpp>
 #include <trueform/core/points.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/core/tetrahedra_buffer.hpp>
 #include <trueform/core/tetras.hpp>
 #include <trueform/core/views/mapped_range.hpp>
+#include <trueform/core/views/sequence_range.hpp>
 #include <trueform/exact/insphere.hpp>
 #include <trueform/exact/meta.hpp>
 #include <trueform/exact/orient3d.hpp>
 #include <trueform/exact/vertex.hpp>
 #include <trueform/topology/cdt/delaunay_execution_policy.hpp>
+#include <trueform/topology/cdt/dt3/append_tetrahedralization_sites.hpp>
 #include <trueform/topology/cdt/dt3/assign_tet_compaction.hpp>
 #include <trueform/topology/cdt/dt3/bootstrap_tet_claims.hpp>
 #include <trueform/topology/cdt/dt3/build_tetrahedralization.hpp>
@@ -28,23 +31,34 @@
 #include <trueform/topology/cdt/dt3/clear_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/clear_tetrahedralization_cells.hpp>
 #include <trueform/topology/cdt/dt3/compact_tetrahedralization.hpp>
-#include <trueform/topology/cdt/dt3/encode_tet_site_keys.hpp>
+#include <trueform/topology/cdt/dt3/discover_claimed_tet_cavity.hpp>
 #include <trueform/topology/cdt/dt3/finish_tet_claims.hpp>
 #include <trueform/topology/cdt/dt3/insert_tet_claim_band.hpp>
 #include <trueform/topology/cdt/dt3/insert_tetrahedralization_site.hpp>
 #include <trueform/topology/cdt/dt3/load_tetrahedralization_sites.hpp>
-#include <trueform/topology/cdt/dt3/measure_tet_site_domain.hpp>
+#include <trueform/topology/cdt/dt3/locate_claimed_tet.hpp>
 #include <trueform/topology/cdt/dt3/order_tetrahedralization_sites.hpp>
+#include <trueform/topology/cdt/dt3/prepare_appended_tet_sites.hpp>
+#include <trueform/topology/cdt/dt3/tet_owner_view.hpp>
+#include <trueform/topology/cdt/dt3/tet_site_level.hpp>
+#include <trueform/topology/cdt/dt3/tet_site_morton_key.hpp>
+#include <trueform/topology/cdt/dt3/measure_tet_site_domain.hpp>
 #include <trueform/topology/cdt/dt3/prepare_tet_claim_pool.hpp>
 #include <trueform/topology/cdt/dt3/prepare_tet_claim_sites.hpp>
 #include <trueform/topology/cdt/dt3/prepare_tetrahedralization.hpp>
+#include <trueform/topology/cdt/dt3/protect_tet_facets.hpp>
+#include <trueform/topology/cdt/dt3/release_tet_cells.hpp>
 #include <trueform/topology/cdt/dt3/seed_tetrahedralization.hpp>
-#include <trueform/topology/cdt/dt3/tet_cavity_edge_table.hpp>
+#include <trueform/topology/cdt/dt3/open_tet_cavity_links.hpp>
+#include <trueform/topology/cdt/dt3/state_tet_cavity_facet.hpp>
+#include <trueform/topology/cdt/dt3/tet_cavity_links.hpp>
 #include <trueform/topology/cdt/dt3/tet_claim_scratch.hpp>
 #include <trueform/topology/cdt/dt3/tet_claim_workspace.hpp>
 #include <trueform/topology/cdt/dt3/tet_conflicts.hpp>
 #include <trueform/topology/cdt/dt3/tet_execution_tuning.hpp>
 #include <trueform/topology/cdt/dt3/tet_facets.hpp>
+#include <trueform/topology/cdt/dt3/tet_insertion.hpp>
+#include <trueform/topology/cdt/dt3/tet_site_position.hpp>
 #include <trueform/topology/cdt/dt3/tetrahedralization_owner.hpp>
 #include <trueform/topology/cdt/dt3/weld_tetrahedralization_sites.hpp>
 #include <trueform/topology/delaunay_tetrahedralizer.hpp>
@@ -58,9 +72,6 @@
 #include <numeric>
 #include <random>
 #include <tbb/task_arena.h>
-#include <trueform/topology/cdt/dt3/find_tet_site_coincidence.hpp>
-#include <trueform/topology/cdt/dt3/propose_tet_edge_midpoints.hpp>
-#include <trueform/topology/cdt/dt3/state_missing_tet_edges.hpp>
 #include <type_traits>
 #include <vector>
 
@@ -106,6 +117,18 @@ auto dt3_canonical_cells(const Builder &dt) -> std::vector<std::array<int, 4>> {
   return cells;
 }
 
+template <typename View>
+auto dt3_named_cells(const View &view) -> std::vector<std::array<int, 4>> {
+  auto cells = dt3_canonical_cells(view);
+  for (auto &cell : cells) {
+    for (auto &site : cell)
+      site = view.sites()[std::size_t(site)].id;
+    std::sort(cell.begin(), cell.end());
+  }
+  std::sort(cells.begin(), cells.end());
+  return cells;
+}
+
 using dt3_owner =
     tf::topology::cdt::dt3::tetrahedralization_owner<int, dt3_i32, dt3_i32>;
 
@@ -139,13 +162,13 @@ auto dt3_build_in_schedule(dt3_owner &owner, const Sites &sites,
                                   owner._corners[0][2], owner._corners[0][3]};
   dt3::order_tetrahedralization_sites(owner);
   permute(owner._order);
-  dt3::tet_cavity_edge_table<int> edges{};
   for (std::size_t i = 0; i < owner._order.size(); ++i) {
     const int site = owner._order[i];
     if (site == seeded[0] || site == seeded[1] || site == seeded[2] ||
         site == seeded[3])
       continue;
-    if (!dt3::insert_tetrahedralization_site(owner, site, edges))
+    if (dt3::insert_tetrahedralization_site(owner, site) !=
+        dt3::tet_insertion::placed)
       return false;
   }
   dt3::compact_tetrahedralization(owner);
@@ -499,9 +522,9 @@ TEST_CASE("delaunay tets: repeated builds give the same cells",
   CHECK(dt3_canonical_cells(first) == dt3_canonical_cells(second));
   CHECK(first.stats().insertions == second.stats().insertions);
   CHECK(first.stats().compactions == second.stats().compactions);
-  // One compaction always closes a build, so more than one says the dead
-  // slots were swept mid-build too.
-  CHECK(first.stats().compactions > 1);
+  // A serial build's star takes its cavity's rows, so no dead slot is left
+  // to sweep and the one compaction is the publication.
+  CHECK(first.stats().compactions == 1);
 }
 
 TEST_CASE("delaunay tets: the cells refuse to outgrow the index",
@@ -538,8 +561,9 @@ TEST_CASE("delaunay tets: the entry shapes", "[topology][delaunay3]") {
   REQUIRE(by_scale.build(dt3_lattice_points(scaled)));
   CHECK(by_scale.is_valid());
   // A uniform positive scale multiplies every predicate by a positive power
-  // of itself, so the complex is the unscaled one.
-  CHECK(dt3_canonical_cells(by_scale) == dt3_canonical_cells(by_points));
+  // of itself, so the complex is the unscaled one by name; the sites are
+  // stored in the Morton order of their own domain, which the scale moves.
+  CHECK(dt3_named_cells(by_scale) == dt3_named_cells(by_points));
 }
 
 TEST_CASE("delaunay tets: the validity gate rejects a broken complex",
@@ -622,60 +646,64 @@ TEST_CASE("delaunay tets: the cells are the same on any insertion schedule",
   }
 }
 
-TEST_CASE("delaunay tets: the bands are the ranking's and the code orders "
-          "inside them",
+TEST_CASE("delaunay tets: the order is the levels descending, each in the "
+          "sites' Morton storage order",
           "[topology][delaunay3]") {
+  namespace dt3 = tf::topology::cdt::dt3;
   dt3_owner owner;
   const auto flat = dt3_random_coordinates<dt3_i32>(2026u, 3000, 100000);
-  REQUIRE(tf::topology::cdt::dt3::build_tetrahedralization(
-      owner, dt3_lattice_points(flat)));
+  REQUIRE(dt3::build_tetrahedralization(owner, dt3_lattice_points(flat)));
 
-  const std::size_t n = owner._sites.size();
-  std::vector<int> ranked(n);
-  std::iota(ranked.begin(), ranked.end(), 0);
-  std::sort(ranked.begin(), ranked.end(), [&owner](int a, int b) {
-    const auto x = std::size_t(a), y = std::size_t(b);
-    const auto key_x = tf::topology::cdt::dt3::tet_site_priority(
-        std::uint64_t(owner._sites[x].id));
-    const auto key_y = tf::topology::cdt::dt3::tet_site_priority(
-        std::uint64_t(owner._sites[y].id));
-    return key_x < key_y ||
-           (key_x == key_y && owner._sites[x].id < owner._sites[y].id);
-  });
-
-  std::size_t bands = 0;
-  bool membership_holds = true, codes_ascend = true;
-  for (std::size_t last = n; last != 0; last >>= 1) {
-    const std::size_t first = last >> 1;
-    std::vector<int> expected(ranked.begin() + std::ptrdiff_t(first),
-                              ranked.begin() + std::ptrdiff_t(last));
-    std::vector<int> stated(owner._order.begin() + std::ptrdiff_t(first),
-                            owner._order.begin() + std::ptrdiff_t(last));
-    std::sort(expected.begin(), expected.end());
-    std::sort(stated.begin(), stated.end());
-    membership_holds = membership_holds && stated == expected;
-    for (std::size_t i = first + 1; i < last; ++i)
-      codes_ascend =
-          codes_ascend && owner._keys[std::size_t(owner._order[i - 1])] <=
-                              owner._keys[std::size_t(owner._order[i])];
-    ++bands;
+  const std::size_t n = dt3::tet_site_count(owner);
+  REQUIRE(owner._order.size() == n);
+  const auto level_of = [&owner](int site) {
+    return dt3::tet_site_level(
+        dt3::tet_site_priority(std::uint64_t(dt3::tet_site_name(owner, site))));
+  };
+  // the sites stand in the Morton order of their positions over their domain
+  const auto domain =
+      dt3::measure_tet_site_domain<false, dt3_i32>(tf::make_mapped_range(
+          tf::make_sequence_range(n), [&owner](std::size_t i) {
+            return dt3::tet_shallow_point(owner, int(i));
+          }));
+  const auto shift = dt3::tet_site_morton_shift(domain);
+  bool stored_by_key = true;
+  for (std::size_t i = 1; i < n; ++i) {
+    const auto a = dt3::tet_site_morton_key(
+        dt3::tet_shallow_point(owner, int(i - 1)), domain, shift);
+    const auto b = dt3::tet_site_morton_key(
+        dt3::tet_shallow_point(owner, int(i)), domain, shift);
+    stored_by_key =
+        stored_by_key &&
+        (a < b || (a == b && dt3::tet_site_position(owner, int(i - 1)) <
+                                 dt3::tet_site_position(owner, int(i))));
   }
-  CHECK(bands > 8);
-  CHECK(membership_holds);
-  CHECK(codes_ascend);
+  CHECK(stored_by_key);
+  // levels descend along the order and within a level the storage order holds
+  std::size_t levels_seen = 0;
+  bool descending = true, storage_order = true;
+  std::vector<char> present(n, 0);
+  for (std::size_t i = 0; i < n; ++i) {
+    const int site = owner._order[i];
+    present[std::size_t(site)] = 1;
+    if (i == 0) {
+      ++levels_seen;
+      continue;
+    }
+    const auto before = level_of(owner._order[i - 1]), now = level_of(site);
+    if (now != before) {
+      descending = descending && now < before;
+      ++levels_seen;
+    } else
+      storage_order = storage_order && owner._order[i - 1] < site;
+  }
+  CHECK(levels_seen > 4);
+  CHECK(descending);
+  CHECK(storage_order);
+  CHECK(std::count(present.begin(), present.end(), 1) == std::ptrdiff_t(n));
 }
 
 namespace {
-
-template <typename Owner> struct dt3_parallel_view {
-  using site_type = typename Owner::site_type;
-  const Owner &owner;
-  auto sites() const { return tf::make_range(owner._sites); }
-  auto tets() const {
-    return tf::make_range(owner._corners.begin(),
-                          owner._corners.begin() + owner._n_finite);
-  }
-};
 
 template <typename Owner, typename Points>
 auto dt3_forced_parallel_build(Owner &owner, const Points &points,
@@ -689,9 +717,10 @@ auto dt3_forced_parallel_build(Owner &owner, const Points &points,
   const auto live = owner._corners.size();
   const auto available = std::size_t(Owner::max_tets) - live;
   const auto extra =
-      reserve_per_site && owner._sites.size() > available / reserve_per_site
+      reserve_per_site && tf::topology::cdt::dt3::tet_site_count(owner) >
+                              available / reserve_per_site
           ? available
-          : owner._sites.size() * reserve_per_site;
+          : tf::topology::cdt::dt3::tet_site_count(owner) * reserve_per_site;
   dt3::prepare_tet_claim_pool(owner, work, 8, live + extra);
   dt3::insert_tet_claim_band(owner, work, 0, owner._order.size());
   return dt3::finish_tet_claims(owner, work);
@@ -714,10 +743,11 @@ auto dt3_check_parallel_coordinates(const std::vector<Coord> &flat) -> void {
     REQUIRE(arena.execute(
         [&] { return dt3_forced_parallel_build(owner, points); }));
     REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
-    const dt3_parallel_view<Owner> view{owner};
+    const tf::topology::cdt::dt3::tet_owner_view<Owner> view(owner);
     CHECK(dt3_canonical_cells(view) == expected);
     CHECK(dt3_spheres_are_empty<Int>(view));
-    CHECK(owner._stats.parallel_insertions == owner._sites.size() - 4);
+    CHECK(owner._stats.parallel_insertions ==
+          tf::topology::cdt::dt3::tet_site_count(owner) - 4);
     CHECK(owner._stats.parallel_bands > 0);
   }
 }
@@ -767,7 +797,8 @@ TEST_CASE("delaunay tets: exhausted pools recover every uninserted site",
     tbb::task_arena arena(8);
     REQUIRE(arena.execute(
         [&] { return dt3_forced_parallel_build(owner, points, reserve); }));
-    CHECK(owner._stats.insertions == owner._sites.size() - 4);
+    CHECK(owner._stats.insertions ==
+          tf::topology::cdt::dt3::tet_site_count(owner) - 4);
     CHECK(dt3_owner_cells(owner) == dt3_canonical_cells(serial));
     REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
   }
@@ -837,7 +868,8 @@ TEST_CASE("delaunay tets: concurrent rows support wide index tickets",
   REQUIRE(
       arena.execute([&] { return dt3_forced_parallel_build(owner, points); }));
   REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
-  CHECK(dt3_canonical_cells(dt3_parallel_view<decltype(owner)>{owner}) ==
+  CHECK(dt3_canonical_cells(
+            tf::topology::cdt::dt3::tet_owner_view<decltype(owner)>(owner)) ==
         dt3_canonical_cells(reference));
 }
 
@@ -864,25 +896,16 @@ auto dt3_rim_with_interior_points(int height) -> std::vector<dt3_i32> {
   return points;
 }
 
-template <typename View>
-auto dt3_named_cells(const View &view) -> std::vector<std::array<int, 4>> {
-  auto cells = dt3_canonical_cells(view);
-  for (auto &cell : cells) {
-    for (auto &site : cell)
-      site = view.sites()[std::size_t(site)].id;
-    std::sort(cell.begin(), cell.end());
-  }
-  std::sort(cells.begin(), cells.end());
-  return cells;
-}
 
 auto dt3_contains_rim_edges(const dt3_owner &owner, int count) -> bool {
   std::vector<std::array<int, 2>> edges;
   for (std::size_t c = 0; c < owner._n_finite; ++c)
     for (std::size_t i = 0; i < 4; ++i)
       for (std::size_t j = i + 1; j < 4; ++j) {
-        int a = owner._sites[std::size_t(owner._corners[c][i])].id;
-        int b = owner._sites[std::size_t(owner._corners[c][j])].id;
+        int a =
+            tf::topology::cdt::dt3::tet_site_name(owner, owner._corners[c][i]);
+        int b =
+            tf::topology::cdt::dt3::tet_site_name(owner, owner._corners[c][j]);
         if (a < count && b < count)
           edges.push_back({std::min(a, b), std::max(a, b)});
       }
@@ -927,15 +950,12 @@ TEST_CASE("delaunay tets: curved rims accept successive interior point batches",
              {std::size_t(49), std::size_t(81), std::size_t(145)}) {
           CAPTURE(first, last);
           dt3::tet_claim_workspace<int> work{};
-          owner._order.clear();
-          for (auto i = first; i < last; ++i) {
-            const int site = int(owner._sites.size());
-            owner._sites.push_back(
+          std::vector<dt3_owner::site_type> batch;
+          for (auto i = first; i < last; ++i)
+            batch.push_back(
                 {int(i), {flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]}});
-            owner._order.push_back(site);
-          }
+          REQUIRE(dt3::prepare_appended_tet_sites<false>(owner, batch));
           std::reverse(owner._order.begin(), owner._order.end());
-          dt3::encode_tet_site_keys(owner, dt3::measure_tet_site_domain(owner));
           dt3::prepare_tet_claim_pool(owner, work, 2 * std::size_t(workers),
                                       owner._corners.size() +
                                           16 * (last - first));
@@ -948,7 +968,7 @@ TEST_CASE("delaunay tets: curved rims accept successive interior point batches",
           REQUIRE(owner._stats.parallel_insertions - inserted == last - first);
           REQUIRE(dt3::check_tetrahedralization_validity(owner));
           CHECK(dt3_contains_rim_edges(owner, 32));
-          const dt3_parallel_view<dt3_owner> view{owner};
+          const tf::topology::cdt::dt3::tet_owner_view<dt3_owner> view(owner);
           CHECK(dt3_spheres_are_empty<dt3_i32>(view));
           tf::delaunay_tetrahedralizer<
               int, dt3_i32, dt3_i32,
@@ -996,25 +1016,28 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("delaunay tets: edge pairing distinguishes high index bits",
+TEST_CASE("delaunay tets: edge pairing holds on a 64-bit index",
           "[topology][delaunay3][parallel]") {
+  // The links stamp each site in a dense table sized by the site count,
+  // so an index wider than the count changes nothing but the type; the
+  // pairing reads equal edges whatever their corners' order.
   namespace dt3 = tf::topology::cdt::dt3;
   using Index = std::int64_t;
-  dt3::tetrahedralization_owner<Index, dt3_i32, dt3_i32> owner;
-  owner._neighbors.allocate(4);
-  dt3::tet_cavity_edge_table<Index> table{};
-  table.generation = std::numeric_limits<std::uint32_t>::max();
-  dt3::advance_tet_cavity_edges(table);
-  REQUIRE(table.generation == 1);
-  const Index high = Index(1) << 40;
-  dt3::link_tet_cavity_edge(owner, table, Index(1), Index(2), Index(0), 0);
-  dt3::link_tet_cavity_edge(owner, table, high + 1, high + 2, Index(1), 1);
-  dt3::link_tet_cavity_edge(owner, table, Index(1), Index(2), Index(2), 2);
-  dt3::link_tet_cavity_edge(owner, table, high + 1, high + 2, Index(3), 3);
-  CHECK(owner._neighbors[0][0] == 2);
-  CHECK(owner._neighbors[2][2] == 0);
-  CHECK(owner._neighbors[1][1] == 3);
-  CHECK(owner._neighbors[3][3] == 1);
+  dt3::tet_cavity_links<Index> links;
+  links.generation = (std::uint32_t(1) << 24) - 1;
+  dt3::open_tet_cavity_links(links, 16);
+  REQUIRE(links.generation == 1);
+  dt3::state_tet_cavity_facet(links, {Index(1), Index(2), Index(7)});
+  dt3::state_tet_cavity_facet(links, {Index(11), Index(12), Index(8)});
+  dt3::state_tet_cavity_facet(links, {Index(2), Index(1), Index(9)});
+  dt3::state_tet_cavity_facet(links, {Index(12), Index(11), Index(10)});
+  REQUIRE(links.n_facets == 4);
+  CHECK(links.across[2] == 8);
+  CHECK(links.across[8] == 2);
+  CHECK(links.across[5] == 11);
+  CHECK(links.across[11] == 5);
+  for (std::size_t k : {0, 1, 3, 4, 6, 7, 9, 10})
+    CHECK(links.across[k] == -1);
 }
 
 TEST_CASE("delaunay tets: input slots refuse before narrowing",
@@ -1120,101 +1143,6 @@ TEST_CASE("delaunay tets: append capacity refusal publishes no cells",
   REQUIRE_FALSE(dt.append_sites(tf::make_range(extra)));
   CHECK(dt.refusal() == tf::tetrahedralization_refusal::index_capacity);
   CHECK(dt.n_tets() == 0);
-}
-
-TEST_CASE(
-    "delaunay tets: directed edge queries equal independent edge enumeration",
-    "[topology][delaunay3][edge-query]") {
-  dt3_builder<> dt;
-  std::vector<dt3_i32> points;
-  for (int x = 0; x < 5; ++x)
-    for (int y = 0; y < 5; ++y)
-      for (int z = 0; z < 5; ++z)
-        points.insert(points.end(), {x * 64, y * 64, z});
-  REQUIRE(dt.build(dt3_lattice_points(points)));
-  std::vector<std::array<int, 2>> actual, queries;
-  for (auto cell : dt.tets())
-    for (int i = 0; i < 4; ++i)
-      for (int j = i + 1; j < 4; ++j)
-        actual.push_back(
-            {std::min(cell[i], cell[j]), std::max(cell[i], cell[j])});
-  std::sort(actual.begin(), actual.end());
-  for (int i = 0; i < int(dt.n_sites()); ++i)
-    for (int j = 0; j < int(dt.n_sites()); ++j)
-      queries.push_back({i, j});
-  for (int workers : {1, 4, 16}) {
-    tbb::task_arena arena(workers);
-    tf::topology::cdt::dt3::tet_edge_query_workspace<int> work;
-    arena.execute([&] {
-      tf::topology::cdt::dt3::state_missing_tet_edges(dt, queries, work);
-    });
-    std::vector<int> missing;
-    for (std::size_t i = 0; i < queries.size(); ++i) {
-      const auto q = queries[i];
-      const bool present = std::binary_search(
-          actual.begin(), actual.end(),
-          std::array<int, 2>{std::min(q[0], q[1]), std::max(q[0], q[1])});
-      REQUIRE(bool(work.present[i]) == present);
-      if (!present)
-        missing.push_back(int(i));
-    }
-    CHECK(std::vector<int>(work.missing.begin(), work.missing.end()) ==
-          missing);
-    work.present[1] = !work.present[1];
-    CHECK(bool(work.present[1]) !=
-          std::binary_search(actual.begin(), actual.end(), queries[1]));
-  }
-}
-
-TEST_CASE(
-    "delaunay tets: split admission states the earliest conflicting proposal",
-    "[topology][delaunay3][edge-query]") {
-  using Site = dt3_builder<>::site_type;
-  std::vector<Site> standing{{9, {0, 0, 0}}, {12, {10, 0, 0}}};
-  std::vector<Site> proposed{
-      {20, {3, 0, 0}}, {21, {3, 0, 0}}, {22, {10, 0, 0}}};
-  tf::buffer<tf::topology::cdt::dt3::tet_site_candidate<dt3_i32>> records;
-  const auto first = [&] {
-    return tf::topology::cdt::dt3::find_tet_site_coincidence(standing, proposed,
-                                                             records);
-  };
-  CHECK(first() == 1);
-  proposed[1].pt = tf::point<dt3_i32, 3>{4, 0, 0};
-  CHECK(first() == 2);
-  proposed[2].pt = tf::point<dt3_i32, 3>{5, 0, 0};
-  CHECK(first() == proposed.size());
-  proposed[0].pt = tf::point<dt3_i32, 3>{0, 0, 0};
-  CHECK(first() == 0);
-  proposed.clear();
-  CHECK(first() == 0);
-}
-
-TEST_CASE(
-    "delaunay tets: wide lattice sites append with exact midpoint proposals",
-    "[topology][delaunay3][append]") {
-  using DT = dt3_builder<dt3_i64>;
-  using Site = DT::site_type;
-  std::vector<Site> sites{{100, {-10, -10, -10}},
-                          {101, {10, -10, -10}},
-                          {102, {-10, 10, -10}},
-                          {103, {-10, -10, 10}}};
-  DT dt;
-  REQUIRE(dt.build(tf::make_range(sites)));
-  const std::array<std::array<int, 2>, 1> edges{
-      {{dt.index_map().f()[0], dt.index_map().f()[1]}}};
-  const std::array<int, 1> selected{0};
-  tf::buffer<Site> proposed;
-  tf::topology::cdt::dt3::propose_tet_edge_midpoints(dt, edges, selected, 104,
-                                                     proposed);
-  REQUIRE(proposed.size() == 1);
-  CHECK(proposed[0].pt == tf::point<dt3_i64, 3>{0, -10, -10});
-  REQUIRE(dt.append_sites(tf::make_range(proposed)));
-  REQUIRE(dt.is_valid());
-  CHECK(dt3_spheres_are_empty<dt3_i64>(dt));
-  sites.push_back(proposed[0]);
-  DT reference;
-  REQUIRE(reference.build(tf::make_range(sites)));
-  CHECK(dt3_named_cells(dt) == dt3_named_cells(reference));
 }
 
 TEST_CASE("delaunay tets: serial policy appends without claim workspace",
@@ -1333,3 +1261,383 @@ TEST_CASE("delaunay tets: the published stream is one at any worker count",
   }
 }
 
+namespace {
+
+using dt3_site = dt3_owner::site_type;
+
+/// The finite cells' facets, each three slots ascending, the set ascending.
+auto dt3_barrier_facets(const dt3_owner &owner)
+    -> std::vector<std::array<int, 3>> {
+  std::vector<std::array<int, 3>> facets;
+  for (std::size_t c = 0; c < owner._n_finite; ++c)
+    for (std::size_t slot = 0; slot < 4; ++slot) {
+      auto facet = tf::topology::cdt::dt3::tet_facet(owner._corners[c], slot);
+      std::sort(facet.begin(), facet.end());
+      facets.push_back(facet);
+    }
+  std::sort(facets.begin(), facets.end());
+  facets.erase(std::unique(facets.begin(), facets.end()), facets.end());
+  return facets;
+}
+
+auto dt3_barrier_holds(const dt3_owner &owner, const std::array<int, 3> &facet)
+    -> bool {
+  const auto facets = dt3_barrier_facets(owner);
+  return std::binary_search(facets.begin(), facets.end(), facet);
+}
+
+/// The owner's published cells, then their links, in published order.
+auto dt3_barrier_stream(const dt3_owner &owner) -> std::vector<int> {
+  std::vector<int> stream;
+  for (std::size_t c = 0; c < owner._n_finite; ++c)
+    for (std::size_t slot = 0; slot < 4; ++slot)
+      stream.push_back(owner._corners[c][slot]);
+  for (std::size_t c = 0; c < owner._n_finite; ++c)
+    for (std::size_t slot = 0; slot < 4; ++slot) {
+      const int link = owner._neighbors[c][slot];
+      stream.push_back(std::size_t(link) < owner._n_finite ? link : -1);
+    }
+  return stream;
+}
+
+auto dt3_barrier_build(dt3_owner &owner, const std::vector<dt3_i32> &flat)
+    -> void {
+  REQUIRE(tf::topology::cdt::dt3::build_tetrahedralization(
+      owner, dt3_lattice_points(flat)));
+}
+
+auto dt3_barrier_conflicts(const std::array<dt3_site, 4> &cell,
+                           const dt3_site &site) -> bool {
+  const std::array<dt3_site, 5> vs{cell[0], cell[1], cell[2], cell[3], site};
+  return tf::exact::insphere_conflict_scaled<dt3_i32>(vs.data(), 1);
+}
+
+/// A facet two finite cells share and a site on the near cell's side that
+/// both cells' circumspheres hold while no other neighbour of the far cell's
+/// does: the unbarred cavity swallows the facet, and the far cell is entered
+/// across the facet alone. `guards` are the far cell and its neighbours; a
+/// site none of them holds never reaches the far cell. The build is
+/// deterministic, so every owner rebuilt from `flat` names the same cells.
+struct dt3_barrier_case {
+  std::vector<dt3_i32> flat;
+  int far_cell = -1;
+  int near_cell = -1;
+  std::array<int, 3> facet{};
+  std::array<int, 4> far_corners{};
+  std::vector<std::array<dt3_site, 4>> guards;
+  dt3_site site{};
+};
+
+auto dt3_barrier_find_case() -> dt3_barrier_case {
+  namespace dt3 = tf::topology::cdt::dt3;
+  dt3_barrier_case found;
+  for (std::uint32_t seed = 4021; seed < 4085; ++seed) {
+    found.flat = dt3_random_coordinates<dt3_i32>(seed, 40, 1 << 20);
+    dt3_owner owner;
+    dt3_barrier_build(owner, found.flat);
+    const auto cell_sites = [&owner](int cell) {
+      const auto corners = owner._corners[std::size_t(cell)];
+      return std::array<dt3_site, 4>{dt3::tet_shallow_site(owner, corners[0]),
+                                     dt3::tet_shallow_site(owner, corners[1]),
+                                     dt3::tet_shallow_site(owner, corners[2]),
+                                     dt3::tet_shallow_site(owner, corners[3])};
+    };
+    for (std::size_t c = 0; c < owner._n_finite; ++c)
+      for (std::size_t slot = 0; slot < 4; ++slot) {
+        const int far_cell = owner._neighbors[c][slot];
+        if (std::size_t(far_cell) >= owner._n_finite)
+          continue;
+        std::vector<std::array<dt3_site, 4>> guards{cell_sites(far_cell)};
+        bool finite = true;
+        for (std::size_t k = 0; k < 4; ++k) {
+          const int beside = owner._neighbors[std::size_t(far_cell)][k];
+          finite = finite && std::size_t(beside) < owner._n_finite;
+          if (beside != int(c))
+            guards.push_back(cell_sites(beside));
+        }
+        if (!finite)
+          continue;
+        const auto near_sites = cell_sites(int(c));
+        const auto facet = dt3::tet_facet(owner._corners[c], slot);
+        const auto &apex = near_sites[slot];
+        std::array<dt3_site, 3> wall{};
+        for (std::size_t k = 0; k < 3; ++k)
+          wall[k] = dt3::tet_shallow_site(owner, facet[k]);
+        for (long long step = 1; step < 64; step *= 2) {
+          dt3_site site{int(owner._next_name), {}};
+          for (std::size_t k = 0; k < 3; ++k) {
+            const long long sum =
+                (long long)wall[0].pt[k] + wall[1].pt[k] + wall[2].pt[k];
+            site.pt[k] =
+                dt3_i32(((64 - step) * sum + 3 * step * apex.pt[k]) / 192);
+          }
+          const auto side = [&](const tf::exact::pt3<dt3_i32> &p) {
+            return tf::exact::orient3d_sign<dt3_i32>(wall[0].pt, wall[1].pt,
+                                                     wall[2].pt, p);
+          };
+          if (side(site.pt) != side(apex.pt) ||
+              !dt3_barrier_conflicts(near_sites, site) ||
+              !dt3_barrier_conflicts(guards[0], site))
+            continue;
+          bool entered_elsewhere = false;
+          for (std::size_t g = 1; g < guards.size(); ++g)
+            entered_elsewhere =
+                entered_elsewhere || dt3_barrier_conflicts(guards[g], site);
+          if (entered_elsewhere)
+            continue;
+          found.far_cell = far_cell;
+          found.near_cell = int(c);
+          found.facet = facet;
+          std::sort(found.facet.begin(), found.facet.end());
+          const auto far_row = owner._corners[std::size_t(far_cell)];
+          found.far_corners = {far_row[0], far_row[1], far_row[2], far_row[3]};
+          std::sort(found.far_corners.begin(), found.far_corners.end());
+          found.guards = guards;
+          found.site = site;
+          return found;
+        }
+      }
+  }
+  return found;
+}
+
+} // namespace
+
+TEST_CASE("delaunay tets: a protected facet bars the cavity a plain append "
+          "floods",
+          "[topology][delaunay3][barrier]") {
+  namespace dt3 = tf::topology::cdt::dt3;
+  const auto found = dt3_barrier_find_case();
+  REQUIRE(found.far_cell >= 0);
+  const std::vector<dt3_site> sites{found.site};
+  tf::none_t serial{};
+
+  dt3_owner stock;
+  dt3_barrier_build(stock, found.flat);
+  REQUIRE(dt3_barrier_holds(stock, found.facet));
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      stock, tf::make_range(sites), serial));
+  dt3::compact_tetrahedralization<false, true>(stock);
+  REQUIRE(dt3::check_tetrahedralization_validity(stock));
+  CHECK_FALSE(dt3_barrier_holds(stock, found.facet));
+
+  dt3_owner barred;
+  dt3_barrier_build(barred, found.flat);
+  const int slot = int(tf::topology::cdt::dt3::tet_site_count(barred));
+  dt3::protect_tet_facets(barred, std::vector<std::array<int, 3>>{found.facet});
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      barred, tf::make_range(sites), serial));
+  dt3::compact_tetrahedralization<false, true>(barred);
+  REQUIRE(dt3::check_tetrahedralization_validity(barred));
+  CHECK(dt3_barrier_holds(barred, found.facet));
+  const auto cells = dt3_owner_cells(barred);
+  CHECK(std::binary_search(cells.begin(), cells.end(), found.far_corners));
+  auto star =
+      std::array<int, 4>{found.facet[0], found.facet[1], found.facet[2], slot};
+  std::sort(star.begin(), star.end());
+  CHECK(std::binary_search(cells.begin(), cells.end(), star));
+}
+
+TEST_CASE("delaunay tets: a protected facet the cavity never reaches changes "
+          "nothing",
+          "[topology][delaunay3][barrier]") {
+  namespace dt3 = tf::topology::cdt::dt3;
+  const auto found = dt3_barrier_find_case();
+  REQUIRE(found.far_cell >= 0);
+  const std::vector<dt3_site> sites{found.site};
+  tf::none_t serial{};
+
+  dt3_owner stock;
+  dt3_barrier_build(stock, found.flat);
+  const auto facets = dt3_barrier_facets(stock);
+  std::array<int, 3> absent{0, 1, 2};
+  while (std::binary_search(facets.begin(), facets.end(), absent))
+    ++absent[2];
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      stock, tf::make_range(sites), serial));
+  dt3::compact_tetrahedralization<false, true>(stock);
+
+  dt3_owner barred;
+  dt3_barrier_build(barred, found.flat);
+  dt3::protect_tet_facets(barred, std::vector<std::array<int, 3>>{absent});
+  REQUIRE(barred._n_protected == 1);
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      barred, tf::make_range(sites), serial));
+  dt3::compact_tetrahedralization<false, true>(barred);
+  CHECK(dt3_barrier_stream(barred) == dt3_barrier_stream(stock));
+}
+
+TEST_CASE("delaunay tets: a protected lane appends serially and keeps its "
+          "facet",
+          "[topology][delaunay3][barrier][parallel]") {
+  namespace dt3 = tf::topology::cdt::dt3;
+  const auto found = dt3_barrier_find_case();
+  REQUIRE(found.far_cell >= 0);
+  const auto extra = dt3_random_coordinates<dt3_i32>(4022, 1200, 1 << 20);
+  std::vector<dt3_site> sites{found.site};
+  for (std::size_t i = 0; i < extra.size() / 3; ++i) {
+    const dt3_site site{found.site.id + 1 + int(i),
+                        {extra[3 * i], extra[3 * i + 1], extra[3 * i + 2]}};
+    bool reaches = false;
+    for (const auto &guard : found.guards)
+      reaches = reaches || dt3_barrier_conflicts(guard, site);
+    if (!reaches)
+      sites.push_back(site);
+  }
+  REQUIRE(sites.size() >= dt3::tet_execution_tuning::parallel_append_sites);
+  std::vector<int> expected;
+  for (int workers : {1, 4, 8}) {
+    CAPTURE(workers);
+    dt3_owner owner;
+    dt3_barrier_build(owner, found.flat);
+    dt3::protect_tet_facets(owner,
+                            std::vector<std::array<int, 3>>{found.facet});
+    dt3::tet_claim_workspace<int> work{};
+    tbb::task_arena arena(workers);
+    REQUIRE(arena.execute([&] {
+      return dt3::append_tetrahedralization_sites<true>(
+          owner, tf::make_range(sites), work);
+    }));
+    CHECK(owner._stats.parallel_insertions == 0);
+    dt3::compact_tetrahedralization<false, true>(owner);
+    REQUIRE(dt3::check_tetrahedralization_validity(owner));
+    CHECK(dt3_barrier_holds(owner, found.facet));
+    if (expected.empty())
+      expected = dt3_barrier_stream(owner);
+    CHECK(dt3_barrier_stream(owner) == expected);
+  }
+}
+
+namespace {
+
+/// A facet two finite cells share and a site just off its centroid inside
+/// the near cell, whose cavity the barred flood reaches around the facet's
+/// edges: the facet is wrapped. `flat` rebuilds the same cells.
+struct dt3_wrap_case {
+  std::vector<dt3_i32> flat;
+  std::array<int, 3> facet{};
+  dt3_site site{};
+};
+
+auto dt3_wrap_find_case() -> dt3_wrap_case {
+  namespace dt3 = tf::topology::cdt::dt3;
+  dt3_wrap_case found;
+  for (std::uint32_t seed = 4021; seed < 4085; ++seed) {
+    found.flat = dt3_random_coordinates<dt3_i32>(seed, 40, 1 << 20);
+    dt3_owner owner;
+    dt3_barrier_build(owner, found.flat);
+    for (std::size_t c = 0; c < owner._n_finite; ++c)
+      for (std::size_t slot = 0; slot < 4; ++slot) {
+        if (std::size_t(owner._neighbors[c][slot]) >= owner._n_finite)
+          continue;
+        auto facet = dt3::tet_facet(owner._corners[c], slot);
+        const auto &apex =
+            dt3::tet_shallow_site(owner, owner._corners[c][slot]);
+        dt3_site site{int(owner._next_name), {}};
+        for (std::size_t k = 0; k < 3; ++k) {
+          const long long sum =
+              (long long)dt3::tet_shallow_point(owner, facet[0])[k] +
+              dt3::tet_shallow_point(owner, facet[1])[k] +
+              dt3::tet_shallow_point(owner, facet[2])[k];
+          site.pt[k] = dt3_i32((63 * sum + 3 * (long long)apex.pt[k]) / 192);
+        }
+        std::sort(facet.begin(), facet.end());
+        dt3_owner trial;
+        dt3_barrier_build(trial, found.flat);
+        dt3::protect_tet_facets(trial, std::vector<std::array<int, 3>>{facet});
+        tf::none_t serial{};
+        const std::vector<dt3_site> sites{site};
+        const auto input = trial._index_map.f().size();
+        if (!dt3::append_tetrahedralization_sites<false>(
+                trial, tf::make_range(sites), serial) ||
+            trial._index_map.f()[input] != dt3_owner::none)
+          continue;
+        found.facet = facet;
+        found.site = site;
+        return found;
+      }
+  }
+  found.flat.clear();
+  return found;
+}
+
+} // namespace
+
+TEST_CASE("delaunay tets: a site whose cavity wraps a protected facet is "
+          "withdrawn",
+          "[topology][delaunay3][barrier][wrap]") {
+  namespace dt3 = tf::topology::cdt::dt3;
+  const auto found = dt3_wrap_find_case();
+  REQUIRE(!found.flat.empty());
+  const std::vector<dt3_site> sites{found.site};
+  tf::none_t serial{};
+
+  dt3_owner stock;
+  dt3_barrier_build(stock, found.flat);
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      stock, tf::make_range(sites), serial));
+  dt3::compact_tetrahedralization<false, true>(stock);
+  CHECK_FALSE(dt3_barrier_holds(stock, found.facet));
+
+  dt3_owner barred;
+  dt3_barrier_build(barred, found.flat);
+  dt3::protect_tet_facets(barred, std::vector<std::array<int, 3>>{found.facet});
+  const auto before = dt3_barrier_stream(barred);
+  const auto n_sites = dt3::tet_site_count(barred);
+  const auto input = barred._index_map.f().size();
+  const auto insertions = barred._stats.insertions;
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      barred, tf::make_range(sites), serial));
+  dt3::compact_tetrahedralization<false, true>(barred);
+  REQUIRE(dt3::check_tetrahedralization_validity(barred));
+  CHECK(barred._index_map.f()[input] == dt3_owner::none);
+  CHECK(dt3::tet_site_count(barred) == n_sites);
+  CHECK(barred._index_map.kept_ids().size() == n_sites);
+  CHECK(barred._stats.insertions == insertions);
+  CHECK(dt3_barrier_stream(barred) == before);
+  CHECK(dt3_barrier_holds(barred, found.facet));
+}
+
+TEST_CASE("delaunay tets: a withdrawn site closes up the slots after it",
+          "[topology][delaunay3][barrier][wrap]") {
+  namespace dt3 = tf::topology::cdt::dt3;
+  const auto found = dt3_wrap_find_case();
+  REQUIRE(!found.flat.empty());
+  tf::none_t serial{};
+  std::vector<dt3_site> others;
+  for (int i = 0; i < 6; ++i)
+    others.push_back({found.site.id + 1 + i,
+                      {(1 << 22) + 4096 * i, 8192 * (i % 2), 4096 * (i / 3)}});
+  std::vector<dt3_site> batch{others[0], others[1], found.site};
+  batch.insert(batch.end(), others.begin() + 2, others.end());
+
+  dt3_owner expected;
+  dt3_barrier_build(expected, found.flat);
+  dt3::protect_tet_facets(expected,
+                          std::vector<std::array<int, 3>>{found.facet});
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      expected, tf::make_range(others), serial));
+  dt3::compact_tetrahedralization<false, true>(expected);
+
+  dt3_owner owner;
+  dt3_barrier_build(owner, found.flat);
+  dt3::protect_tet_facets(owner, std::vector<std::array<int, 3>>{found.facet});
+  const auto first = dt3::tet_site_count(owner);
+  const auto input = owner._index_map.f().size();
+  REQUIRE(dt3::append_tetrahedralization_sites<false>(
+      owner, tf::make_range(batch), serial));
+  dt3::compact_tetrahedralization<false, true>(owner);
+  REQUIRE(dt3::check_tetrahedralization_validity(owner));
+  CHECK(dt3::tet_site_count(owner) == first + others.size());
+  CHECK(owner._index_map.f()[input + 2] == dt3_owner::none);
+  for (std::size_t i = 0; i < batch.size(); ++i) {
+    if (i == 2)
+      continue;
+    const auto slot = std::size_t(owner._index_map.f()[input + i]);
+    CHECK(slot == first + (i < 2 ? i : i - 1));
+    CHECK(dt3::tet_site_name(owner, int(slot)) == batch[i].id);
+    CHECK(std::size_t(owner._index_map.kept_ids()[slot]) == input + i);
+  }
+  CHECK(dt3_owner_cells(owner) == dt3_owner_cells(expected));
+  CHECK(dt3_barrier_holds(owner, found.facet));
+}

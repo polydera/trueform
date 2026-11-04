@@ -11,34 +11,33 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../../core/views/sequence_range.hpp"
-#include "./tet_cavity_edge_table.hpp"
-#include "./tet_state.hpp"
 #include "./write_tet_cavity.hpp"
+#include <algorithm>
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
-/// Grow the cell lanes once and construct the cavity star. Returns the first
-/// appended cell, used as the next location hint.
+/// Construct the cavity star in the cavity's own rows first, growing the
+/// lanes for the rest. Returns a star cell, used as the next location hint.
 template <typename Owner>
-auto star_tet_cavity(Owner &owner, typename Owner::index_type apex,
-                     tet_cavity_edge_table<typename Owner::index_type> &edges)
+auto star_tet_cavity(Owner &owner, typename Owner::index_type apex)
     -> typename Owner::index_type {
   using Index = typename Owner::index_type;
   const Index first = Index(owner._corners.size());
   const std::size_t walls = owner._boundary.size();
-  owner._corners.reallocate(std::size_t(first) + walls);
-  owner._neighbors.reallocate(std::size_t(first) + walls);
-  owner._states.reallocate(std::size_t(first) + walls);
-  const auto rows =
-      tf::make_sequence_range(std::size_t(first), std::size_t(first) + walls);
-  write_tet_cavity(owner, apex, rows, owner._boundary, owner._sides, edges);
-  for (auto row : rows)
-    owner._states[row] = owner._corners[row][3] == Owner::infinite
-                             ? tet_state::infinite
-                             : tet_state::live;
-  return first;
+  const std::size_t reused = std::min(walls, owner._cavity.size());
+  owner._corners.reallocate(std::size_t(first) + walls - reused);
+  owner._neighbors.reallocate(std::size_t(first) + walls - reused);
+  owner._states.reallocate(std::size_t(first) + walls - reused);
+  auto &rows = owner._rows;
+  rows.allocate(walls);
+  for (std::size_t i = 0; i < reused; ++i)
+    rows[i] = owner._cavity[i];
+  for (std::size_t i = reused; i < walls; ++i)
+    rows[i] = Index(std::size_t(first) + i - reused);
+  write_tet_cavity(owner, apex, rows, owner._boundary, owner._links);
+  owner._n_dead -= reused;
+  return rows[0];
 }
 
 } // namespace tf::topology::cdt::dt3

@@ -15,9 +15,7 @@
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/point.hpp"
 #include "../../core/vector.hpp"
-#include "../../exact/vertex.hpp"
-#include "../../topology/cdt/dt3/tet_edge_query_workspace.hpp"
-#include "../../topology/cdt/dt3/tet_site_candidate.hpp"
+#include "../../topology/cdt/dt3/recovery/tet_segment_recovery.hpp"
 #include "../../topology/delaunay_tetrahedralizer.hpp"
 #include "./hole_lattice.hpp"
 #include "./hole_rim.hpp"
@@ -64,15 +62,12 @@ template <typename Index, typename Int, typename RealT>
 struct hole_table_scratch {
   tf::delaunay_tetrahedralizer<Index, tf::fill::hole_site_coord<Int>, Int> dt;
   tf::buffer<Index> position_of_site;
-  tf::topology::cdt::dt3::tet_edge_query_workspace<Index> edge_query;
-  tf::buffer<Index> site_of_position, next_site_of_position;
-  tf::buffer<tf::topology::cdt::dt3::tet_site_candidate<
-      tf::fill::hole_site_coord<Int>>>
-      site_candidates;
-  tf::buffer<tf::exact::vertex<Index, tf::fill::hole_site_coord<Int>>>
-      appended_sites;
+  tf::buffer<Index> site_of_position;
+  tf::buffer<std::array<Index, 2>> segments;
+  tf::topology::cdt::dt3::tet_segment_recovery<Index,
+                                               tf::fill::hole_site_coord<Int>>
+      recovery;
   tf::buffer<Index> split_positions;
-  tf::buffer<tf::exact::vertex<Index, tf::fill::hole_site_coord<Int>>> sites;
   tf::buffer<tf::point<RealT, 3>> positions;
   tf::buffer<tf::fill::hole_rim_edge<Index>> rim_edges;
   tf::buffer<Index> corners;

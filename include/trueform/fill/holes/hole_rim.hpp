@@ -49,7 +49,10 @@ template <typename Index> struct hole_rim_edge {
 /// coordinates, and named in the flat identity space the patch emits.
 ///
 /// Position `k`'s outgoing edge is `edges[k]`, the cycle closing from the
-/// last position back to the first.
+/// last position back to the first. `sites` is the cycle as prepared, which
+/// the table tier builds its complex from; once that complex protects the
+/// rim, `positions`, `corners` and `edges` are the expanded rim and `sites`
+/// stays the prepared cycle, so it may be the shorter.
 ///
 /// @tparam Index The mesh's index type.
 /// @tparam Int The lattice type the predicates dispatch on.

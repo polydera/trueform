@@ -29,10 +29,12 @@
 #include <trueform/fill/holes/gather_hole_facets.hpp>
 #include <trueform/fill/holes/hole_table.hpp>
 #include <trueform/fill/holes/preflight_hole_rim.hpp>
-#include <trueform/fill/holes/state_missing_rim_edges.hpp>
 #include <trueform/fill/holes/validate_hole_rim.hpp>
 #include <trueform/geometry/make_plane_mesh.hpp>
 #include <trueform/topology/cdt/delaunay_execution_policy.hpp>
+#include <trueform/topology/cdt/dt3/recovery/recover_tet_segments.hpp>
+#include <trueform/topology/cdt/dt3/recovery/tet_segment_recovery.hpp>
+#include <trueform/topology/cdt/dt3/recovery/tet_segment_status.hpp>
 #include <trueform/topology/delaunay_tetrahedralizer.hpp>
 #include <trueform/topology/face_membership.hpp>
 #include <utility>
@@ -196,6 +198,33 @@ auto table_missing_by_edge_sort(const table_complex_t &complex, table_index n)
 }
 
 /**
+ * @brief The rim edges the complex is missing, as segment recovery states
+ *        them where no split is admitted: a missing edge is flipped back
+ *        where a flip can reach it and refuses for depth otherwise, and no
+ *        site is added.
+ */
+template <typename DT, typename Positions>
+auto table_missing_by_recovery(DT &dt, const Positions &site_of_position,
+                               std::size_t n) -> std::vector<table_index> {
+  std::vector<std::array<table_index, 2>> segments;
+  for (std::size_t k = 0; k < n; ++k)
+    segments.push_back({table_index(site_of_position[k]),
+                        table_index(site_of_position[k + 1 == n ? 0 : k + 1])});
+  tf::topology::cdt::dt3::tet_segment_recovery<table_index,
+                                               typename DT::coord_type>
+      recovery;
+  REQUIRE(
+      tf::topology::cdt::dt3::recover_tet_segments(dt, segments, 0, recovery));
+  std::vector<table_index> missing;
+  for (std::size_t k = 0; k < n; ++k)
+    if (recovery.status[k] !=
+            tf::topology::cdt::dt3::tet_segment_status::recovered ||
+        recovery.chains[k].size() > 2)
+      missing.push_back(table_index(k));
+  return missing;
+}
+
+/**
  * @brief The facets read the way the table used to read them: four per cell,
  *        sorted and deduplicated.
  */
@@ -241,8 +270,8 @@ auto table_symmetric_case(int n, float lift) -> table_case {
   std::vector<tf::point<table_real, 3>> rim;
   for (int k = 0; k < n; ++k) {
     const float angle = 6.2831853f * float(k) / float(n);
-    rim.push_back({std::cos(angle), std::sin(angle),
-                   k % 2 == 0 ? lift : -lift});
+    rim.push_back(
+        {std::cos(angle), std::sin(angle), k % 2 == 0 ? lift : -lift});
   }
   auto mesh = hole_cone_mesh<table_index, table_real>(
       rim, tf::point<table_real, 3>{0.0f, 0.0f, -3.0f});
@@ -296,19 +325,18 @@ auto table_block_first_edge(table_rim_t &rim) -> void {
         (rim.sites[0].pt[axis] + rim.sites[1].pt[axis]) / coord_t(2);
 }
 
-auto table_prepare_rim(const table_case &instance,
-                       tf::face_membership<table_index> &membership,
-                       tf::fill::hole_rim_scratch<table_index, table_int>
-                           &preflight,
-                       table_rim_t &rim) -> bool {
+auto table_prepare_rim(
+    const table_case &instance, tf::face_membership<table_index> &membership,
+    tf::fill::hole_rim_scratch<table_index, table_int> &preflight,
+    table_rim_t &rim) -> bool {
   if (instance.rims.size() != 1)
     return false;
   membership.build(instance.mesh.polygons());
   const auto converter = tf::exact::make_pt_converter<table_int, table_real>(
       instance.mesh.points());
-  const auto verdict = tf::fill::preflight_hole_rim(
-      instance.mesh.polygons(), membership, instance.rims, 0, converter,
-      preflight, rim);
+  const auto verdict =
+      tf::fill::preflight_hole_rim(instance.mesh.polygons(), membership,
+                                   instance.rims, 0, converter, preflight, rim);
   return verdict.status == tf::hole_fill_status::filled;
 }
 
@@ -328,10 +356,10 @@ auto table_solve_lanes(const table_case &instance,
   tf::buffer<tf::point<table_real, 3>> minted;
   tf::buffer<tf::hole_split<table_index>> splits;
   table_index offending = -1;
-  return tf::fill::fill_table_hole(
-      instance.mesh.polygons(), membership,
-      table_index(instance.mesh.points().size()), true, complex, table, rim,
-      triangles, minted, splits, offending);
+  return tf::fill::fill_table_hole(instance.mesh.polygons(), membership,
+                                   table_index(instance.mesh.points().size()),
+                                   true, complex, table, rim, triangles, minted,
+                                   splits, offending);
 }
 
 /**
@@ -360,9 +388,8 @@ TEST_CASE("fill: the table states the exact lexicographic optimum",
 
     tf::face_membership<table_index> membership;
     membership.build(instance.mesh.polygons());
-    const auto converter =
-        tf::exact::make_pt_converter<table_int, table_real>(
-            instance.mesh.points());
+    const auto converter = tf::exact::make_pt_converter<table_int, table_real>(
+        instance.mesh.points());
     tf::fill::hole_rim_scratch<table_index, table_int> preflight;
     table_rim_t rim;
     const auto verdict = tf::fill::preflight_hole_rim(
@@ -379,8 +406,8 @@ TEST_CASE("fill: the table states the exact lexicographic optimum",
     table_index offending = -1;
     const auto status = tf::fill::fill_table_hole(
         instance.mesh.polygons(), membership,
-        table_index(instance.mesh.points().size()), true, complex, table,
-        rim, triangles, minted, splits, offending);
+        table_index(instance.mesh.points().size()), true, complex, table, rim,
+        triangles, minted, splits, offending);
     if (status != tf::hole_fill_status::filled)
       continue;
 
@@ -417,6 +444,51 @@ TEST_CASE("fill: a root whose every candidate is forbidden refuses",
   REQUIRE(result.offending[0][1] == -1);
 }
 
+/**
+ * @brief Stand sites 2, 3 and 4 on a collar around the point a third of the
+ *        way along rim edge 0, a thousandth of the edge across. Every ball
+ *        through the edge's ends holds a collar site, so no split the depth
+ *        admits lets the edge back; the edge pierces the collar's facet,
+ *        which one flip of that facet into the edge clears.
+ */
+auto table_collar_first_edge(table_rim_t &rim) -> void {
+  using coord_t = tf::fill::hole_site_coord<table_int>;
+  const auto &a = rim.sites[0].pt;
+  const auto &b = rim.sites[1].pt;
+  std::array<double, 3> along{}, across{}, around{};
+  for (std::size_t k = 0; k < 3; ++k)
+    along[k] = double(b[k]) - double(a[k]);
+  const double length = std::sqrt(along[0] * along[0] + along[1] * along[1] +
+                                  along[2] * along[2]);
+  std::size_t least = 0;
+  for (std::size_t k = 1; k < 3; ++k)
+    if (std::abs(along[k]) < std::abs(along[least]))
+      least = k;
+  std::array<double, 3> axis{};
+  axis[least] = 1;
+  const auto cross = [](const std::array<double, 3> &u,
+                        const std::array<double, 3> &v) {
+    return std::array<double, 3>{u[1] * v[2] - u[2] * v[1],
+                                 u[2] * v[0] - u[0] * v[2],
+                                 u[0] * v[1] - u[1] * v[0]};
+  };
+  across = cross(along, axis);
+  around = cross(along, across);
+  const double scale_across = std::sqrt(
+      across[0] * across[0] + across[1] * across[1] + across[2] * across[2]);
+  const double scale_around = std::sqrt(
+      around[0] * around[0] + around[1] * around[1] + around[2] * around[2]);
+  const double radius = length / 1000;
+  for (std::size_t j = 0; j < 3; ++j) {
+    const double turn = 2.0943951023931953 * double(j);
+    for (std::size_t k = 0; k < 3; ++k)
+      rim.sites[2 + j].pt[k] = coord_t(
+          std::llround(double(a[k]) + along[k] / 3 +
+                       radius * (std::cos(turn) * across[k] / scale_across +
+                                 std::sin(turn) * around[k] / scale_around)));
+  }
+}
+
 TEST_CASE("fill: a protection split that lands on a site refuses the rim",
           "[fill][table]") {
   const auto instance = table_square_case();
@@ -428,32 +500,130 @@ TEST_CASE("fill: a protection split that lands on a site refuses the rim",
 
   tf::fill::hole_table_scratch<table_index, table_int, table_real> complex;
   table_index offending = -1;
-  const auto status = tf::fill::protect_hole_rim(instance.mesh.points(),
-                                                 true, complex, rim, offending);
+  const auto status = tf::fill::protect_hole_rim(instance.mesh.points(), true,
+                                                 complex, rim, offending);
   REQUIRE(status == tf::hole_fill_status::refused_invalid_rim);
   REQUIRE(offending == 0);
 }
 
+/**
+ * @brief Stand sites 2 to 5 on a zigzag across rim edge 0 between its split
+ *        points 21/64 and 22/64, a thousandth of the edge across, each turn
+ *        just short of half a revolution, so consecutive zigzag edges pass
+ *        the rim edge on opposite sides within a fortieth of that radius.
+ *        The zigzag edges are rim edges, which no flip removes, and the
+ *        piece of rim edge 0 between them is let back by no split the depth
+ *        admits. The sites stand on the scaled lattice as original vertices
+ *        do, so every rim edge keeps its whole split frame.
+ */
+auto table_zigzag_first_edge(table_rim_t &rim) -> void {
+  using coord_t = tf::fill::hole_site_coord<table_int>;
+  const auto &a = rim.sites[0].pt;
+  const auto &b = rim.sites[1].pt;
+  std::array<double, 3> along{}, across{}, around{};
+  for (std::size_t k = 0; k < 3; ++k)
+    along[k] = double(b[k]) - double(a[k]);
+  const double length = std::sqrt(along[0] * along[0] + along[1] * along[1] +
+                                  along[2] * along[2]);
+  std::size_t least = 0;
+  for (std::size_t k = 1; k < 3; ++k)
+    if (std::abs(along[k]) < std::abs(along[least]))
+      least = k;
+  std::array<double, 3> axis{};
+  axis[least] = 1;
+  const auto cross = [](const std::array<double, 3> &u,
+                        const std::array<double, 3> &v) {
+    return std::array<double, 3>{u[1] * v[2] - u[2] * v[1],
+                                 u[2] * v[0] - u[0] * v[2],
+                                 u[0] * v[1] - u[1] * v[0]};
+  };
+  across = cross(along, axis);
+  around = cross(along, across);
+  const double scale_across = std::sqrt(
+      across[0] * across[0] + across[1] * across[1] + across[2] * across[2]);
+  const double scale_around = std::sqrt(
+      around[0] * around[0] + around[1] * around[1] + around[2] * around[2]);
+  const double radius = length / 1000;
+  const double scale = double(tf::hole_split_scale);
+  for (std::size_t j = 0; j < 4; ++j) {
+    const double t = 0.331 + 0.0025 * double(j);
+    const double turn = (3.141592653589793 - 0.05) * double(j);
+    for (std::size_t k = 0; k < 3; ++k)
+      rim.sites[2 + j].pt[k] =
+          coord_t(std::llround(
+              (double(a[k]) + along[k] * t +
+               radius * (std::cos(turn) * across[k] / scale_across +
+                         std::sin(turn) * around[k] / scale_around)) /
+              scale)) *
+          coord_t(tf::hole_split_scale);
+  }
+}
+
 TEST_CASE("fill: a rim edge still absent at the deepest split refuses",
+          "[fill][table]") {
+  const auto instance = table_symmetric_case(6, 0.25f);
+  tf::face_membership<table_index> membership;
+  tf::fill::hole_rim_scratch<table_index, table_int> preflight;
+  table_rim_t rim;
+  REQUIRE(table_prepare_rim(instance, membership, preflight, rim));
+  REQUIRE(rim.size() == 6);
+  table_zigzag_first_edge(rim);
+
+  table_complex_t complex;
+  table_index offending = -1;
+  const auto status = tf::fill::protect_hole_rim(instance.mesh.points(), true,
+                                                 complex, rim, offending);
+  REQUIRE(status == tf::hole_fill_status::refused_protection_depth);
+  REQUIRE(offending == 0);
+  REQUIRE(rim.size() == 6);
+}
+
+TEST_CASE("fill: a rim edge absent where the rim may not be split refuses "
+          "the split",
+          "[fill][table]") {
+  const auto instance = table_symmetric_case(6, 0.25f);
+  tf::face_membership<table_index> membership;
+  tf::fill::hole_rim_scratch<table_index, table_int> preflight;
+  table_rim_t rim;
+  REQUIRE(table_prepare_rim(instance, membership, preflight, rim));
+  REQUIRE(rim.size() == 6);
+  table_zigzag_first_edge(rim);
+
+  table_complex_t complex;
+  table_index offending = -1;
+  const auto status = tf::fill::protect_hole_rim(instance.mesh.points(), false,
+                                                 complex, rim, offending);
+  REQUIRE(status == tf::hole_fill_status::refused_rim_split);
+  REQUIRE(offending == 0);
+  REQUIRE(rim.size() == 6);
+}
+
+TEST_CASE("fill: a rim edge through a collar is flipped back, no split minted",
           "[fill][table]") {
   const auto instance = table_square_case();
   tf::face_membership<table_index> membership;
   tf::fill::hole_rim_scratch<table_index, table_int> preflight;
   table_rim_t rim;
   REQUIRE(table_prepare_rim(instance, membership, preflight, rim));
-  table_block_first_edge(rim);
-  auto &edge = rim.edges[0];
-  edge.t1 = std::uint8_t(edge.t0 == 0 ? 1 : edge.t0 - 1);
+  REQUIRE(rim.size() >= 5);
+  table_collar_first_edge(rim);
+  const auto before = rim.size();
 
-  tf::fill::hole_table_scratch<table_index, table_int, table_real> complex;
+  table_complex_t complex;
+  REQUIRE(table_prepare_complex(complex, rim));
+  REQUIRE(table_missing_by_edge_sort(complex, table_index(before)) ==
+          std::vector<table_index>{0});
   table_index offending = -1;
-  const auto status = tf::fill::protect_hole_rim(instance.mesh.points(),
-                                                 true, complex, rim, offending);
-  REQUIRE(status == tf::hole_fill_status::refused_protection_depth);
-  REQUIRE(offending == 0);
+  const auto status = tf::fill::protect_hole_rim(instance.mesh.points(), true,
+                                                 complex, rim, offending);
+  REQUIRE(status == tf::hole_fill_status::filled);
+  REQUIRE(offending == -1);
+  REQUIRE(rim.size() == before);
+  CHECK(table_missing_by_edge_sort(complex, table_index(before)).empty());
 }
 
-TEST_CASE("fill: the presence scan states the edge table's own missing list",
+TEST_CASE("fill: every rim edge comes back by flips, the protected rim's "
+          "complex holding them all",
           "[fill][table]") {
   std::mt19937 rng(20260923u);
   int compared = 0, missing_seen = 0, split_seen = 0;
@@ -473,36 +643,29 @@ TEST_CASE("fill: the presence scan states the edge table's own missing list",
     if (!table_prepare_complex(complex, rim))
       continue;
     const table_index before = table_index(rim.size());
-    tf::fill::state_missing_rim_edges(complex.dt, complex.site_of_position,
-                                      complex.edge_query);
-    const std::vector<table_index> stated(complex.edge_query.missing.begin(),
-                                          complex.edge_query.missing.end());
-    CHECK(stated == table_missing_by_edge_sort(complex, before));
-    if (!stated.empty())
+    if (!table_missing_by_edge_sort(complex, before).empty())
       ++missing_seen;
 
     table_index offending = -1;
-    if (tf::fill::protect_hole_rim(instance.mesh.points(), true, complex,
-                                   rim, offending) != tf::hole_fill_status::filled)
+    if (tf::fill::protect_hole_rim(instance.mesh.points(), true, complex, rim,
+                                   offending) != tf::hole_fill_status::filled)
       continue;
     if (table_index(rim.size()) > before)
       ++split_seen;
 
-    // The protected rim carries its splits as sites of their own, and the
-    // complex over it holds every one of its edges.
-    REQUIRE(table_prepare_complex(complex, rim));
+    // The protected rim's complex, as the protection published it, holds
+    // every one of its edges, and the recovery over it, admitting no split,
+    // states the same.
     const table_index after = table_index(rim.size());
-    tf::fill::state_missing_rim_edges(complex.dt, complex.site_of_position,
-                                      complex.edge_query);
-    const std::vector<table_index> protected_rim(
-        complex.edge_query.missing.begin(), complex.edge_query.missing.end());
-    CHECK(protected_rim == table_missing_by_edge_sort(complex, after));
-    CHECK(protected_rim.empty());
+    CHECK(table_missing_by_edge_sort(complex, after).empty());
+    CHECK(table_missing_by_recovery(complex.dt, complex.site_of_position,
+                                    std::size_t(after))
+              .empty());
     ++compared;
   }
   CHECK(compared >= 40);
   CHECK(missing_seen > 0);
-  CHECK(split_seen > 0);
+  CHECK(split_seen == 0);
 }
 
 TEST_CASE("fill: a rim edge no cell can carry is named, the wrap included",
@@ -535,10 +698,8 @@ TEST_CASE("fill: a rim edge no cell can carry is named, the wrap included",
 
     table_complex_t complex;
     REQUIRE(table_prepare_complex(complex, rim));
-    tf::fill::state_missing_rim_edges(complex.dt, complex.site_of_position,
-                                      complex.edge_query);
-    const std::vector<table_index> stated(complex.edge_query.missing.begin(),
-                                          complex.edge_query.missing.end());
+    const auto stated = table_missing_by_recovery(
+        complex.dt, complex.site_of_position, std::size_t(n));
     CHECK(stated == table_missing_by_edge_sort(complex, n));
     CHECK(std::find(stated.begin(), stated.end(), blocked) != stated.end());
   }
@@ -551,8 +712,8 @@ TEST_CASE("fill: the table lanes are the same at any worker count",
   std::vector<tf::point<table_real, 3>> ring;
   for (int k = 0; k < 4096; ++k) {
     const float angle = 6.2831853f * float(k) / 4096.0f;
-    ring.push_back({std::cos(angle), std::sin(angle),
-                    0.35f * std::sin(3.0f * angle)});
+    ring.push_back(
+        {std::cos(angle), std::sin(angle), 0.35f * std::sin(3.0f * angle)});
   }
   const auto mesh = hole_cone_mesh<table_index, table_real>(
       ring, tf::point<table_real, 3>{0.0f, 0.0f, -1.5f});
@@ -570,8 +731,8 @@ TEST_CASE("fill: the table lanes are the same at any worker count",
     widest = std::max(widest, reference.bands[span].size());
   REQUIRE(widest > tf::fill::hole_table_band_grain);
 
-  for (std::size_t workers : {std::size_t(1), std::size_t(2), std::size_t(4),
-                              std::size_t(16)}) {
+  for (std::size_t workers :
+       {std::size_t(1), std::size_t(2), std::size_t(4), std::size_t(16)}) {
     const tbb::global_control control(
         tbb::global_control::max_allowed_parallelism, workers);
     tf::fill::hole_table<table_index> stated;
@@ -611,10 +772,9 @@ TEST_CASE("fill: the facet a cell owns is the four-per-cell set",
 
     table_complex_t complex;
     table_index offending = -1;
-    if (tf::fill::protect_hole_rim(instance.mesh.points(), true, complex,
-                                   rim, offending) != tf::hole_fill_status::filled)
+    if (tf::fill::protect_hole_rim(instance.mesh.points(), true, complex, rim,
+                                   offending) != tf::hole_fill_status::filled)
       continue;
-    REQUIRE(table_prepare_complex(complex, rim));
 
     tf::buffer<std::array<table_index, 3>> facets;
     tf::buffer<table_index> owned;
@@ -648,7 +808,8 @@ TEST_CASE("hole table: parallel Delaunay preserves rim candidates",
     const double angle = 2 * tf::pi<double> * double(i) / double(n);
     coordinates.push_back(table_int(std::llround(1000000 * std::cos(angle))));
     coordinates.push_back(table_int(std::llround(1000000 * std::sin(angle))));
-    coordinates.push_back(table_int(std::llround(300000 * std::sin(3 * angle))));
+    coordinates.push_back(
+        table_int(std::llround(300000 * std::sin(3 * angle))));
   }
   const auto points = tf::make_points<3>(tf::make_range(coordinates));
   Serial serial;
@@ -663,27 +824,23 @@ TEST_CASE("hole table: parallel Delaunay preserves rim candidates",
   parallel_positions.allocate(parallel.n_sites());
   for (int i = 0; i < n; ++i) {
     serial_positions[std::size_t(serial.index_map().f()[std::size_t(i)])] = i;
-    parallel_positions[std::size_t(parallel.index_map().f()[std::size_t(i)])] = i;
+    parallel_positions[std::size_t(parallel.index_map().f()[std::size_t(i)])] =
+        i;
   }
   tf::buffer<table_triangle> serial_facets, parallel_facets;
-  tf::buffer<int> serial_owned, parallel_owned, serial_missing,
-      parallel_missing;
-  tf::topology::cdt::dt3::tet_edge_query_workspace<int> serial_query,
-      parallel_query;
+  tf::buffer<int> serial_owned, parallel_owned;
   tf::fill::gather_hole_facets(serial, serial_positions, serial_owned,
-                              serial_facets);
+                               serial_facets);
   tf::fill::gather_hole_facets(parallel, parallel_positions, parallel_owned,
-                              parallel_facets);
+                               parallel_facets);
   REQUIRE(serial_facets.size() > 0);
   REQUIRE(serial_facets.size() == parallel_facets.size());
   CHECK(std::equal(serial_facets.begin(), serial_facets.end(),
                    parallel_facets.begin()));
-  tf::fill::state_missing_rim_edges(serial, serial.index_map().f(),
-                                    serial_query);
-  std::swap(serial_missing, serial_query.missing);
-  tf::fill::state_missing_rim_edges(parallel, parallel.index_map().f(),
-                                    parallel_query);
-  std::swap(parallel_missing, parallel_query.missing);
+  const auto serial_missing =
+      table_missing_by_recovery(serial, serial.index_map().f(), std::size_t(n));
+  const auto parallel_missing = table_missing_by_recovery(
+      parallel, parallel.index_map().f(), std::size_t(n));
   REQUIRE(serial_missing.size() == parallel_missing.size());
   CHECK(std::equal(serial_missing.begin(), serial_missing.end(),
                    parallel_missing.begin()));

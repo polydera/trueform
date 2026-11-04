@@ -42,10 +42,9 @@ auto locate_claimed_tet(const Owner &owner, tet_claim_workspace<Index> &work,
     if (hint < 0)
       return -1;
   }
-  const auto &p = owner._sites[std::size_t(site)].pt;
   Index previous = Owner::none;
   for (;;) {
-    const auto next = step_tet_walk(owner, hint, previous, p);
+    const auto next = step_tet_walk(owner, hint, previous, site);
     if (next == Owner::none) {
       scratch.held.push_back(hint);
       return hint;

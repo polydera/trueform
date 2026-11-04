@@ -12,7 +12,9 @@
  */
 #pragma once
 #include "./discover_claimed_tet_cavity.hpp"
+#include "./keep_taken_tet_edges.hpp"
 #include "./locate_claimed_tet.hpp"
+#include "./record_tet_killed_edges.hpp"
 #include "./release_tet_cells.hpp"
 #include "./take_claimed_tet_rows.hpp"
 #include "./tet_claim_scratch.hpp"
@@ -51,9 +53,14 @@ auto insert_claimed_tet_site(Owner &owner, tet_claim_workspace<Index> &work,
     release_tet_cells(work, worker, scratch.held);
     return tet_claim_result::capacity;
   }
+  const std::size_t recorded = work.killed[worker].size();
+  if (owner._record_killed)
+    record_tet_killed_edges(owner, scratch.cavity, work.killed[worker]);
   take_claimed_tet_rows(work, worker, scratch);
-  write_tet_cavity(owner, site, scratch.rows, scratch.boundary, scratch.sides,
-                   scratch.edges);
+  write_tet_cavity(owner, site, scratch.rows, scratch.boundary,
+                   work.links[worker]);
+  if (owner._record_killed)
+    keep_taken_tet_edges(work.killed[worker], recorded, work.links[worker]);
   hint = scratch.rows[0];
   // Releasing the neighbors before the rows can make another stream retry,
   // but never shows it a row still being written.

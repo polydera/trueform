@@ -12,8 +12,11 @@
  */
 #pragma once
 #include "../../../core/buffer.hpp"
+#include "./tet_cavity_links.hpp"
 #include "./tet_claim_stream.hpp"
 #include "./tet_claim_words.hpp"
+#include <array>
+#include <vector>
 
 namespace tf::topology::cdt::dt3 {
 
@@ -26,6 +29,11 @@ template <typename Index> struct tet_claim_workspace {
   tet_claim_words ownership;
   tf::buffer<Index> free_next, tail;
   tf::buffer<tet_claim_stream<Index>> streams;
+  /// Per stream, the edges its cavities took while the owner records them,
+  /// merged into the owner at the barrier.
+  std::vector<tf::buffer<std::array<Index, 2>>> killed;
+  /// Per stream, the pairing of its cavities' boundaries.
+  std::vector<tet_cavity_links<Index>> links;
 };
 
 } // namespace tf::topology::cdt::dt3

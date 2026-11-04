@@ -12,10 +12,15 @@
  */
 #pragma once
 #include "./claim_tet_cell.hpp"
+#include "./close_tet_cavity_links.hpp"
+#include "./open_tet_cavity_links.hpp"
+#include "./state_tet_cavity_facet.hpp"
 #include "./tet_claim_scratch.hpp"
 #include "./tet_claim_word.hpp"
 #include "./tet_claim_workspace.hpp"
 #include "./tet_conflicts.hpp"
+#include "./tet_facets.hpp"
+#include "./tet_site_position.hpp"
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -29,6 +34,8 @@ auto discover_claimed_tet_cavity(const Owner &owner,
                                  tet_claim_scratch<Index> &scratch) -> bool {
   scratch.cavity.clear();
   scratch.boundary.clear();
+  auto &links = work.links[worker];
+  open_tet_cavity_links(links, tet_site_count(owner));
   scratch.cavity.push_back(seed);
   work.ownership[std::size_t(seed)].store(std::uint32_t(worker) |
                                               tet_classified | tet_conflict,
@@ -55,13 +62,17 @@ auto discover_claimed_tet_cavity(const Owner &owner,
           scratch.cavity.push_back(side);
       }
       if (!(word & tet_conflict)) {
-        std::size_t mate = 0;
-        while (owner._neighbors[std::size_t(side)][mate] != cell)
-          ++mate;
+        const auto sides = owner._neighbors[std::size_t(side)];
+        const std::size_t mate = std::size_t(sides[1] == cell) +
+                                 2 * std::size_t(sides[2] == cell) +
+                                 3 * std::size_t(sides[3] == cell);
         scratch.boundary.push_back(Index(4 * std::size_t(side) + mate));
+        state_tet_cavity_facet(links,
+                               tet_facet(owner._corners[side], mate));
       }
     }
   }
+  close_tet_cavity_links(links);
   return true;
 }
 

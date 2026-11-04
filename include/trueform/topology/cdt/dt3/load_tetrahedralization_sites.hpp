@@ -16,12 +16,14 @@
 #include "../../../core/points.hpp"
 #include "../../../core/range.hpp"
 #include "../../../core/views/sequence_range.hpp"
-#include "../../../exact/vertex.hpp"
+#include "./tet_ingested_position.hpp"
+#include "./tet_position.hpp"
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
-/// Load positions and names with their input slots for welding.
+/// Load positions and names with their input slots for welding, every
+/// position a build takes standing on the frame.
 template <bool Parallel = false, typename Owner, typename PointsPolicy>
 auto load_tetrahedralization_sites(Owner &owner,
                                    const tf::points<PointsPolicy> &points)
@@ -30,9 +32,8 @@ auto load_tetrahedralization_sites(Owner &owner,
   using Coord = typename Owner::coord_type;
   owner._site_scratch.allocate(points.size());
   const auto load_site = [&owner, &points](std::size_t i) {
-    const auto &p = points[i];
     owner._site_scratch[i] = {
-        tf::exact::pt3<Coord>{Coord(p[0]), Coord(p[1]), Coord(p[2])}, Index(i),
+        tet_shallow_position(tet_minted_position<Coord>(points[i])), Index(i),
         Index(i)};
   };
   if constexpr (Parallel)
@@ -49,7 +50,9 @@ auto load_tetrahedralization_sites(
   using Index = typename Owner::index_type;
   owner._site_scratch.allocate(sites.size());
   const auto load_site = [&owner, &sites](std::size_t i) {
-    owner._site_scratch[i] = {sites[i].pt, sites[i].id, Index(i)};
+    const auto &site = sites[i];
+    owner._site_scratch[i] = {tet_shallow_position(tet_ingested_position(site)),
+                              site.id, Index(i)};
   };
   if constexpr (Parallel)
     tf::parallel_for_each(tf::make_sequence_range(sites.size()), load_site,

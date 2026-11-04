@@ -32,6 +32,10 @@ auto prepare_tet_claim_pool(Owner &owner, tet_claim_workspace<Index> &work,
   work.ownership.allocate_and_initialize(count, tet_unowned);
   work.free_next.allocate(count);
   work.streams.allocate_and_initialize(workers, tet_claim_stream<Index>{});
+  if (work.killed.size() < workers)
+    work.killed.resize(workers);
+  if (work.links.size() < workers)
+    work.links.resize(workers);
   tf::parallel_for_each(
       tf::make_sequence_range(workers), [&](std::size_t worker) {
         const auto begin = live + (count - live) * worker / workers,

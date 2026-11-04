@@ -12,7 +12,6 @@
  */
 #pragma once
 #include "./locate_claimed_tet.hpp"
-#include "./order_tet_site_band.hpp"
 #include "./release_tet_cells.hpp"
 #include "./tet_claim_scratch.hpp"
 #include "./tet_claim_word.hpp"
@@ -25,7 +24,6 @@ namespace tf::topology::cdt::dt3 {
 template <typename Owner, typename Index>
 auto prepare_tet_claim_band(Owner &owner, tet_claim_workspace<Index> &work,
                             std::size_t begin, std::size_t end) -> void {
-  order_tet_site_band(owner, begin, end);
   Index seed = 0;
   while (work.ownership[std::size_t(seed)].load(std::memory_order_relaxed) !=
          tet_unowned)

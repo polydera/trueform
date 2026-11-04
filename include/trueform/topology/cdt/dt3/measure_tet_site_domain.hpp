@@ -13,25 +13,24 @@
 #pragma once
 #include "../../../core/algorithm/reduce.hpp"
 #include "../../../core/checked.hpp"
-#include "../../../core/range.hpp"
-#include "../../../core/views/drop.hpp"
 #include "../../../core/views/mapped_range.hpp"
+#include "../../../exact/vertex.hpp"
 #include "./tet_site_domain.hpp"
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
-/// Measure the sites from slot `first` on, on the halved lattice; at least
-/// one site lies there.
-template <bool Parallel = false, typename Owner>
-auto measure_tet_site_domain(const Owner &owner, std::size_t first = 0)
-    -> tet_site_domain<typename Owner::coord_type> {
-  using Domain = tet_site_domain<typename Owner::coord_type>;
-  const auto domains = tf::make_mapped_range(
-      tf::drop(tf::make_range(owner._sites), first), [](const auto &site) {
+/// Measure the floors `floors` on the halved lattice: a position's floor
+/// keys its insertion order as well as the position itself. At least one
+/// lies there.
+template <bool Parallel = false, typename Coord, typename Floors>
+auto measure_tet_site_domain(const Floors &floors) -> tet_site_domain<Coord> {
+  using Domain = tet_site_domain<Coord>;
+  const auto domains =
+      tf::make_mapped_range(floors, [](const tf::exact::pt3<Coord> &p) {
         Domain domain;
         for (std::size_t axis = 0; axis < 3; ++axis) {
-          domain.minimum[axis] = Domain::half(site.pt[axis]);
+          domain.minimum[axis] = Domain::half(p[axis]);
           domain.span[axis] = 0;
         }
         return domain;

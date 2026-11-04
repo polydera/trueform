@@ -18,7 +18,11 @@
 #include "../../../core/views/mapped_range.hpp"
 #include "../../../core/views/sequence_range.hpp"
 #include "./advance_tet_name.hpp"
+#include "./measure_tet_site_domain.hpp"
+#include "./sort_tet_weld_records.hpp"
+#include "./tet_site_morton_key.hpp"
 #include "./tet_execution_tuning.hpp"
+#include "./tet_site_position.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <tbb/parallel_sort.h>
@@ -26,37 +30,47 @@
 namespace tf::topology::cdt::dt3 {
 
 /// Weld exact positions, retain the lowest canonical name and publish both
-/// directions of the input-to-site map. Sites are ordered by coordinate, and
-/// a name carried twice at one position keeps its lowest input slot.
+/// directions of the input-to-site map. Sites are stored in the Morton order
+/// of their positions over the records' domain, equal keys by position, and
+/// a name carried twice at one position keeps its lowest input slot; the
+/// serial and the parallel weld state one order.
 template <bool Parallel = false, typename Owner>
 auto weld_tetrahedralization_sites(Owner &owner) -> void {
   using Index = typename Owner::index_type;
   auto &records = owner._site_scratch;
   const std::size_t n = records.size();
-  const auto less = [](const auto &a, const auto &b) {
-    return a.pt < b.pt ||
-           (a.pt == b.pt &&
-            (a.id < b.id || (a.id == b.id && a.input < b.input)));
+  const auto domain =
+      measure_tet_site_domain<Parallel, typename Owner::coord_type>(
+          tf::make_mapped_range(
+              tf::make_range(records),
+              [](const auto &record) -> const auto & { return record.floor; }));
+  const auto shift = tet_site_morton_shift(domain);
+  const auto key_record = [&records, &domain, shift](std::size_t i) {
+    records[i].key = tet_site_morton_key(records[i].floor, domain, shift);
   };
+  const auto less = tet_weld_record_precedes<Index, typename Owner::coord_type>;
   const auto starts_site = [&records](std::size_t i) {
-    return i == 0 || !(records[i].pt == records[i - 1].pt);
+    return i == 0 || !(records[i].floor == records[i - 1].floor);
   };
   owner._index_map.f().allocate(n);
 
   if constexpr (!Parallel) {
-    std::sort(records.begin(), records.end(), less);
-    owner._sites.clear();
+    for (std::size_t i = 0; i < n; ++i)
+      key_record(i);
+    sort_tet_weld_records(records, owner._weld_scratch, owner._counts);
+    owner._floors.clear();
     owner._index_map.kept_ids().clear();
     for (std::size_t i = 0; i < n; ++i) {
       if (starts_site(i)) {
-        owner._sites.push_back({records[i].id, records[i].pt});
+        owner._floors.push_back({records[i].id, records[i].floor});
         owner._index_map.kept_ids().push_back(records[i].input);
         owner._next_name = advance_tet_name(owner._next_name, records[i].id);
       }
       owner._index_map.f()[std::size_t(records[i].input)] =
-          Index(owner._sites.size() - 1);
+          Index(owner._floors.size() - 1);
     }
   } else {
+    tf::parallel_for_each(tf::make_sequence_range(n), key_record, tf::checked);
     tbb::parallel_sort(records.begin(), records.end(), less);
     const std::size_t grain = tet_execution_tuning::scan_block_rows;
     const auto blocks = (n + grain - 1) / grain;
@@ -75,7 +89,7 @@ auto weld_tetrahedralization_sites(Owner &owner) -> void {
         tf::checked(tet_execution_tuning::serial_scan_blocks));
     for (std::size_t block = 0; block < blocks; ++block)
       offsets[block + 1] += offsets[block];
-    owner._sites.allocate(offsets[blocks]);
+    owner._floors.allocate(offsets[blocks]);
     owner._index_map.kept_ids().allocate(offsets[blocks]);
     tf::parallel_for_each(
         tf::make_sequence_range(blocks),
@@ -85,7 +99,8 @@ auto weld_tetrahedralization_sites(Owner &owner) -> void {
           for (auto i = block * grain; i < last; ++i) {
             if (starts_site(i)) {
               ++site;
-              owner._sites[std::size_t(site)] = {records[i].id, records[i].pt};
+              owner._floors[std::size_t(site)] = {records[i].id,
+                                                  records[i].floor};
               owner._index_map.kept_ids()[std::size_t(site)] =
                   records[i].input;
             }
@@ -94,11 +109,12 @@ auto weld_tetrahedralization_sites(Owner &owner) -> void {
         },
         tf::checked(tet_execution_tuning::serial_scan_blocks));
     owner._next_name = tf::reduce(
-        tf::make_mapped_range(
-            tf::make_range(owner._sites),
-            [](const auto &site) {
-              return advance_tet_name(std::size_t(0), site.id);
-            }),
+        tf::make_mapped_range(tf::make_sequence_range(tet_site_count(owner)),
+                              [&owner](std::size_t site) {
+                                return advance_tet_name(
+                                    std::size_t(0),
+                                    tet_site_name(owner, Index(site)));
+                              }),
         [](std::size_t a, std::size_t b) { return std::max(a, b); },
         owner._next_name, tf::checked);
   }

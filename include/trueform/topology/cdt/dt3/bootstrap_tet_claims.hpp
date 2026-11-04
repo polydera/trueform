@@ -13,8 +13,7 @@
 #pragma once
 #include "./compact_tetrahedralization.hpp"
 #include "./insert_tetrahedralization_site.hpp"
-#include "./order_tet_site_band.hpp"
-#include "./tet_cavity_edge_table.hpp"
+#include "./tet_insertion.hpp"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -29,12 +28,10 @@ auto bootstrap_tet_claims(Owner &owner, std::size_t prefix) -> bool {
   const auto is_seed = [&](Index site) {
     return std::find(seeded.begin(), seeded.end(), site) != seeded.end();
   };
-  for (auto end = prefix; end != 0; end >>= 1)
-    order_tet_site_band(owner, end >> 1, end);
-  tet_cavity_edge_table<Index> edges{};
   for (std::size_t i = 0; i < prefix; ++i)
     if (!is_seed(owner._order[i]) &&
-        !insert_tetrahedralization_site(owner, owner._order[i], edges))
+        insert_tetrahedralization_site(owner, owner._order[i]) !=
+            tet_insertion::placed)
       return false;
   compact_tetrahedralization<true>(owner);
   auto last = std::remove_if(owner._order.begin() + prefix, owner._order.end(),

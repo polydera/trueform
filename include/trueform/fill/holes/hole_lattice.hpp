@@ -46,20 +46,6 @@ auto hole_unscaled_point(const tf::point<hole_site_coord<Int>, 3> &p)
   return {Int(p[0] / scale), Int(p[1] / scale), Int(p[2] / scale)};
 }
 
-/// The point at `parameter / tf::hole_split_scale` along the edge from `a`
-/// to `b`, on the scaled lattice. The scale is the parameter's own
-/// denominator, so the position is exact for every admitted parameter.
-template <typename Int>
-auto hole_split_point(const tf::point<Int, 3> &a, const tf::point<Int, 3> &b,
-                      int parameter) -> tf::point<hole_site_coord<Int>, 3> {
-  using Coord = hole_site_coord<Int>;
-  const Coord t(parameter);
-  const Coord scale(tf::hole_split_scale);
-  return {Coord(a[0]) * scale + t * (Coord(b[0]) - Coord(a[0])),
-          Coord(a[1]) * scale + t * (Coord(b[1]) - Coord(a[1])),
-          Coord(a[2]) * scale + t * (Coord(b[2]) - Coord(a[2]))};
-}
-
 /// The fill's lattice quantum: lattice units per unit of the mesh's own
 /// coordinates, as the input's converter states it — its scale, or one where
 /// the input already stands on its lattice.

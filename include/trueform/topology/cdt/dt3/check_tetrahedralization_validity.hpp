@@ -12,8 +12,9 @@
  */
 #pragma once
 #include "../../../core/buffer.hpp"
-#include "../../../exact/orient3d.hpp"
 #include "./tet_facets.hpp"
+#include "./tet_orient3d_sites.hpp"
+#include "./tet_site_position.hpp"
 #include "./tet_state.hpp"
 #include "./tetrahedralization_owner.hpp"
 #include <algorithm>
@@ -28,7 +29,6 @@ namespace tf::topology::cdt::dt3 {
 template <typename Owner>
 auto check_tetrahedralization_validity(const Owner &owner) -> bool {
   using Index = typename Owner::index_type;
-  using Int = typename Owner::int_type;
 
   struct facet_record {
     Index a;
@@ -39,7 +39,7 @@ auto check_tetrahedralization_validity(const Owner &owner) -> bool {
   };
 
   const std::size_t n = owner._corners.size();
-  const std::size_t n_sites = owner._sites.size();
+  const std::size_t n_sites = tet_site_count(owner);
   if (n == 0 || n_sites == 0)
     return false;
   if (owner._hint < 0 || std::size_t(owner._hint) >= n)
@@ -83,11 +83,8 @@ auto check_tetrahedralization_validity(const Owner &owner) -> bool {
         covered[std::size_t(corners[i])] = 1;
     }
 
-    if (!hull && !(tf::exact::orient3d_value_scaled<Int>(
-                       owner._sites[std::size_t(corners[0])].pt,
-                       owner._sites[std::size_t(corners[1])].pt,
-                       owner._sites[std::size_t(corners[2])].pt,
-                       owner._sites[std::size_t(corners[3])].pt) > 0))
+    if (!hull && tet_orient3d_sites(owner, corners[0], corners[1], corners[2],
+                                    corners[3]) <= 0)
       return false;
     if (hull) {
       rim.push_back({corners[0], corners[1]});

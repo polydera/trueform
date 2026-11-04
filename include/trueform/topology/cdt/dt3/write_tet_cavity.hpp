@@ -12,67 +12,55 @@
  */
 #pragma once
 #include "../../../core/buffer.hpp"
-#include "./advance_tet_cavity_edges.hpp"
-#include "./link_tet_cavity_edge.hpp"
-#include "./link_tet_sides.hpp"
-#include "./tet_cavity_edge_table.hpp"
-#include "./tet_facets.hpp"
-#include "./tet_side.hpp"
+#include "./state_tet_facet_protection.hpp"
+#include "./tet_cavity_links.hpp"
+#include "./tet_facet_is_protected.hpp"
+#include "./tet_state.hpp"
 #include "./write_tet_topology.hpp"
-#include <array>
+#include <cassert>
 #include <cstddef>
-#include <utility>
 
 namespace tf::topology::cdt::dt3 {
 
-/// Write and link a cavity star into assigned cell rows. Boundary facet rows
+/// Write and link a cavity star into assigned cell rows, the boundary as
+/// `links` states it: cell `i` stands on facet `i`, and across each of its
+/// side walls the cell of the facet sharing that edge. Boundary facet rows
 /// and output rows have one writer; the caller owns scratch and publishes
-/// states.
-template <typename Owner, typename Boundary, typename Rows, typename Index>
+/// states. A star cell's base facet keeps the protection, and the owner,
+/// its boundary facet held.
+template <typename Owner, typename Boundary, typename Index>
 auto write_tet_cavity(Owner &owner, typename Owner::index_type apex,
-                      const Rows &rows, const Boundary &boundary,
-                      tf::buffer<tet_side<typename Owner::index_type>> &sides,
-                      tet_cavity_edge_table<Index> &edges) -> void {
+                      const tf::buffer<Index> &rows, const Boundary &boundary,
+                      const tet_cavity_links<Index> &links) -> void {
   const std::size_t walls = boundary.size();
-  const bool small = walls <= tet_cavity_edge_table<Index>::max_walls;
-  if (small)
-    advance_tet_cavity_edges(edges);
-  else
-    sides.allocate(3 * walls);
-
+  assert(links.n_facets == walls);
   for (std::size_t i = 0; i < walls; ++i) {
     const std::size_t ticket = std::size_t(boundary[i]);
     const std::size_t side = ticket / 4;
     const std::size_t slot = ticket % 4;
-    const auto facet = tet_facet(owner._corners[side], slot);
+    const auto &facet = links.facets[i];
     const Index tet = rows[i];
     const std::size_t base =
         write_tet_topology(owner, tet, facet[0], facet[1], facet[2], apex);
     owner._neighbors[std::size_t(tet)][base] = Index(side);
     owner._neighbors[side][slot] = tet;
-
+    owner._states[std::size_t(tet)] =
+        owner._corners[std::size_t(tet)][3] == Owner::infinite
+            ? tet_state::infinite
+            : tet_state::live;
+    if (tet_facet_is_protected(owner, Index(side), slot))
+      state_tet_facet_protection(owner, Index(side), slot, true,
+                                 owner._owners[4 * side + slot]);
     const auto corners = owner._corners[std::size_t(tet)];
-    std::size_t taken = 0;
-    for (std::size_t wall = 0; wall < 4; ++wall) {
-      if (wall == base)
-        continue;
-      std::array<Index, 2> edge{};
-      std::size_t end = 0;
-      for (std::size_t corner = 0; corner < 4; ++corner)
-        if (corner != base && corner != wall)
-          edge[end++] = corners[corner];
-      if (edge[1] < edge[0])
-        std::swap(edge[0], edge[1]);
-      if (small)
-        link_tet_cavity_edge(owner, edges, edge[0], edge[1], tet, int(wall));
-      else
-        sides[3 * i + taken++] = {edge[0], edge[1], tet, Index(wall)};
+    for (std::size_t e = 0; e < 3; ++e) {
+      const Index partner = links.across[3 * i + e];
+      assert(partner >= 0);
+      const std::size_t wall = std::size_t(corners[1] == facet[e]) +
+                               2 * std::size_t(corners[2] == facet[e]) +
+                               3 * std::size_t(corners[3] == facet[e]);
+      owner._neighbors[std::size_t(tet)][wall] = rows[std::size_t(partner) / 3];
     }
   }
-
-  if (small)
-    return;
-  link_tet_sides(owner, sides);
 }
 
 } // namespace tf::topology::cdt::dt3

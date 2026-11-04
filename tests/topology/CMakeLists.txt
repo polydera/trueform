@@ -13,6 +13,8 @@ add_executable(trueform_topology_tests
   test_hole_patcher.cpp
   test_constrained_delaunay_triangulator.cpp
   test_delaunay_tetrahedralizer.cpp
+  test_tet_segment_recovery.cpp
+  test_tet_face_recovery.cpp
   test_cdt_constraint_owner_api.cpp
   test_cdt_meeting_landings.cpp
   test_cdt_half_edge_carrier_lifecycle.cpp

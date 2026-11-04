@@ -11,7 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../../exact/orient3d.hpp"
+#include "./tet_orient3d_sites.hpp"
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -19,8 +19,10 @@
 
 namespace tf::topology::cdt::dt3 {
 
-/// Write corners and reset neighbors, preserving orientation while moving the
-/// infinity corner to slot three. Returns the final slot of c3.
+/// Write corners and reset neighbors and protection, preserving orientation
+/// while moving the infinity corner to slot three; while site cells are
+/// recorded, make a finite cell its corners' site cell, and while rows are
+/// recorded, record a finite one. Returns the final slot of c3.
 template <typename Owner>
 auto write_tet_topology(Owner &owner, typename Owner::index_type tet,
                         typename Owner::index_type c0,
@@ -40,11 +42,8 @@ auto write_tet_topology(Owner &owner, typename Owner::index_type tet,
       }
 
   assert(corners[3] == Owner::infinite ||
-         tf::exact::orient3d_value_scaled<typename Owner::int_type>(
-             owner._sites[std::size_t(corners[0])].pt,
-             owner._sites[std::size_t(corners[1])].pt,
-             owner._sites[std::size_t(corners[2])].pt,
-             owner._sites[std::size_t(corners[3])].pt) > 0);
+         tet_orient3d_sites(owner, corners[0], corners[1], corners[2],
+                            corners[3]) > 0);
 
   auto row = owner._corners[std::size_t(tet)];
   auto link = owner._neighbors[std::size_t(tet)];
@@ -52,6 +51,16 @@ auto write_tet_topology(Owner &owner, typename Owner::index_type tet,
     row[slot] = corners[slot];
     link[slot] = Owner::none;
   }
+  if (std::size_t(tet) < owner._protected_slots.size()) {
+    owner._protected_slots[std::size_t(tet)] = 0;
+    for (std::size_t slot = 0; slot < 4; ++slot)
+      owner._owners[4 * std::size_t(tet) + slot] = Owner::none;
+  }
+  if (owner._record_site_cells && corners[3] != Owner::infinite)
+    for (auto corner : corners)
+      owner._site_cells.store(std::size_t(corner), tet);
+  if (owner._record_written && corners[3] != Owner::infinite)
+    owner._written.push_back(tet);
   return base;
 }
 

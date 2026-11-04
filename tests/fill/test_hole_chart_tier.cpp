@@ -300,8 +300,8 @@ TEST_CASE("fill: a rim of twelve hundred vertices samples by its rim",
   REQUIRE(tf::is_manifold(filled.polygons()));
 }
 
-TEST_CASE("fill: a rim the table spans only by a protection split refuses "
-          "where the rim may not be split",
+TEST_CASE("fill: a rim edge through a ring is flipped back, the rim unsplit "
+          "whether or not it may be",
           "[fill][chart]") {
   std::vector<tf::point<tier_real, 3>> loop{{-10.0, 0.0, 0.0},
                                             {10.0, 0.0, 0.0}};
@@ -318,17 +318,17 @@ TEST_CASE("fill: a rim the table spans only by a protection split refuses "
   const auto split = tf::fill_holes(mesh.polygons(), rims, config);
   REQUIRE(split.status[0] == tf::hole_fill_status::filled);
   REQUIRE(split.charted[0] == tf::hole_chart_status::folded);
-  REQUIRE(split.splits.size() > 0);
+  REQUIRE(split.splits.size() == 0);
   const auto filled = tf::make_filled_mesh(mesh.polygons(), split);
   REQUIRE(tf::is_manifold(filled.polygons()));
 
   config.split_rim = false;
   const auto strict = tf::fill_holes(mesh.polygons(), rims, config);
-  REQUIRE(strict.status[0] == tf::hole_fill_status::refused_rim_split);
-  REQUIRE(strict.offending[0][0] == 0);
-  REQUIRE(strict.offending[0][1] == 0);
-  REQUIRE(strict.triangles[0].size() == 0);
+  REQUIRE(strict.status[0] == tf::hole_fill_status::filled);
+  REQUIRE(strict.offending[0][0] == -1);
+  REQUIRE(strict.offending[0][1] == -1);
   REQUIRE(strict.splits.size() == 0);
+  REQUIRE(strict.triangles[0].size() == split.triangles[0].size());
 }
 
 namespace {

@@ -14,18 +14,20 @@
 #include "../../tetrahedralization_refusal.hpp"
 #include "./advance_tet_name.hpp"
 #include "./clear_tetrahedralization_cells.hpp"
-#include "./encode_tet_site_band.hpp"
-#include "./measure_tet_site_domain.hpp"
-#include "./tet_site_priority.hpp"
+#include "./state_tet_deep_site.hpp"
+#include "./tet_ingested_position.hpp"
 #include <cstddef>
 #include <cstdint>
 
 namespace tf::topology::cdt::dt3 {
 
+/// Enter `sites` into the lane and the input map, each standing where
+/// @ref tet_ingested_position places it: its floor in the lane, its row
+/// where it stands below the frame (@ref state_tet_deep_site).
 template <bool Parallel, typename Owner, typename Sites>
 auto prepare_appended_tet_sites(Owner &owner, const Sites &sites) -> bool {
   using Index = typename Owner::index_type;
-  const auto count = sites.size(), first = owner._sites.size();
+  const auto count = sites.size(), first = owner._floors.size();
   const auto input = owner._index_map.f().size();
   if (count > std::size_t(Owner::max_sites) - first ||
       count > std::size_t(Owner::max_sites) - input) {
@@ -37,19 +39,17 @@ auto prepare_appended_tet_sites(Owner &owner, const Sites &sites) -> bool {
   owner._index_map.f().reallocate(input + count);
   owner._index_map.kept_ids().reallocate(first + count);
   for (std::size_t i = 0; i < count; ++i) {
-    owner._sites.push_back(sites[i]);
-    owner._next_name = advance_tet_name(owner._next_name, sites[i].id);
+    const auto &site = sites[i];
+    const auto position = tet_ingested_position(site);
+    owner._floors.push_back({site.id, position.floor});
+    state_tet_deep_site(owner, Index(site.id), position);
+    owner._next_name = advance_tet_name(owner._next_name, site.id);
     owner._order[i] = Index(first + i);
     owner._index_map.f()[input + i] = Index(first + i);
     owner._index_map.kept_ids()[first + i] = Index(input + i);
   }
-  owner._priorities.reallocate(owner._sites.size());
-  for (std::size_t i = first; i < owner._sites.size(); ++i)
-    owner._priorities[i] = tet_site_priority(std::uint64_t(owner._sites[i].id));
-  owner._domain =
-      owner._domain.merged(measure_tet_site_domain<Parallel>(owner, first));
-  encode_tet_site_band<Parallel>(owner, first, owner._sites.size(),
-                                 owner._domain);
+  if (owner._record_site_cells)
+    owner._site_cells.resize(owner._floors.size(), Owner::none);
   return true;
 }
 

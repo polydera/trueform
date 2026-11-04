@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "./clear_tet_cavity_links.hpp"
 
 namespace tf::topology::cdt::dt3 {
 
@@ -21,9 +22,11 @@ auto clear_tetrahedralization_cells(Owner &owner) -> void {
   owner._corners.clear();
   owner._neighbors.clear();
   owner._states.clear();
+  owner._protected_slots.clear();
   owner._cavity.clear();
   owner._boundary.clear();
-  owner._sides.clear();
+  owner._rows.clear();
+  clear_tet_cavity_links(owner._links);
   owner._hint = Index(0);
   owner._n_dead = 0;
   owner._n_finite = 0;

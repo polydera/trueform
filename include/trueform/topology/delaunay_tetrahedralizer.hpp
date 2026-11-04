@@ -15,10 +15,6 @@
 #include "../core/none.hpp"
 #include "../core/points.hpp"
 #include "../core/range.hpp"
-#include "../core/tetras.hpp"
-#include "../core/views/blocked_range.hpp"
-#include "../core/views/mapped_range.hpp"
-#include "../core/views/take.hpp"
 #include "../exact/int32.hpp"
 #include "../exact/resolve_int_type.hpp"
 #include "../exact/vertex.hpp"
@@ -30,9 +26,11 @@
 #include "./cdt/dt3/clear_tet_claim_workspace.hpp"
 #include "./cdt/dt3/clear_tetrahedralization.hpp"
 #include "./cdt/dt3/tet_claim_workspace.hpp"
+#include "./cdt/dt3/tet_owner_view.hpp"
 #include "./cdt/dt3/tetrahedralization_owner.hpp"
 #include "./tetrahedralization_refusal.hpp"
 #include "./tetrahedralization_stats.hpp"
+#include <array>
 #include <cstddef>
 #include <type_traits>
 #include <utility>
@@ -71,6 +69,10 @@ class delaunay_tetrahedralizer {
                      tf::topology::cdt::dt3::tet_claim_workspace<Index>,
                      tf::none_t>
       _workspace;
+
+  auto published() const {
+    return tf::topology::cdt::dt3::tet_owner_view<decltype(_owner)>(_owner);
+  }
 
   template <typename Sites> auto build_sites(const Sites &sites) -> bool {
     if constexpr (ExecutionPolicy::parallel)
@@ -122,11 +124,46 @@ public:
 
   /// Append distinct prepared sites with fresh names after a successful build.
   /// Site slots stay fixed; input-map slots append in input order. Position
-  /// and name admission belong to the supplying recovery operation.
+  /// and name admission belong to the supplying recovery operation. A site
+  /// whose cavity would wrap a facet a constraint operation protects is
+  /// withdrawn: its input slot maps to @ref k_none and the slots after it in
+  /// the call close up.
   template <typename Sites> auto append_sites(const Sites &sites) -> bool {
     return tf::topology::cdt::dt3::append_tetrahedralization_sites<
         ExecutionPolicy::parallel>(_owner, sites, _workspace);
   }
+
+  /// Append as above, serially in the canonical order, withdrawing a site
+  /// whenever `keep(owner, i)`, read just before site `i` of `sites` would be
+  /// inserted, answers false: the recovery operation's own lazy test.
+  template <typename Sites, typename Keep>
+  auto append_sites(const Sites &sites, const Keep &keep) -> bool {
+    return tf::topology::cdt::dt3::append_tetrahedralization_sites<
+        ExecutionPolicy::parallel>(_owner, sites, _workspace, keep);
+  }
+
+  /// The owner itself, for the flips a recovery makes on its lanes.
+  auto owner() -> tf::topology::cdt::dt3::tetrahedralization_owner<Index, Coord,
+                                                                 Int> & {
+    return _owner;
+  }
+  auto owner() const
+      -> const tf::topology::cdt::dt3::tetrahedralization_owner<Index, Coord,
+                                                                 Int> & {
+    return _owner;
+  }
+
+  /// Whether appends record the edges their cavities take — the dirty set
+  /// a recovery operation reads — and the edges recorded since the last
+  /// clear, each its corner slots ascending.
+  auto record_killed_edges(bool on) -> void {
+    _owner._record_killed = on;
+    _owner._killed.clear();
+  }
+  auto killed_edges() const -> const tf::buffer<std::array<Index, 2>> & {
+    return _owner._killed;
+  }
+  auto clear_killed_edges() -> void { _owner._killed.clear(); }
 
   /// Why the last build or append published no cells.
   auto refusal() const -> tf::tetrahedralization_refusal {
@@ -139,36 +176,26 @@ public:
   }
 
   /// The finite cells, four site slots each.
-  auto n_tets() const -> std::size_t { return _owner._n_finite; }
+  auto n_tets() const -> std::size_t { return published().n_tets(); }
 
-  auto tets() const {
-    return tf::make_tetras(
-        tf::take(_owner._corners.data_buffer(), _owner._n_finite * 4));
-  }
+  auto tets() const { return published().tets(); }
 
   /// Per finite cell, the cell across the facet opposite each corner, or
   /// @ref k_none where that facet is on the convex hull.
-  auto neighbors() const {
-    const Index finite = Index(_owner._n_finite);
-    Index boundary = k_none;
-    return tf::make_blocked_range<4>(tf::make_mapped_range(
-        tf::take(_owner._neighbors.data_buffer(), _owner._n_finite * 4),
-        [finite, boundary](Index cell) {
-          return cell < finite ? cell : boundary;
-        }));
-  }
+  auto neighbors() const { return published().neighbors(); }
 
   /// The welded build sites followed by admitted appended sites.
-  auto n_sites() const -> std::size_t { return _owner._sites.size(); }
+  auto n_sites() const -> std::size_t { return published().n_sites(); }
 
-  auto sites() const { return tf::make_range(_owner._sites); }
+  auto sites() const { return published().sites(); }
 
   /// The first name above every site's, from which sites minted for an
   /// append take fresh names.
-  auto next_name() const -> std::size_t { return _owner._next_name; }
+  auto next_name() const -> std::size_t { return published().next_name(); }
 
-  /// `f()[input]` is the site an input slot welded onto, `kept_ids()[site]`
-  /// the input slot retained for that site's canonical name.
+  /// `f()[input]` is the site an input slot welded onto, or @ref k_none for
+  /// a withdrawn append, `kept_ids()[site]` the input slot retained for that
+  /// site's canonical name.
   auto index_map() const -> const tf::index_map_buffer<Index> & {
     return _owner._index_map;
   }

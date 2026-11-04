@@ -12,13 +12,16 @@
  */
 #pragma once
 #include <array>
+#include <cstdint>
 
 namespace tf::topology::cdt::dt3 {
 
-/// A finite cell's corner slots in ascending order, paired with its row.
+/// A finite cell's corners in ascending order, paired with its row and the
+/// slot order it is published in (@ref canonical_tet_slots).
 template <typename Index> struct tet_cell_key {
   std::array<Index, 4> corners;
   Index row;
+  std::uint8_t slots;
 };
 
 } // namespace tf::topology::cdt::dt3

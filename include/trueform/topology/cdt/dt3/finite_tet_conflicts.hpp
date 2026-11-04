@@ -11,7 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../../exact/insphere.hpp"
+#include "./tet_insphere_conflict_sites.hpp"
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
@@ -21,12 +21,8 @@ template <typename Owner>
 auto finite_tet_conflicts(const Owner &owner, typename Owner::index_type tet,
                           typename Owner::index_type site) -> bool {
   const auto corners = owner._corners[std::size_t(tet)];
-  return tf::exact::insphere_conflict_scaled<typename Owner::int_type>(
-      owner._sites[std::size_t(corners[0])],
-      owner._sites[std::size_t(corners[1])],
-      owner._sites[std::size_t(corners[2])],
-      owner._sites[std::size_t(corners[3])], owner._sites[std::size_t(site)],
-      1);
+  return tet_insphere_conflict_sites(owner, corners[0], corners[1], corners[2],
+                                     corners[3], site);
 }
 
 } // namespace tf::topology::cdt::dt3

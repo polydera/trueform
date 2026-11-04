@@ -16,22 +16,27 @@
 #include "./compact_tetrahedralization.hpp"
 #include "./insert_tetrahedralization_site.hpp"
 #include "./publish_tet_claim_states.hpp"
-#include "./tet_cavity_edge_table.hpp"
 #include "./tet_claim_workspace.hpp"
+#include "./tet_insertion.hpp"
 
 namespace tf::topology::cdt::dt3 {
 
 template <typename Owner, typename Index>
 auto finish_tet_claims(Owner &owner, tet_claim_workspace<Index> &work) -> bool {
   publish_tet_claim_states(owner, work);
+  for (auto &killed : work.killed) {
+    for (const auto &edge : killed)
+      owner._killed.push_back(edge);
+    killed.clear();
+  }
   if (work.tail.size() == 0) {
     compact_tetrahedralization<true, true>(owner);
     return true;
   }
   compact_tetrahedralization<true>(owner);
-  tet_cavity_edge_table<Index> edges{};
   for (auto site : work.tail) {
-    if (!insert_tetrahedralization_site(owner, site, edges)) {
+    if (insert_tetrahedralization_site(owner, site) !=
+        tet_insertion::placed) {
       clear_tetrahedralization_cells(owner);
       owner._refusal = tf::tetrahedralization_refusal::index_capacity;
       return false;

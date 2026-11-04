@@ -17,7 +17,9 @@
 #include "./compact_tetrahedralization.hpp"
 #include "./insert_tetrahedralization_site.hpp"
 #include "./prepare_tetrahedralization.hpp"
-#include "./tet_cavity_edge_table.hpp"
+#include "./tet_execution_tuning.hpp"
+#include "./tet_insertion.hpp"
+#include "./tet_site_position.hpp"
 #include "./tetrahedralization_owner.hpp"
 #include <array>
 #include <cstddef>
@@ -34,14 +36,19 @@ auto build_tetrahedralization(Owner &owner, const Sites &sites) -> bool {
 
   const std::array<Index, 4> seeded{owner._corners[0][0], owner._corners[0][1],
                                     owner._corners[0][2], owner._corners[0][3]};
-  if (owner._sites.size() > seeded.size()) {
-    tet_cavity_edge_table<Index> edges{};
+  if (tet_site_count(owner) > seeded.size()) {
+    const std::size_t rows =
+        tet_execution_tuning::reserve_per_site * tet_site_count(owner);
+    owner._corners.reserve(rows);
+    owner._neighbors.reserve(rows);
+    owner._states.reserve(rows);
     for (std::size_t i = 0; i < owner._order.size(); ++i) {
       const Index site = owner._order[i];
       if (site == seeded[0] || site == seeded[1] || site == seeded[2] ||
           site == seeded[3])
         continue;
-      if (!insert_tetrahedralization_site(owner, site, edges)) {
+      if (insert_tetrahedralization_site(owner, site) !=
+          tet_insertion::placed) {
         clear_tetrahedralization_cells(owner);
         owner._refusal = tf::tetrahedralization_refusal::index_capacity;
         return false;

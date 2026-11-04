@@ -11,8 +11,8 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../../exact/orient3d.hpp"
 #include "./finite_tet_conflicts.hpp"
+#include "./tet_orient3d_sites.hpp"
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
@@ -28,11 +28,7 @@ auto tet_conflicts(const Owner &owner, typename Owner::index_type tet,
   if (corners[3] != Owner::infinite)
     return finite_tet_conflicts(owner, tet, site);
   const auto visibility =
-      tf::exact::orient3d_value_scaled<typename Owner::int_type>(
-          owner._sites[std::size_t(corners[0])].pt,
-          owner._sites[std::size_t(corners[1])].pt,
-          owner._sites[std::size_t(corners[2])].pt,
-          owner._sites[std::size_t(site)].pt);
+      tet_orient3d_sites(owner, corners[0], corners[1], corners[2], site);
   if (visibility != 0)
     return visibility > 0;
   const auto mate = owner._neighbors[std::size_t(tet)][3];

@@ -24,6 +24,12 @@ struct tetrahedralization_stats {
   std::size_t insertions = 0;
   /// How often the dead slots were swept away.
   std::size_t compactions = 0;
+  /// Facets flipped 2-3 by a recovery.
+  std::size_t flips = 0;
+  /// Edges flipped 3-2 by a recovery.
+  std::size_t edge_flips = 0;
+  /// Edges flipped 4-4 by a recovery.
+  std::size_t quad_flips = 0;
   /// Spatial insertion bands processed concurrently.
   std::size_t parallel_bands = 0;
   /// Sites committed by concurrent streams.
