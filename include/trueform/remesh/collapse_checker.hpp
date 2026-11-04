@@ -38,7 +38,7 @@ namespace tf {
 /// Use make_collapse_checker to construct from scalars, callables, or none.
 ///
 /// The check_normals runtime flag adds the per-face old-vs-new normal-flip
-/// guard (CGAL's Bounded_normal_change) on top of the always-on dihedral fold
+/// guard on top of the always-on dihedral fold
 /// check.
 template <typename MinQualityFn, typename EdgeLengthFn>
 struct collapse_checker {
@@ -88,8 +88,8 @@ struct collapse_checker {
 ///   - a scalar (int, float, double, ...) — constant threshold for all edges
 ///   - a callable (half_edges, points, edge_handle) → Real — per-edge threshold
 /// @param check_normals When true, the checker also rejects collapses that
-///                    invert any surviving face's normal (CGAL
-///                    Bounded_normal_change). Runtime flag, default false.
+///                    invert any surviving face's normal. Runtime flag,
+///                    default false.
 template <typename Real, typename MQ = const tf::none_t &,
           typename EL = const tf::none_t &>
 auto make_collapse_checker(MQ &&min_quality = tf::none,

@@ -19,9 +19,10 @@ namespace tf {
 /// @ingroup topology_connectivity
 /// @brief Represents a half-edge in a half-edge data structure.
 ///
-/// Each half-edge stores its face, the vertex it originates from,
-/// and the handle of the next half-edge. Sentinel values encode boundary,
-/// non-manifold, and orientation fault states.
+/// Each half-edge stores its face, the vertex it originates from, and the
+/// handles of the next and previous half-edges of its loop: `prev` is
+/// `next`'s inverse, and `no_id` in either names no neighbour. Sentinel
+/// values encode boundary, non-manifold, and orientation fault states.
 ///
 /// Opposite half-edges are stored at adjacent indices (index XOR 1).
 ///

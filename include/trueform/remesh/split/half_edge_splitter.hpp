@@ -53,7 +53,6 @@ public:
     Index n_original_pts = Index(point_data.size());
     compute_edge_into_split_point_map(point_data, he, handler,
                                       preserve_boundary);
-    _previous_boundary_edge.allocate(he.half_edges_buffer().size() / 2);
     Index n_polys = build_half_edges_from_map(
         he, he.face_half_edge_handles(), n_original_pts);
     write_computed_halfedges(he);
@@ -86,7 +85,6 @@ public:
     _inner_half_edges.clear();
     _edge_to_point_map.clear();
     _point_data.clear();
-    _previous_boundary_edge.clear();
     _parent_face_for_new.clear();
     _parent_edge_for_new.clear();
   }
@@ -288,7 +286,7 @@ private:
           auto eh = he.edge_handle(tf::unsafe, next_heh);
           if (_edge_to_point_map[eh.id()] == clean)
             return;
-          he.half_edge(heh).next = _previous_boundary_edge[eh.id()];
+          he.half_edge(heh).next = he.half_edge(next_heh).prev;
         });
   }
 
@@ -359,10 +357,9 @@ private:
           he.half_edge(opposite_of_left);
       _outer_half_edges[opposite_of_right.id()].next =
           opposite_of_left.id();
-      _previous_boundary_edge[he.edge_handle(tf::unsafe, opposite_of_left)
-                                  .id()] =
-          opposite_of_right.id() + n_original_half_edges;
       he.half_edge(opposite_of_left).vertex = _edge_to_point_map[eh.id()];
+      he.half_edge(opposite_of_left).prev =
+          opposite_of_right.id() + n_original_half_edges;
     }
   }
 
@@ -566,7 +563,6 @@ private:
   tf::buffer<he_t> _inner_half_edges;
   tf::points_buffer<Real, Dims> _point_data;
   tf::buffer<Index> _edge_to_point_map;
-  tf::buffer<Index> _previous_boundary_edge;
   tf::buffer<Index> _parent_face_for_new;  // length = n_new_faces
   tf::buffer<Index> _parent_edge_for_new;  // length = n_new_edges (= n_midpoints)
 };

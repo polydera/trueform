@@ -278,8 +278,8 @@ auto is_collapse_allowed(const tf::half_edges<Index> &he,
 ///
 /// @param check_normals When true, additionally reject the collapse if ANY
 ///                      surviving face's normal inverts (its post-collapse
-///                      normal opposes its pre-collapse normal, dot <= 0). This
-///                      is CGAL's Bounded_normal_change guard. Unlike the
+///                      normal opposes its pre-collapse normal, dot <= 0).
+///                      Unlike the
 ///                      dihedral test (adjacent NEW faces vs each other), this
 ///                      compares each face's OLD vs NEW normal, so it catches a
 ///                      COHERENT inversion of a whole 1-ring fan that the
@@ -460,7 +460,7 @@ auto is_collapse_allowed_dihedral(
       return false;
 
     if (check_normals) {
-      // Per-face old-vs-new normal (CGAL Bounded_normal_change). The new face is
+      // Per-face old-vs-new normal. The new face is
       // (pt, link[i], link[nxt]) with normal n2; its OLD form is
       // (center, link[i], link[nxt]) where center is the original ring owner --
       // a real old face only when both link vertices come from the same ring.

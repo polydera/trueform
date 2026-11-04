@@ -19,6 +19,7 @@
 #include "../core/algorithm/mask_to_index_map.hpp"
 #include "../core/algorithm/parallel_fill.hpp"
 #include "../core/algorithm/parallel_for_each.hpp"
+#include "../core/config/verify.hpp"
 #include "../core/index_map.hpp"
 #include "../core/polygons.hpp"
 #include "../core/views/mapped_range.hpp"
@@ -26,6 +27,7 @@
 #include "./half_edges_like.hpp"
 #include "./make_face_membership.hpp"
 #include "./policy/face_membership.hpp"
+#include "./structures/assert_half_edge_links_are_inverse.hpp"
 #include "./structures/compute_half_edges.hpp"
 #include "./structures/half_edges_buffers.hpp"
 
@@ -195,6 +197,8 @@ private:
   }
 
   auto build_handle_buffers(Index n_faces, Index n_verts) -> void {
+    if constexpr (tf::core::verification)
+      tf::topology::assert_half_edge_links_are_inverse(this->_half_edges);
     this->_n_faces = n_faces;
     this->_n_vertices = n_verts;
     this->_face_half_edges.allocate(n_faces);

@@ -243,6 +243,81 @@ TEST_CASE("isotropicRemeshed with preserveBoundary",
 }
 
 namespace {
+// The live half-edges whose loop links do not name them back, a link into a
+// removed slot or past the buffer included.
+std::size_t count_one_way_links(const tf::half_edges<int> &he) {
+  const auto &hes = he.half_edges_buffer();
+  const int n = int(hes.size());
+  std::size_t count = 0;
+  for (int id = 0; id < n; ++id) {
+    const auto &h = hes[id];
+    if (h.is_removed())
+      continue;
+    bool next_broken =
+        h.has_next() &&
+        (h.next >= n || hes[h.next].is_removed() || hes[h.next].prev != id);
+    bool prev_broken =
+        h.prev >= 0 &&
+        (h.prev >= n || hes[h.prev].is_removed() || hes[h.prev].next != id);
+    count += (next_broken || prev_broken) ? 1 : 0;
+  }
+  return count;
+}
+
+std::size_t count_boundary_half_edges(const tf::half_edges<int> &he) {
+  std::size_t n = 0;
+  for (const auto &h : he.half_edges_buffer())
+    n += h.is_boundary() ? 1 : 0;
+  return n;
+}
+} // namespace
+
+TEST_CASE("split_long_edges links a split boundary both ways",
+          "[remesh][split]") {
+  // The length-2 sides split and the length-1 sides do not.
+  auto plane = tf::make_plane_mesh(10.0f, 10.0f, 5, 10);
+  tf::half_edges<int> he(plane.polygons());
+  int n_points = int(plane.points().size());
+  int n_edges = int(he.half_edges_buffer().size() / 2);
+  auto n_boundary = count_boundary_half_edges(he);
+  tf::split_long_edges(he, plane.points(), 1.5f, /*preserve_boundary=*/false);
+
+  SECTION("the split boundary") {
+    auto n_split = count_boundary_half_edges(he);
+    REQUIRE(n_split > n_boundary);
+    REQUIRE(n_split < 2 * n_boundary);
+    REQUIRE(count_one_way_links(he) == 0);
+  }
+
+  SECTION("a cut boundary edge collapses through its back link") {
+    // A cut edge keeps its face side on the original vertex and moves its
+    // boundary side onto the minted midpoint.
+    tf::buffer<int> ring;
+    int cut = -1;
+    for (int e = 0; e < n_edges && cut < 0; ++e) {
+      const auto &moved = he.half_edges_buffer()[2 * e + 1];
+      if (moved.is_boundary() && moved.vertex >= n_points &&
+          he.is_collapse_ok(tf::edge_handle<int>{e}, ring))
+        cut = e;
+    }
+    REQUIRE(cut >= 0);
+    he.collapse(tf::edge_handle<int>{cut});
+    REQUIRE(count_one_way_links(he) == 0);
+  }
+}
+
+TEST_CASE("isotropicRemeshed (open sheet -boundary not preserved)",
+          "[remesh][isotropic]") {
+  auto plane = tf::make_plane_mesh(10.0f, 10.0f, 5, 10);
+  tf::isotropic_remesh_config<float> config(1.0f);
+  config.preserve_boundary = false;
+  config.check_normals = true;
+  auto [rem, he] = tf::isotropic_remeshed(plane.polygons(), config);
+  REQUIRE(tf::is_manifold(rem.polygons()));
+  REQUIRE(tf::euler_characteristic(rem.polygons()) == 1);
+}
+
+namespace {
 // Forward+reverse round-trip of an original->new vertex index map: every kept
 // vertex inverts cleanly, and every surviving original maps back to itself.
 template <typename Map>
