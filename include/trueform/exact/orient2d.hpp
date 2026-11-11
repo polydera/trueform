@@ -52,7 +52,7 @@ template <typename Int>
 auto orient2d_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c)
     -> int {
   if constexpr (float_filter_sound && !std::is_same_v<Int, int32>) {
-    const int filtered = orient2d_filter_sign<Int>(a, b, c);
+    const int filtered = orient2d_filter_sign(a, b, c);
     if (filtered)
       return filtered;
   }

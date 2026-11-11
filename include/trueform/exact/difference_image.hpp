@@ -25,25 +25,29 @@ enum class difference_image_kind : std::uint8_t {
   exact    ///< The image is the difference itself.
 };
 
-/// The double image of `a - b`, formed from the exact difference.
+/// The double image of `a - b`, formed from the exact difference through
+/// the coordinates' two's-complement pattern (@ref
+/// tf::exact::bits::bit_pattern).
 ///
-/// A native coordinate of at most 64 bits forms its difference natively —
-/// the 64-bit difference wrap-free through its unsigned pattern, refused
-/// where it overflows — and converts it in hardware, which rounds to
-/// nearest; below 2^52 in magnitude the image is the difference itself. A
-/// wider coordinate forms it in `Wide`, which must hold every difference of
-/// two of them, and states only an exact image. Every route states the same
-/// image for the same difference, so a filter reading it decides the same
-/// way whichever formed it.
-template <typename Wide, typename Coord>
+/// A built-in coordinate of at most 32 bits forms its difference in 64 bits,
+/// where it is exact. Every wider one — 64-bit, and the 128-bit type whether
+/// the compiler's own or the portable class — forms it wrap-free through its
+/// unsigned pattern, refused where it overflows, and converts it rounded
+/// once to nearest; below 2^52 in magnitude the image is the difference
+/// itself, at and above it the difference rounded. Every route states the
+/// same kind and the same image for the same pair of coordinates, so a
+/// filter reading it decides the same way whichever formed it.
+template <typename Coord>
 auto difference_image(const Coord &a, const Coord &b, double &image)
     -> difference_image_kind {
+  static_assert(bits::has_bit_pattern<Coord>,
+                "a difference is formed through its two's-complement pattern");
   if constexpr (std::is_integral_v<Coord> &&
                 sizeof(Coord) <= sizeof(std::int32_t)) {
     image = double(std::int64_t(a) - std::int64_t(b));
     return difference_image_kind::exact;
-  } else if constexpr (std::is_integral_v<Coord>) {
-    using U = std::make_unsigned_t<Coord>;
+  } else {
+    using U = typename bits::bit_pattern<Coord>::type;
     const Coord difference = bits::signed_value<Coord>(U(U(a) - U(b)));
     if (((a ^ b) & (a ^ difference)) < Coord(0))
       return difference_image_kind::refused;
@@ -52,13 +56,6 @@ auto difference_image(const Coord &a, const Coord &b, double &image)
     return difference > -limit && difference < limit
                ? difference_image_kind::exact
                : difference_image_kind::rounded;
-  } else {
-    const Wide difference = Wide(a) - Wide(b);
-    const Wide limit = Wide(1) << 52;
-    if (!(difference > -limit && difference < limit))
-      return difference_image_kind::refused;
-    image = double(difference);
-    return difference_image_kind::exact;
   }
 }
 

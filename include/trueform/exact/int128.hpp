@@ -12,8 +12,9 @@
  */
 #pragma once
 
-#include <cstdint>
+#include "./bits/rounded_real.hpp"
 #include "./wide_from_double.hpp"
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
@@ -172,11 +173,14 @@ public:
     return static_cast<T>(_lo);
   }
 
-  // Full 128-bit value as double via 64-bit limb split (the integral
-  // operator above only keeps the low limb). Native __int128 on clang/gcc
-  // converts directly; this matches it for the MSVC fallback class.
+  /// Rounded once, as the native conversion rounds it
+  /// (@ref tf::exact::bits::rounded_real).
   explicit operator double() const noexcept {
-    return double(_hi) * 18446744073709551616.0 /* 2^64 */ + double(_lo);
+    return bits::rounded_real<double, 128>(*this, _bit_width(*this));
+  }
+
+  explicit operator float() const noexcept {
+    return bits::rounded_real<float, 128>(*this, _bit_width(*this));
   }
 
   constexpr explicit operator bool() const noexcept {
@@ -428,15 +432,17 @@ public:
     return static_cast<T>(_lo);
   }
 
-  // Full signed 128-bit value as double: negate to the magnitude (exact
-  // two's-complement negate), limb-split, restore the sign. Matches native
-  // __int128's conversion used on clang/gcc.
+  /// The magnitude's conversion (@ref uint128), signed.
   explicit operator double() const noexcept {
-    if ((_hi >> 63) != 0) {
-      const int128 m = -*this;
-      return -(double(m._hi) * 18446744073709551616.0 /* 2^64 */ + double(m._lo));
-    }
-    return double(_hi) * 18446744073709551616.0 + double(_lo);
+    if (_negative())
+      return -double(uint128(-*this));
+    return double(uint128(*this));
+  }
+
+  explicit operator float() const noexcept {
+    if (_negative())
+      return -float(uint128(-*this));
+    return float(uint128(*this));
   }
 
   constexpr explicit operator bool() const noexcept {

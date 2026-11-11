@@ -12,7 +12,6 @@
  */
 #pragma once
 #include "../difference_image.hpp"
-#include "../meta.hpp"
 #include "../vertex.hpp"
 
 namespace tf::exact::incircle {
@@ -32,20 +31,16 @@ namespace tf::exact::incircle {
 /// the at most seven roundings of a monomial's path through the computed
 /// permanent, so the total error stays below (14 + 156 eps) eps times the
 /// computed permanent plus terms of order eps^3, and (14 + 512 eps) eps is
-/// the coefficient stated. A difference the native width cannot form is
+/// the coefficient stated. A difference the coordinate cannot hold is
 /// refused. The bound holds where @ref tf::exact::float_filter_sound does.
-template <typename Int, typename Coord>
+template <typename Coord>
 auto filter_sign(const pt2<Coord> &a, const pt2<Coord> &b, const pt2<Coord> &c,
                  const pt2<Coord> &d) -> int {
-  using T1 = typename meta<Int>::T1;
   double adx, ady, bdx, bdy, cdx, cdy;
   const difference_image_kind kinds[6] = {
-      difference_image<T1>(a[0], d[0], adx),
-      difference_image<T1>(a[1], d[1], ady),
-      difference_image<T1>(b[0], d[0], bdx),
-      difference_image<T1>(b[1], d[1], bdy),
-      difference_image<T1>(c[0], d[0], cdx),
-      difference_image<T1>(c[1], d[1], cdy)};
+      difference_image(a[0], d[0], adx), difference_image(a[1], d[1], ady),
+      difference_image(b[0], d[0], bdx), difference_image(b[1], d[1], bdy),
+      difference_image(c[0], d[0], cdx), difference_image(c[1], d[1], cdy)};
   bool rounded = false;
   for (const auto kind : kinds) {
     if (kind == difference_image_kind::refused)

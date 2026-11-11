@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include "./bits/rounded_real.hpp"
 #include "./int128.hpp"
 #include "./wide_from_double.hpp"
 
@@ -86,66 +87,33 @@ private:
     return int256(lo_lo, lo_hi + cross);
   }
 
+  static auto _word_bits(std::uint64_t word) -> unsigned {
+#if defined(__GNUC__) || defined(__clang__)
+    return 64u - static_cast<unsigned>(__builtin_clzll(word));
+#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_ARM64))
+    unsigned long index;
+    _BitScanReverse64(&index, word);
+    return static_cast<unsigned>(index) + 1u;
+#else
+    unsigned n = 0;
+    while ((word >>= 1) != 0)
+      ++n;
+    return n + 1u;
+#endif
+  }
+
   static auto _bit_width(const int256 &v) -> unsigned {
     if (v._hi != 0) {
-      auto h = static_cast<std::uint64_t>(v._hi >> 64);
-      if (h != 0) {
-#if defined(__GNUC__) || defined(__clang__)
-        return 192u + 64u - static_cast<unsigned>(__builtin_clzll(h));
-#elif defined(_MSC_VER)
-        unsigned long idx;
-        _BitScanReverse64(&idx, h);
-        return 192u + idx + 1u;
-#else
-        unsigned n = 0;
-        while ((h >>= 1) != 0)
-          ++n;
-        return 192u + n + 1u;
-#endif
-      }
-      auto l = static_cast<std::uint64_t>(v._hi);
-#if defined(__GNUC__) || defined(__clang__)
-      return 128u + 64u - static_cast<unsigned>(__builtin_clzll(l));
-#elif defined(_MSC_VER)
-      unsigned long idx;
-      _BitScanReverse64(&idx, l);
-      return 128u + idx + 1u;
-#else
-      unsigned n = 0;
-      while ((l >>= 1) != 0)
-        ++n;
-      return 128u + n + 1u;
-#endif
+      const auto high = static_cast<std::uint64_t>(v._hi >> 64);
+      if (high != 0)
+        return 192u + _word_bits(high);
+      return 128u + _word_bits(static_cast<std::uint64_t>(v._hi));
     }
     if (v._lo != 0) {
-      auto h = static_cast<std::uint64_t>(v._lo >> 64);
-      if (h != 0) {
-#if defined(__GNUC__) || defined(__clang__)
-        return 64u + 64u - static_cast<unsigned>(__builtin_clzll(h));
-#elif defined(_MSC_VER)
-        unsigned long idx;
-        _BitScanReverse64(&idx, h);
-        return 64u + idx + 1u;
-#else
-        unsigned n = 0;
-        while ((h >>= 1) != 0)
-          ++n;
-        return 64u + n + 1u;
-#endif
-      }
-      auto l = static_cast<std::uint64_t>(v._lo);
-#if defined(__GNUC__) || defined(__clang__)
-      return 64u - static_cast<unsigned>(__builtin_clzll(l));
-#elif defined(_MSC_VER)
-      unsigned long idx;
-      _BitScanReverse64(&idx, l);
-      return idx + 1u;
-#else
-      unsigned n = 0;
-      while ((l >>= 1) != 0)
-        ++n;
-      return n + 1u;
-#endif
+      const auto high = static_cast<std::uint64_t>(v._lo >> 64);
+      if (high != 0)
+        return 64u + _word_bits(high);
+      return _word_bits(static_cast<std::uint64_t>(v._lo));
     }
     return 0;
   }
@@ -257,6 +225,11 @@ public:
       : _lo(static_cast<limb_type>(v)),
         _hi(v < 0 ? ~limb_type(0) : limb_type(0)) {}
 
+  /// Zero-extended whichever 128-bit type is selected, as the native
+  /// unsigned type converts: through the signed overload a set top bit would
+  /// sign-extend.
+  constexpr int256(tf::exact::uint128 v) noexcept : _lo(v), _hi(limb_type(0)) {}
+
   /// The integer part of `v`, as the native cast forms it
   /// (@ref tf::exact::wide_from_double).
   explicit int256(double v) noexcept : int256(wide_from_double<int256>(v)) {}
@@ -288,17 +261,12 @@ public:
   [[nodiscard]] constexpr auto lo() const noexcept -> limb_type { return _lo; }
   [[nodiscard]] constexpr auto hi() const noexcept -> limb_type { return _hi; }
 
-  // Full signed 256-bit value as double: split into two uint128 limbs (each
-  // converted via uint128's operator double()), scaled by 2^128; negate to the
-  // magnitude first and restore the sign.
+  /// Rounded once (@ref tf::exact::bits::rounded_real), signed.
   explicit operator double() const noexcept {
-    constexpr double k_2pow128 =
-        18446744073709551616.0 * 18446744073709551616.0; // (2^64)^2
-    if (is_negative()) {
-      const int256 m = -*this;
-      return -(double(m.hi()) * k_2pow128 + double(m.lo()));
-    }
-    return double(hi()) * k_2pow128 + double(lo());
+    const int256 magnitude = _abs(*this);
+    const double at =
+        bits::rounded_real<double, 256>(magnitude, _bit_width(magnitude));
+    return is_negative() ? -at : at;
   }
 
   friend constexpr auto operator==(const int256 &a, const int256 &b) noexcept

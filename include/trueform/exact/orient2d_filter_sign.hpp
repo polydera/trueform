@@ -12,7 +12,6 @@
  */
 #pragma once
 #include "./difference_image.hpp"
-#include "./meta.hpp"
 #include "./vertex.hpp"
 
 namespace tf::exact {
@@ -29,19 +28,16 @@ namespace tf::exact {
 /// at most the computed one over (1 - eps)^2 for the images and (1 - eps)^2
 /// for its own two roundings, so the total stays below (5 + 28 eps) eps
 /// times the computed permanent plus terms of order eps^3, and
-/// (5 + 64 eps) eps is the coefficient stated. A difference the native width
-/// cannot form is refused. The bound holds where
+/// (5 + 64 eps) eps is the coefficient stated. A difference the coordinate
+/// cannot hold is refused. The bound holds where
 /// @ref tf::exact::float_filter_sound does.
-template <typename Int, typename Coord>
+template <typename Coord>
 auto orient2d_filter_sign(const pt2<Coord> &a, const pt2<Coord> &b,
                           const pt2<Coord> &c) -> int {
-  using T1 = typename meta<Int>::T1;
   double bax, bay, cax, cay;
   const difference_image_kind kinds[4] = {
-      difference_image<T1>(b[0], a[0], bax),
-      difference_image<T1>(b[1], a[1], bay),
-      difference_image<T1>(c[0], a[0], cax),
-      difference_image<T1>(c[1], a[1], cay)};
+      difference_image(b[0], a[0], bax), difference_image(b[1], a[1], bay),
+      difference_image(c[0], a[0], cax), difference_image(c[1], a[1], cay)};
   bool rounded = false;
   for (const auto kind : kinds) {
     if (kind == difference_image_kind::refused)

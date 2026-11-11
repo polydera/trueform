@@ -10,6 +10,7 @@
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
+#include "uniform_draw.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/exact/insphere.hpp>
 #include <trueform/exact/insphere/filter_sign.hpp>
@@ -512,27 +513,25 @@ TEST_CASE("insphere: filtered signs agree with the full integer determinant",
   std::mt19937_64 generator(9302026);
   for (unsigned bits : {1u, 8u, 30u, 37u, 40u, 50u, 52u, 60u, 63u}) {
     const auto span = (std::int64_t(1) << (bits - 1)) - 1;
-    std::uniform_int_distribution<std::int64_t> coordinate(-span, span);
+    const auto coordinate = [&generator, span] {
+      return tf::test::uniform_int(generator, -span, span);
+    };
     std::size_t undecided = 0;
     for (std::size_t trial = 0; trial < 512; ++trial) {
       std::array<insphere_pt64, 5> points;
       for (auto &point : points)
-        point = insphere_pt64{coordinate(generator), coordinate(generator),
-                              coordinate(generator)};
+        point = insphere_pt64{coordinate(), coordinate(), coordinate()};
       const auto value = tf::exact::insphere_value_scaled<insphere_i64>(
           points[0], points[1], points[2], points[3], points[4]);
       const int expected = value > 0 ? 1 : value < 0 ? -1 : 0;
-      const int sign = tf::exact::insphere::filter_sign<insphere_i64>(
+      const int sign = tf::exact::insphere::filter_sign(
           points[0], points[1], points[2], points[3], points[4]);
       undecided += sign == 0;
       CAPTURE(bits, trial);
       REQUIRE((sign == 0 || sign == expected));
       if (bits <= 40) {
-        const int narrow = tf::exact::insphere::filter_sign<insphere_i32>(
-            points[0], points[1], points[2], points[3], points[4]);
         const auto exact = tf::exact::insphere_value_scaled<insphere_i32>(
             points[0], points[1], points[2], points[3], points[4]);
-        CHECK(narrow == sign);
         CHECK((exact > 0 ? 1 : exact < 0 ? -1 : 0) == expected);
       }
     }
@@ -556,9 +555,9 @@ TEST_CASE("insphere: filtering translates before conversion and defers ties",
   const int expected = tf::exact::insphere_sign<insphere_i64>(
       local[0], local[1], local[2], local[3], local[4]);
   REQUIRE(expected != 0);
-  CHECK(tf::exact::insphere::filter_sign<insphere_i64>(
-            translated[0], translated[1], translated[2], translated[3],
-            translated[4]) == expected);
+  CHECK(tf::exact::insphere::filter_sign(translated[0], translated[1],
+                                         translated[2], translated[3],
+                                         translated[4]) == expected);
   for (unsigned bits : {10u, 30u, 50u, 60u}) {
     const insphere_i64 length = insphere_i64(1) << bits;
     const insphere_pt64 a{0, 0, 0}, b{length, 0, 0}, c{0, length, 0},
@@ -568,12 +567,68 @@ TEST_CASE("insphere: filtering translates before conversion and defers ties",
       const auto value =
           tf::exact::insphere_value<insphere_i64>(a, b, c, d, query);
       const int exact = value > 0 ? 1 : value < 0 ? -1 : 0;
-      const int filtered =
-          tf::exact::insphere::filter_sign<insphere_i64>(a, b, c, d, query);
+      const int filtered = tf::exact::insphere::filter_sign(a, b, c, d, query);
       CAPTURE(bits, delta);
       CHECK((filtered == 0 || filtered == exact));
       if (delta == 0 || bits >= 50)
         CHECK(filtered == 0);
     }
+  }
+}
+
+TEST_CASE("insphere: the exact-difference filter answers the classified one "
+          "and never against the determinant",
+          "[exact][insphere][filter]") {
+  // Coordinates of at most 40 bits: every difference of two of them is
+  // exact in a double, which is the fact filter_sign<true> is given, so it
+  // forms its images as plain differences and classifies nothing.
+  std::mt19937_64 generator(11062026);
+  const auto coordinate = [&generator] {
+    constexpr std::int64_t span = (std::int64_t(1) << 39) - 1;
+    return tf::test::uniform_int(generator, -span, span);
+  };
+  std::size_t undecided = 0;
+  for (std::size_t trial = 0; trial < 512; ++trial) {
+    std::array<insphere_pt64, 5> points;
+    for (auto &point : points)
+      point = insphere_pt64{coordinate(), coordinate(), coordinate()};
+    const auto value = tf::exact::insphere_value<insphere_i64>(
+        points[0], points[1], points[2], points[3], points[4]);
+    const int expected = value > 0 ? 1 : value < 0 ? -1 : 0;
+    const int stated = tf::exact::insphere::filter_sign<true>(
+        points[0], points[1], points[2], points[3], points[4]);
+    CAPTURE(trial);
+    REQUIRE((stated == 0 || stated == expected));
+    REQUIRE(stated == tf::exact::insphere::filter_sign(points[0], points[1],
+                                                       points[2], points[3],
+                                                       points[4]));
+    undecided += stated == 0;
+  }
+  CHECK(undecided == 0);
+
+  // Six lattice points on one sphere about the origin: five of them make a
+  // vanishing determinant, which the filter can only answer by deferring,
+  // and one unit of the query states a side either way.
+  for (unsigned bits : {4u, 20u, 39u}) {
+    const insphere_i64 radius = insphere_i64(1) << bits;
+    const insphere_pt64 a{radius, 0, 0}, b{0, radius, 0}, c{0, 0, radius},
+        d{-radius, 0, 0};
+    REQUIRE(tf::exact::orient3d_sign(a, b, c, d) != 0);
+    std::array<int, 3> signs{};
+    for (const int delta : {-1, 0, 1}) {
+      const insphere_pt64 query{0, -radius - delta, 0};
+      const auto value =
+          tf::exact::insphere_value<insphere_i64>(a, b, c, d, query);
+      const int exact = value > 0 ? 1 : value < 0 ? -1 : 0;
+      const int stated =
+          tf::exact::insphere::filter_sign<true>(a, b, c, d, query);
+      CAPTURE(bits, delta);
+      CHECK((stated == 0 || stated == exact));
+      CHECK(stated == tf::exact::insphere::filter_sign(a, b, c, d, query));
+      CHECK((exact == 0) == (delta == 0));
+      signs[std::size_t(delta + 1)] = exact;
+    }
+    CAPTURE(bits);
+    CHECK(signs[0] == -signs[2]);
   }
 }

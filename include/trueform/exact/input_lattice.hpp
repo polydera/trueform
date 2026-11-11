@@ -101,42 +101,9 @@ public:
   template <typename ApplyToForm>
   auto build(converter_type input_converter, const ApplyToForm &apply_to_form,
              Index n_tags, double tolerance) -> void {
-    _converter = std::move(input_converter);
-    _ticket.clear();
-    _moved.clear();
-    _edge_names.clear();
-    _census = tf::exact::door::placement_census{};
-    _vertex_offsets.allocate(std::size_t(n_tags) + 1);
-    _vertex_offsets[0] = Index(0);
     tf::buffer<Index> face_offsets;
-    face_offsets.allocate(std::size_t(n_tags) + 1);
-    face_offsets[0] = Index(0);
-    for (Index tag = 0; tag < n_tags; ++tag)
-      apply_to_form(tag, [&, tag](const auto &form) {
-        _vertex_offsets[std::size_t(tag) + 1] =
-            _vertex_offsets[std::size_t(tag)] + Index(form.points().size());
-        face_offsets[std::size_t(tag) + 1] =
-            face_offsets[std::size_t(tag)] + Index(form.faces().size());
-      });
-    _n_tags = n_tags;
-    // THE CLAMP: the band that acts is the smallest actionable tolerance
-    // CONTAINING the request, and the widest the pair search can carry —
-    // it grows one leaf box against another by twice the band, so the
-    // widest is a quarter of the lattice's range.
-    const Int widest = std::numeric_limits<Int>::max() / Int(4);
-    if (tolerance > 0.0) {
-      if (tolerance >= double(_converter.coords.deconvert_tolerance(widest)))
-        _tolerance_int = widest;
-      else {
-        const auto raw =
-            _converter.coords.convert_tolerance(RealType(tolerance));
-        _tolerance_int = raw < Int(1) ? Int(1) : raw;
-      }
-    } else
-      _tolerance_int = Int(0);
-    _census.effective_tolerance =
-        double(_converter.coords.deconvert_tolerance(_tolerance_int));
-    if (_tolerance_int == Int(0))
+    if (!state_band(std::move(input_converter), apply_to_form, n_tags,
+                    tolerance, face_offsets))
       return;
     tf::exact::door::placement_tables<Index, Int, RealType> tables;
     tables.build(_converter, apply_to_form, n_tags, _vertex_offsets,
@@ -186,6 +153,37 @@ public:
         targets.erase_till_end(targets.begin() + std::ptrdiff_t(kept));
       }
     }
+    tf::exact::door::committed_planes<Index, Int> committed;
+    tf::exact::door::commit_target_planes(tables, pools, targets,
+                                          _tolerance_int, committed, _census);
+    tf::exact::door::place_door_vertices(tables, committed, targets,
+                                         _tolerance_int, _ticket, _moved,
+                                         _edge_names, _census);
+  }
+
+  /// The band's pooling alone: the faces it could make of one plane pooled
+  /// and their vertices placed on the pools, with no rim landed — so no
+  /// edge name is stated and no tree or link of any form is read, the
+  /// faces' membership being all it reads beside their points.
+  template <typename ApplyToForm>
+  auto build_pooled(converter_type input_converter,
+                    const ApplyToForm &apply_to_form, Index n_tags,
+                    double tolerance) -> void {
+    tf::buffer<Index> face_offsets;
+    if (!state_band(std::move(input_converter), apply_to_form, n_tags,
+                    tolerance, face_offsets))
+      return;
+    tf::exact::door::placement_tables<Index, Int, RealType> tables;
+    tables.build(_converter, apply_to_form, n_tags, _vertex_offsets,
+                 face_offsets);
+    tf::exact::door::pool::input_pools<Int> pools;
+    if (tables.triangles())
+      tf::exact::door::pool::pool_input_planes(tables, _tolerance_int, pools);
+#ifdef TF_POOL_CENSUS
+    _election = pools.election;
+    _certificate = pools.certificate;
+#endif
+    const tf::buffer<tf::exact::door::rim_target<Index>> targets;
     tf::exact::door::committed_planes<Index, Int> committed;
     tf::exact::door::commit_target_planes(tables, pools, targets,
                                           _tolerance_int, committed, _census);
@@ -280,6 +278,50 @@ public:
   }
 
 private:
+  /// The band as the lattice states it: the forms' offsets, the clamp of
+  /// the request onto the lattice, the census's tolerance; whether a band
+  /// acts.
+  template <typename ApplyToForm>
+  auto state_band(converter_type input_converter,
+                  const ApplyToForm &apply_to_form, Index n_tags,
+                  double tolerance, tf::buffer<Index> &face_offsets) -> bool {
+    _converter = std::move(input_converter);
+    _ticket.clear();
+    _moved.clear();
+    _edge_names.clear();
+    _census = tf::exact::door::placement_census{};
+    _vertex_offsets.allocate(std::size_t(n_tags) + 1);
+    _vertex_offsets[0] = Index(0);
+    face_offsets.allocate(std::size_t(n_tags) + 1);
+    face_offsets[0] = Index(0);
+    for (Index tag = 0; tag < n_tags; ++tag)
+      apply_to_form(tag, [&, tag](const auto &form) {
+        _vertex_offsets[std::size_t(tag) + 1] =
+            _vertex_offsets[std::size_t(tag)] + Index(form.points().size());
+        face_offsets[std::size_t(tag) + 1] =
+            face_offsets[std::size_t(tag)] + Index(form.faces().size());
+      });
+    _n_tags = n_tags;
+    // THE CLAMP: the band that acts is the smallest actionable tolerance
+    // CONTAINING the request, and the widest the pair search can carry —
+    // it grows one leaf box against another by twice the band, so the
+    // widest is a quarter of the lattice's range.
+    const Int widest = std::numeric_limits<Int>::max() / Int(4);
+    if (tolerance > 0.0) {
+      if (tolerance >= double(_converter.coords.deconvert_tolerance(widest)))
+        _tolerance_int = widest;
+      else {
+        const auto raw =
+            _converter.coords.convert_tolerance(RealType(tolerance));
+        _tolerance_int = raw < Int(1) ? Int(1) : raw;
+      }
+    } else
+      _tolerance_int = Int(0);
+    _census.effective_tolerance =
+        double(_converter.coords.deconvert_tolerance(_tolerance_int));
+    return _tolerance_int != Int(0);
+  }
+
   converter_type _converter;
   tf::buffer<Index> _vertex_offsets;
   tf::buffer<Index> _ticket;

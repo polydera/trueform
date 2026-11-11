@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../core/aabb_from.hpp"
+#include "../core/aabb_like.hpp"
 #include "../core/aabb_union.hpp"
 #include "../core/coordinate_type.hpp"
 #include "../core/frame_of.hpp"
@@ -24,7 +25,9 @@
 #include "../spatial/policy/tree.hpp"
 #include "./pt_converter_identity.hpp"
 #include "./resolve_int_type.hpp"
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <type_traits>
 
@@ -34,6 +37,31 @@ template <typename IntT, typename RealT, std::size_t Dims>
 struct pt_converter_real {
   RealT scale;
   tf::point<RealT, Dims> offset;
+  /// One unit in the last place of the largest coordinate magnitude of the
+  /// box the converter is fitted to, on the lattice (@ref input_quantum).
+  IntT lattice_quantum = IntT(0);
+
+  /// THE INPUT QUANTUM: two identities closer than it are ones the input
+  /// cannot tell apart. The box bounds every position a statement can seat,
+  /// created points included, so the quantum is never below the input
+  /// points' own ulp — a framed operand's box may state it one binade
+  /// above, and a threshold wider by that binade only refuses more
+  /// degenerate seats.
+  auto quantum() const -> IntT { return lattice_quantum; }
+
+  /// The quantum of a lattice at `scale` over the placed `box`: the ulp of
+  /// its largest coordinate magnitude, scaled up to whole lattice units.
+  template <std::size_t BoxDims, typename BoxPolicy>
+  static auto input_quantum(const tf::aabb_like<BoxDims, BoxPolicy> &box,
+                            RealT scale) -> IntT {
+    RealT extent = 0;
+    for (std::size_t k = 0; k < BoxDims; ++k)
+      extent = std::max({extent, RealT(std::abs(RealT(box.min[k]))),
+                         RealT(std::abs(RealT(box.max[k])))});
+    const RealT ulp =
+        std::nextafter(extent, std::numeric_limits<RealT>::infinity()) - extent;
+    return IntT(std::ceil(double(ulp) * double(scale)));
+  }
 
   template <typename P>
   auto operator()(const P &p) const -> tf::point<IntT, Dims> {
@@ -106,7 +134,9 @@ auto make_pt_converter(const tf::aabb_like<Dims, Policy> &aabb) {
       scale = std::ldexp(RealT(1), exponent - 1);
     }
 
-    return pt_converter<IntT, RealT, Dims>{{scale, center}};
+    return pt_converter<IntT, RealT, Dims>{
+        {scale, center,
+         pt_converter_real<IntT, RealT, Dims>::input_quantum(aabb, scale)}};
   }
 }
 

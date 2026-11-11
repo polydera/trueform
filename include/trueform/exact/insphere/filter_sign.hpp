@@ -11,9 +11,10 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/config/inline.hpp"
 #include "../difference_image.hpp"
-#include "../meta.hpp"
 #include "../vertex.hpp"
+#include <algorithm>
 #include <cmath>
 
 namespace tf::exact::insphere {
@@ -33,25 +34,49 @@ namespace tf::exact::insphere {
 /// the at most nine roundings of a monomial's path through the computed
 /// permanent, so the total error stays below (21 + 400 eps) eps times the
 /// computed permanent plus terms of order eps^3, and (21 + 1024 eps) eps is
-/// the coefficient stated. A difference the native width cannot form is
+/// the coefficient stated. A difference the coordinate cannot hold is
 /// refused. The bound holds where @ref tf::exact::float_filter_sound does.
-template <typename Int, typename Coord>
-auto filter_sign(const pt3<Coord> &a, const pt3<Coord> &b, const pt3<Coord> &c,
-                 const pt3<Coord> &d, const pt3<Coord> &e) -> int {
-  using T1 = typename meta<Int>::T1;
+/// The permanent is asked only of a determinant its cover does not decide:
+/// each of its four cofactors is six products of one x, one y and one z
+/// image, so it is at most six times the largest image on each axis times
+/// the sum of the lifts, and the cover's margin of 2^-40 is past the
+/// seventeen roundings between the two, so a determinant beyond the cover
+/// is beyond the bound.
+/// `Exact` is the caller's fact that every coordinate difference of its
+/// storage is exact in a double (a stored width of at most 52 bits), so the
+/// images are formed as plain differences and nothing is classified.
+template <bool Exact = false, typename Coord>
+TF_FORCE_INLINE auto filter_sign(const pt3<Coord> &a, const pt3<Coord> &b,
+                                 const pt3<Coord> &c, const pt3<Coord> &d,
+                                 const pt3<Coord> &e) -> int {
   double ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz;
-  const difference_image_kind kinds[12] = {
-      difference_image<T1>(a[0], e[0], ax), difference_image<T1>(a[1], e[1], ay),
-      difference_image<T1>(a[2], e[2], az), difference_image<T1>(b[0], e[0], bx),
-      difference_image<T1>(b[1], e[1], by), difference_image<T1>(b[2], e[2], bz),
-      difference_image<T1>(c[0], e[0], cx), difference_image<T1>(c[1], e[1], cy),
-      difference_image<T1>(c[2], e[2], cz), difference_image<T1>(d[0], e[0], dx),
-      difference_image<T1>(d[1], e[1], dy), difference_image<T1>(d[2], e[2], dz)};
   bool rounded = false;
-  for (const auto kind : kinds) {
-    if (kind == difference_image_kind::refused)
-      return 0;
-    rounded = rounded || kind == difference_image_kind::rounded;
+  if constexpr (Exact) {
+    ax = double(a[0]) - double(e[0]);
+    ay = double(a[1]) - double(e[1]);
+    az = double(a[2]) - double(e[2]);
+    bx = double(b[0]) - double(e[0]);
+    by = double(b[1]) - double(e[1]);
+    bz = double(b[2]) - double(e[2]);
+    cx = double(c[0]) - double(e[0]);
+    cy = double(c[1]) - double(e[1]);
+    cz = double(c[2]) - double(e[2]);
+    dx = double(d[0]) - double(e[0]);
+    dy = double(d[1]) - double(e[1]);
+    dz = double(d[2]) - double(e[2]);
+  } else {
+    const difference_image_kind kinds[12] = {
+        difference_image(a[0], e[0], ax), difference_image(a[1], e[1], ay),
+        difference_image(a[2], e[2], az), difference_image(b[0], e[0], bx),
+        difference_image(b[1], e[1], by), difference_image(b[2], e[2], bz),
+        difference_image(c[0], e[0], cx), difference_image(c[1], e[1], cy),
+        difference_image(c[2], e[2], cz), difference_image(d[0], e[0], dx),
+        difference_image(d[1], e[1], dy), difference_image(d[2], e[2], dz)};
+    for (const auto kind : kinds) {
+      if (kind == difference_image_kind::refused)
+        return 0;
+      rounded = rounded || kind == difference_image_kind::rounded;
+    }
   }
   const double axby = ax * by, bxay = bx * ay;
   const double bxcy = bx * cy, cxby = cx * by;
@@ -72,6 +97,21 @@ auto filter_sign(const pt3<Coord> &a, const pt3<Coord> &b, const pt3<Coord> &c,
   const double dlift = dx * dx + dy * dy + dz * dz;
   const double determinant =
       (dlift * abc - clift * dab) + (blift * cda - alift * bcd);
+  constexpr double epsilon = 1.1102230246251565e-16;
+  constexpr double exact_coefficient = (16.0 + 224.0 * epsilon) * epsilon;
+  constexpr double rounded_coefficient = (21.0 + 1024.0 * epsilon) * epsilon;
+  const double coefficient = rounded ? rounded_coefficient : exact_coefficient;
+  constexpr double reach = 6.0 * (1.0 + 0x1p-40);
+  const double widest_x = std::max(std::max(std::abs(ax), std::abs(bx)),
+                                   std::max(std::abs(cx), std::abs(dx)));
+  const double widest_y = std::max(std::max(std::abs(ay), std::abs(by)),
+                                   std::max(std::abs(cy), std::abs(dy)));
+  const double widest_z = std::max(std::max(std::abs(az), std::abs(bz)),
+                                   std::max(std::abs(cz), std::abs(dz)));
+  const double cover = reach * coefficient * (widest_x * widest_y * widest_z) *
+                       ((alift + blift) + (clift + dlift));
+  if (std::abs(determinant) > cover)
+    return determinant > 0.0 ? -1 : 1;
   const double permanent = ((std::abs(cxdy) + std::abs(dxcy)) * std::abs(bz) +
                             (std::abs(dxby) + std::abs(bxdy)) * std::abs(cz) +
                             (std::abs(bxcy) + std::abs(cxby)) * std::abs(dz)) *
@@ -88,11 +128,7 @@ auto filter_sign(const pt3<Coord> &a, const pt3<Coord> &b, const pt3<Coord> &c,
                             (std::abs(cxay) + std::abs(axcy)) * std::abs(bz) +
                             (std::abs(axby) + std::abs(bxay)) * std::abs(cz)) *
                                dlift;
-  constexpr double epsilon = 1.1102230246251565e-16;
-  constexpr double exact_coefficient = (16.0 + 224.0 * epsilon) * epsilon;
-  constexpr double rounded_coefficient = (21.0 + 1024.0 * epsilon) * epsilon;
-  const double error =
-      (rounded ? rounded_coefficient : exact_coefficient) * permanent;
+  const double error = coefficient * permanent;
   if (determinant > error)
     return -1;
   if (determinant < -error)

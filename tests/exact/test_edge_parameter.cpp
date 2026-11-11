@@ -5,6 +5,7 @@
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
+#include "uniform_draw.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/exact/dyadic_ratio.hpp>
 #include <trueform/exact/edge_edge_parameter.hpp>
@@ -224,14 +225,14 @@ TEST_CASE("edge_parameter: parameter_line_sign2 matches the materialized "
           "[exact]") {
   using pt2 = tf::exact::pt2<int64>;
   std::mt19937_64 rng(2026);
-  std::uniform_int_distribution<int64> coord(-1000000, 1000000);
+  const auto coord = [&rng] {
+    return tf::test::uniform_int(rng, int64(-1000000), int64(1000000));
+  };
   for (int it = 0; it < 2000; ++it) {
-    const pt2 a{coord(rng), coord(rng)}, b{coord(rng), coord(rng)};
-    const pt2 p0{coord(rng), coord(rng)}, p1{coord(rng), coord(rng)};
-    std::uniform_int_distribution<int64> den_d(1, 1 << 20);
-    const auto den = den_d(rng);
-    std::uniform_int_distribution<int64> num_d(0, den);
-    const auto num = num_d(rng);
+    const pt2 a{coord(), coord()}, b{coord(), coord()};
+    const pt2 p0{coord(), coord()}, p1{coord(), coord()};
+    const auto den = tf::test::uniform_int(rng, int64(1), int64(1) << 20);
+    const auto num = tf::test::uniform_int(rng, int64(0), den);
     const tf::exact::edge_parameter<int64> t{num, den};
     // oracle: den * O(p0) + num * (O(p1) - O(p0)) in wide arithmetic
     const auto o_0 = tf::exact::orient2d(a, b, p0);

@@ -19,6 +19,12 @@ namespace tf::exact {
 
 template <typename IntT, typename RealT, std::size_t Dims>
 struct pt_converter_identity {
+  /// The quantum an integral input states, `0` when nobody states one: the
+  /// input is exact on its lattice.
+  IntT lattice_quantum = IntT(0);
+
+  auto quantum() const -> IntT { return lattice_quantum; }
+
   template <typename P>
   auto operator()(const P &p) const -> tf::point<IntT, Dims> {
     tf::point<IntT, Dims> out;

@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../core/config/inline.hpp"
 
 #include "./float_filter_sound.hpp"
 #include "./insphere/filter_sign.hpp"
@@ -139,12 +140,12 @@ auto insphere_value(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
 /// answers first wherever @ref tf::exact::float_filter_sound holds, and
 /// the exact value decides what the filter leaves undecided. The sign is
 /// exact on every path.
-template <typename Int, typename Coord>
+template <typename Int, bool Exact = false, typename Coord>
 auto insphere_sign_scaled(const pt3<Coord> &a, const pt3<Coord> &b,
                           const pt3<Coord> &c, const pt3<Coord> &d,
                           const pt3<Coord> &e) -> int {
   if constexpr (float_filter_sound) {
-    const int filtered = insphere::filter_sign<Int>(a, b, c, d, e);
+    const int filtered = insphere::filter_sign<Exact>(a, b, c, d, e);
     if (filtered)
       return filtered;
   }
@@ -157,6 +158,45 @@ template <typename Int>
 auto insphere_sign(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
                    const pt3<Int> &d, const pt3<Int> &e) -> int {
   return insphere_sign_scaled<Int>(a, b, c, d, e);
+}
+
+/// The exact route of @ref tf::exact::insphere_sos_scaled: the value, and
+/// the lift cascade where it vanishes.
+template <typename Int, typename Index, typename Coord>
+TF_NOINLINE auto insphere_sos_scaled_slow(const vertex<Index, Coord> &a,
+                                          const vertex<Index, Coord> &b,
+                                          const vertex<Index, Coord> &c,
+                                          const vertex<Index, Coord> &d,
+                                          const vertex<Index, Coord> &e)
+    -> int {
+  {
+    const auto value = insphere_value_scaled<Int>(a.pt, b.pt, c.pt, d.pt, e.pt);
+    if (value != 0)
+      return (value > 0) ? 1 : -1;
+  }
+
+  const std::array<const vertex<Index, Coord> *, 5> vs{&a, &b, &c, &d, &e};
+  std::array<int, 5> order = {0, 1, 2, 3, 4};
+  for (int i = 0; i < 4; ++i)
+    for (int j = i + 1; j < 5; ++j)
+      if (vs[order[j]]->id < vs[order[i]]->id)
+        std::swap(order[i], order[j]);
+
+  for (int k = 0; k < 5; ++k) {
+    const int row = order[k];
+    std::array<pt3<Coord>, 4> rest;
+    int n = 0;
+    for (int i = 0; i < 5; ++i)
+      if (i != row)
+        rest[n++] = vs[i]->pt;
+    const auto term =
+        orient3d_value_scaled<Int>(rest[0], rest[1], rest[2], rest[3]);
+    if (term) {
+      const int sign = (term > 0) ? 1 : -1;
+      return (row % 2 == 0) ? sign : -sign;
+    }
+  }
+  return 0;
 }
 
 /// Insphere sign of five identified sites under lift-only Simulation of
@@ -184,44 +224,25 @@ auto insphere_sign(const pt3<Int> &a, const pt3<Int> &b, const pt3<Int> &c,
 /// cannot pass all five. A fully degenerate five-site input can vanish in
 /// every term and reads 0; that is the caller's invariant, not this
 /// predicate's.
-template <typename Int, typename Index, typename Coord>
-auto insphere_sos_scaled(const vertex<Index, Coord> &a,
-                         const vertex<Index, Coord> &b,
-                         const vertex<Index, Coord> &c,
-                         const vertex<Index, Coord> &d,
-                         const vertex<Index, Coord> &e) -> int {
-  const int geometric = insphere_sign_scaled<Int>(a.pt, b.pt, c.pt, d.pt, e.pt);
-  if (geometric)
-    return geometric;
-
-  const std::array<const vertex<Index, Coord> *, 5> vs{&a, &b, &c, &d, &e};
-  std::array<int, 5> order = {0, 1, 2, 3, 4};
-  for (int i = 0; i < 4; ++i)
-    for (int j = i + 1; j < 5; ++j)
-      if (vs[order[j]]->id < vs[order[i]]->id)
-        std::swap(order[i], order[j]);
-
-  for (int k = 0; k < 5; ++k) {
-    const int row = order[k];
-    std::array<pt3<Coord>, 4> rest;
-    int n = 0;
-    for (int i = 0; i < 5; ++i)
-      if (i != row)
-        rest[n++] = vs[i]->pt;
-    const auto term =
-        orient3d_value_scaled<Int>(rest[0], rest[1], rest[2], rest[3]);
-    if (term) {
-      const int sign = (term > 0) ? 1 : -1;
-      return (row % 2 == 0) ? sign : -sign;
-    }
+template <typename Int, bool Exact = false, typename Index, typename Coord>
+TF_FORCE_INLINE auto insphere_sos_scaled(const vertex<Index, Coord> &a,
+                                         const vertex<Index, Coord> &b,
+                                         const vertex<Index, Coord> &c,
+                                         const vertex<Index, Coord> &d,
+                                         const vertex<Index, Coord> &e) -> int {
+  if constexpr (float_filter_sound) {
+    const int filtered =
+        insphere::filter_sign<Exact>(a.pt, b.pt, c.pt, d.pt, e.pt);
+    if (filtered)
+      return filtered;
   }
-  return 0;
+  return insphere_sos_scaled_slow<Int>(a, b, c, d, e);
 }
 
 /// Insphere sign of five identified sites carried contiguously.
-template <typename Int, typename Index, typename Coord>
+template <typename Int, bool Exact = false, typename Index, typename Coord>
 auto insphere_sos_scaled(const vertex<Index, Coord> *vs) -> int {
-  return insphere_sos_scaled<Int>(vs[0], vs[1], vs[2], vs[3], vs[4]);
+  return insphere_sos_scaled<Int, Exact>(vs[0], vs[1], vs[2], vs[3], vs[4]);
 }
 
 /// Insphere sign of five identified sites under lift-only SoS.
@@ -239,19 +260,21 @@ auto insphere_sos(const std::array<vertex<Index, Int>, 5> &vs) -> int {
 /// four, normalized by the `orientation` sign the caller stores for that
 /// tet. The tet's orientation is the caller's fact, so the predicate reads
 /// it rather than deriving it a second time.
-template <typename Int, typename Index, typename Coord>
-auto insphere_conflict_scaled(
-    const vertex<Index, Coord> &a, const vertex<Index, Coord> &b,
-    const vertex<Index, Coord> &c, const vertex<Index, Coord> &d,
-    const vertex<Index, Coord> &e, int orientation) -> bool {
-  return insphere_sos_scaled<Int>(a, b, c, d, e) * orientation > 0;
+template <typename Int, bool Exact = false, typename Index, typename Coord>
+auto insphere_conflict_scaled(const vertex<Index, Coord> &a,
+                              const vertex<Index, Coord> &b,
+                              const vertex<Index, Coord> &c,
+                              const vertex<Index, Coord> &d,
+                              const vertex<Index, Coord> &e, int orientation)
+    -> bool {
+  return insphere_sos_scaled<Int, Exact>(a, b, c, d, e) * orientation > 0;
 }
 
-template <typename Int, typename Index, typename Coord>
+template <typename Int, bool Exact = false, typename Index, typename Coord>
 auto insphere_conflict_scaled(const vertex<Index, Coord> *vs, int orientation)
     -> bool {
-  return insphere_conflict_scaled<Int>(vs[0], vs[1], vs[2], vs[3], vs[4],
-                                       orientation);
+  return insphere_conflict_scaled<Int, Exact>(vs[0], vs[1], vs[2], vs[3], vs[4],
+                                              orientation);
 }
 
 /// Whether the fifth site conflicts with the circumsphere of the first four.

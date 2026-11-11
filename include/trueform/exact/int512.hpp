@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include "./bits/rounded_real.hpp"
 #include "./int128.hpp"
 #include "./int256.hpp"
 #include "./wide_from_double.hpp"
@@ -296,6 +297,10 @@ public:
               v < 0 ? ~limb_type(0) : limb_type(0),
               v < 0 ? ~limb_type(0) : limb_type(0)} {}
 
+  /// Zero-extended, as @ref tf::exact::int256 states it.
+  constexpr int512(tf::exact::uint128 v) noexcept
+      : _limb{v, limb_type(0), limb_type(0), limb_type(0)} {}
+
   constexpr int512(tf::exact::int256 v) noexcept
       : _limb{v.lo(), v.hi(),
               v.is_negative() ? ~limb_type(0) : limb_type(0),
@@ -337,20 +342,11 @@ public:
     return _limb[k];
   }
 
-  // Full signed 512-bit value as double: negate to the magnitude, read each
-  // half as the unsigned pair of limbs it is, and restore the sign. The
-  // halves are read through their limbs rather than through int256, whose
-  // own conversion is signed and would call a low half negative.
+  /// Rounded once (@ref tf::exact::bits::rounded_real), signed.
   explicit operator double() const noexcept {
-    constexpr double k_2pow64 = 18446744073709551616.0;
-    const double k_2pow128 = k_2pow64 * k_2pow64;
-    const double k_2pow256 = k_2pow128 * k_2pow128;
-    const int512 magnitude = is_negative() ? -*this : *this;
-    const double low = double(magnitude._limb[1]) * k_2pow128 +
-                       double(magnitude._limb[0]);
-    const double high = double(magnitude._limb[3]) * k_2pow128 +
-                        double(magnitude._limb[2]);
-    const double at = high * k_2pow256 + low;
+    const int512 magnitude = _abs(*this);
+    const double at =
+        bits::rounded_real<double, 512>(magnitude, _bit_width(magnitude));
     return is_negative() ? -at : at;
   }
 

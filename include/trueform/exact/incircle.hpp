@@ -91,7 +91,7 @@ auto incircle_sign(const pt2<Int> &a, const pt2<Int> &b, const pt2<Int> &c,
   }
 
   if constexpr (float_filter_sound && !std::is_same_v<Int, int32>) {
-    const int filtered = incircle::filter_sign<Int>(a, b, c, d);
+    const int filtered = incircle::filter_sign(a, b, c, d);
     if (filtered)
       return filtered;
   }
