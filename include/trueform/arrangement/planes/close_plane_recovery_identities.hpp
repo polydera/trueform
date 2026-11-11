@@ -36,6 +36,7 @@
 #include <cstdint>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace tf::arrangement {
 
@@ -72,6 +73,14 @@ namespace tf::arrangement {
 /// `near_rows` receives, when `near_window` asks, the near table of the
 /// delta's position sort as one deferred block (@ref
 /// tf::intersect::graph::collapse_plane_identities).
+///
+/// THE WELD WINDOW, when `weld_window` asks, is a grid and not a radius:
+/// identities neither of which is an original, whose positions fall in one
+/// lattice box of side `weld_window`, are one coincidence of the election —
+/// carriers minting one point the input cannot tell from another. The box
+/// is the key, so the relation is transitive by construction and never
+/// chains; two identities in adjacent boxes stay two. Originals keep the
+/// exact law.
 template <typename Index, typename Param, typename GetPoint,
           typename ClassPosition, typename VertexOffsets, typename Int>
 auto close_plane_recovery_identities(
@@ -89,7 +98,8 @@ auto close_plane_recovery_identities(
     const tf::buffer<Index> &standing_created_class, Index n_existing_created,
     Int near_window,
     tf::intersect::graph::near_identity_rows<Index, tf::exact::pt3<Int>>
-        &near_rows) -> void {
+        &near_rows,
+    Int weld_window) -> void {
   using key_t = tf::intersect::graph::identity_key<Index>;
   using relation_t = tf::intersect::graph::identity_relation<Index>;
   using point_t = std::decay_t<decltype(get_point(std::int16_t(-1), Index(0)))>;
@@ -177,9 +187,9 @@ auto close_plane_recovery_identities(
       },
       tf::checked);
   if constexpr (tf::core::verification)
-    tf::core::verify(
-        std::size_t(n_existing_created) <= standing_created_class.size(),
-        "every standing created identity has a class");
+    tf::core::verify(std::size_t(n_existing_created) <=
+                         standing_created_class.size(),
+                     "every standing created identity has a class");
   tf::sequenced_generate(
       tf::make_sequence_range(std::size_t(n_existing_created)), positions,
       [&](std::size_t created, tf::buffer<position_t> &out) {
@@ -188,7 +198,7 @@ auto close_plane_recovery_identities(
         const auto id = n_points + Index(created);
         // a retired created identity no longer owns its old position
         if (tf::intersect::graph::plane_merge_target(standing_merges, Index(1),
-                                                      id) != Index(-1))
+                                                     id) != Index(-1))
           return;
         out.push_back({get_point(std::int16_t(-1), id),
                        tf::intersect::graph::standing_identity_key<Index>(id)});
@@ -225,6 +235,49 @@ auto close_plane_recovery_identities(
           out.push_back({positions[at - 1].key, positions[at].key});
       },
       tf::checked);
+
+  if (weld_window > Int(0)) {
+    using coordinate_t = typename point_t::coordinate_type;
+    using cell_t = std::array<coordinate_t, 3>;
+    const auto cell_of = [weld_window](const point_t &q) {
+      cell_t cell{};
+      for (std::size_t k = 0; k < 3; ++k) {
+        auto c = coordinate_t(q[k] / coordinate_t(weld_window));
+        if (q[k] - c * coordinate_t(weld_window) < coordinate_t(0))
+          c = coordinate_t(c - coordinate_t(1));
+        cell[k] = c;
+      }
+      return cell;
+    };
+    struct cell_box {
+      cell_t cell;
+      Index at;
+      auto operator<(const cell_box &other) const -> bool {
+        return cell < other.cell || (cell == other.cell && at < other.at);
+      }
+    };
+    tf::buffer<cell_box> boxes;
+    tf::sequenced_generate(
+        tf::make_sequence_range(positions.size()), boxes,
+        [&](std::size_t at, tf::buffer<cell_box> &out) {
+          if (positions[at].key[0] !=
+              Index(tf::intersect::graph::original_identity_rank))
+            out.push_back({cell_of(positions[at].point), Index(at)});
+        },
+        tf::checked);
+    tbb::parallel_sort(boxes.begin(), boxes.end());
+    tf::sequenced_generate(
+        tf::make_sequence_range(boxes.size()), relations,
+        [&](std::size_t at, tf::buffer<relation_t> &out) {
+          if (at == 0 || !(boxes[at - 1].cell == boxes[at].cell))
+            return;
+          const auto &here = positions[std::size_t(boxes[at - 1].at)].key;
+          const auto &there = positions[std::size_t(boxes[at].at)].key;
+          if (!(here == there))
+            out.push_back({here, there});
+        },
+        tf::checked);
+  }
 
   tf::buffer<key_t> keys;
   keys.reserve(std::size_t(n_classes) + relations.size() * 2);
@@ -265,8 +318,8 @@ auto close_plane_recovery_identities(
         const auto id = class_id[cls];
         if (id == Index(-1))
           return;
-        const auto target = tf::intersect::graph::plane_merge_target(
-            merges, Index(1), id);
+        const auto target =
+            tf::intersect::graph::plane_merge_target(merges, Index(1), id);
         if (target != Index(-1))
           class_id[cls] = target;
       },

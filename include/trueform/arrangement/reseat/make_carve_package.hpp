@@ -13,6 +13,7 @@
 #pragma once
 #include "../../core/buffer.hpp"
 #include "../../core/config/verify.hpp"
+#include "../../core/memory.hpp"
 #include "../../core/range.hpp"
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/sequence_range.hpp"
@@ -35,7 +36,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <vector>
 
 namespace tf::arrangement::reseat {
 
@@ -68,7 +68,7 @@ auto make_carve_package(
     -> reseat_package<Index, Int> {
   const world_face_lookup<Index, World> world_face_of(world);
   const standing_pieces<Index> no_standing;
-  std::vector<carve_round<Index, Int>> rounds;
+  tf::core::std_vector<carve_round<Index, Int>> rounds;
   if (targets.size() != 0)
     rounds.push_back(make_first_carve_round(targets, apply_to_form));
   tf::buffer<std::array<Index, 2>> forced;
@@ -93,15 +93,15 @@ auto make_carve_package(
       touched.erase_till_end(std::unique(touched.begin(), touched.end()));
       std::sort(forced.begin(), forced.end());
       forced.erase_till_end(std::unique(forced.begin(), forced.end()));
-      const auto reach = state_reseat_reach<Index>(world, standing,
-                                                   pieces.carved, forced,
-                                                   touched);
+      const auto reach = state_reseat_reach<Index>(
+          world, standing, pieces.carved, forced, touched);
       const auto forms = make_reseat_delta_forms<Index, Int>(
           pieces, reach, standing, n_tags, apply_to_form, reader, created);
       ++reach_census.delta_rounds;
       for (const auto &faces : forms.faces)
         reach_census.delta_faces += faces.size();
-      const auto delta = make_reseat_delta_world<Index, Int>(forms, config);
+      const auto delta =
+          make_reseat_delta_world<Index, Int>(forms, config, quantum);
       const auto delta_forms = delta.apply_to_form();
       const auto delta_reader = delta.reader();
       const auto delta_created = tf::make_mapped_range(

@@ -31,6 +31,9 @@ namespace tf {
 /// pair is copied in, while a *range* of forms is stored as the view it is,
 /// so the graph must not outlive the container behind it.
 ///
+/// The lattice is the house converter over the operands, read through
+/// their frames; @ref tf::arrangement::make_arrangement_graph states one.
+///
 /// The arrangement is classification-free — for boolean expressions
 /// and domain reads build a @ref tf::csg_graph instead.
 ///

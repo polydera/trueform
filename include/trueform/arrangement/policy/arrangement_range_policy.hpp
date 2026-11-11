@@ -25,6 +25,7 @@
 #include "../../core/views/sequence_range.hpp"
 #include "../../core/views/zip.hpp"
 #include "../../exact/input_lattice.hpp"
+#include "../../exact/pt_converter.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "../../intersect/intersect_config.hpp"
 #include "../../spatial/policy/tree.hpp"
@@ -54,9 +55,8 @@ template <typename Forms, typename Structs> struct arrangement_range_policy {
   /// extraction picks its output buffer shape from it instead of
   /// re-deriving it from a forms element, which a heterogeneous policy
   /// has no single one of. Tagging never changes arity.
-  static constexpr std::size_t face_static_size =
-      tf::static_size_v<std::decay_t<decltype(std::declval<Forms>()[0]
-                                                  .faces()[0])>>;
+  static constexpr std::size_t face_static_size = tf::static_size_v<
+      std::decay_t<decltype(std::declval<Forms>()[0].faces()[0])>>;
 
   /// Operand count when it is known at compile time — `1` for a single
   /// form (which arrives as a one-element array), `tf::dynamic_size` for
@@ -97,19 +97,27 @@ template <typename Forms, typename Structs> struct arrangement_range_policy {
     return [tagged = forms()](index_type tag, auto &&f) { f(tagged[tag]); };
   }
 
-  /// @brief The operands' lattice view: one converter over their union,
-  ///        the flat vertex space, and the door's placement when a
-  ///        tolerance is given. The arity the converter is built at is
-  ///        this policy's, exactly as `build_intersections`' is.
-  template <typename Int> auto make_lattice(double tolerance) const {
+  /// @brief The house converter over the operands' union, read through
+  ///        their frames, at this policy's arity.
+  template <typename Int> auto make_converter() const {
     // `forms()` is a value and `as_form_range` over a pre-tagged
     // operand array points INTO it, so the range is worth exactly as
     // much as the object it was taken from.
     const auto tagged = forms();
+    return tf::exact::make_pt_converter<Int, input_real_type>(
+        as_form_range(tagged));
+  }
+
+  /// @brief The operands' lattice view on `converter`: the flat vertex
+  ///        space, and the door's placement when a tolerance is given.
+  template <typename Int>
+  auto make_lattice(
+      const tf::exact::pt_converter<Int, input_real_type, 3> &converter,
+      double tolerance) const {
     tf::exact::input_lattice<index_type, input_real_type, Int> lattice;
-    lattice.build(tf::exact::make_vertex_converter<Int, input_real_type>(
-                      as_form_range(tagged)),
-                  make_apply_to_form(), n_tags(), tolerance);
+    lattice.build(
+        tf::exact::vertex_converter<Int, input_real_type, 3>{converter},
+        make_apply_to_form(), n_tags(), tolerance);
     return lattice;
   }
 
@@ -163,6 +171,5 @@ private:
   Forms _forms;
   tf::small_vector<Structs, 10> _structs;
 };
-
 
 } // namespace tf::arrangement

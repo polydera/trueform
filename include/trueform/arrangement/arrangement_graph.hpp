@@ -152,7 +152,7 @@ public:
   };
 
   /// The lattice view and its `quantum` (@ref
-  /// tf::arrangement::dispatch::make_input_quantum) are built above this
+  /// tf::exact::pt_converter_real::quantum) are built above this
   /// graph, over the same operands, and handed in: where every original
   /// vertex stands and what the input can tell apart, of which this build has
   /// no second opinion. `request` asks every tier that names an identity for
@@ -378,8 +378,9 @@ public:
   auto record_apply_to_face() const {
     return [this, world_form = _policy.make_apply_to_form()](
                int tag, index_type object, const auto &f) {
-      const auto faces = _world.face_offsets();
-      const auto own = faces[std::size_t(tag) + 1] - faces[std::size_t(tag)];
+      const auto tag_faces = _world.face_offsets();
+      const auto own =
+          tag_faces[std::size_t(tag) + 1] - tag_faces[std::size_t(tag)];
       if (_piece_tail_corners.size() != 0 && object >= own) {
         f(_piece_tail_corners[std::size_t(_piece_tag_base[std::size_t(tag)] +
                                           (object - own))]);
@@ -443,7 +444,7 @@ public:
   auto global() const -> global_view { return {this}; }
 
   auto vertex_offsets() const -> const tf::buffer<index_type> & {
-    return _vertex_offsets;
+    return _lattice.vertex_offsets();
   }
   auto created_points() const
       -> const tf::buffer<tf::point<resolved_int_type, 3>> & {
@@ -531,7 +532,7 @@ public:
   }
   /// @brief The form a flat-original id belongs to.
   auto tag_of_flat(index_type id) const -> index_type {
-    return tf::exact::tag_of_flat_vertex(_vertex_offsets, id);
+    return tf::exact::tag_of_flat_vertex(_lattice.vertex_offsets(), id);
   }
   /// @brief Exposed slot -> its `[begin, end)` triangle range.
   auto slot_range(index_type slot) const -> std::array<index_type, 2> {
@@ -576,10 +577,6 @@ private:
     // being the reader's answer rather than by being copied.
     auto get_mesh_point = _lattice.reader(apply_form);
 
-    const auto &lattice_offsets = _lattice.vertex_offsets();
-    _vertex_offsets.allocate(lattice_offsets.size());
-    std::copy(lattice_offsets.begin(), lattice_offsets.end(),
-              _vertex_offsets.begin());
     tf::buffer<index_type> face_counts;
     face_counts.allocate(std::size_t(n_tags) + 1);
     face_counts[0] = index_type(0);
@@ -703,8 +700,9 @@ private:
           },
           tf::checked);
       tf::arrangement::assert_promotion_is_complete(
-          _identities, _world, face_counts, tf::make_range(_vertex_offsets),
-          face_of_slot, _policy.make_apply_to_form());
+          _identities, _world, face_counts,
+          tf::make_range(_lattice.vertex_offsets()), face_of_slot,
+          _policy.make_apply_to_form());
       tf::arrangement::assert_plane_layer_is_closed(
           _identities, triangles, n_flat, _arr.n_base_created());
       if (_arr.failed().size() == 0)
@@ -762,12 +760,13 @@ private:
               const auto face = face_at(slot, k);
               if (face == index_type(-1))
                 continue;
-              const auto range = _arr.face_range(face);
+              const auto triangle_span = _arr.face_range(face);
               if (plane == index_type(-1) &&
-                  (range[1] > range[0] || k + 1 == piece_count(slot)))
+                  (triangle_span[1] > triangle_span[0] ||
+                   k + 1 == piece_count(slot)))
                 plane = tf::arrangement::plane_arrangement_face_plane(
                     _arr, _world, face);
-              count += range[1] - range[0];
+              count += triangle_span[1] - triangle_span[0];
             }
             _exposed_descriptors[slot] = {short(tag), index_type(slot - begin),
                                           plane};
@@ -811,8 +810,8 @@ private:
               const auto face = face_at(slot, k);
               if (face == index_type(-1))
                 continue;
-              const auto range = _arr.face_range(face);
-              for (auto row = range[0]; row < range[1]; ++row) {
+              const auto triangle_span = _arr.face_range(face);
+              for (auto row = triangle_span[0]; row < triangle_span[1]; ++row) {
                 const auto &corners = triangles[std::size_t(row)];
                 const auto &subs = corner_subs[std::size_t(row)];
                 auto &out = _exposed_tris[write];
@@ -999,13 +998,13 @@ private:
         const auto &piece = named[at];
         auto &corners = _piece_tail_corners[at];
         for (std::size_t c = 0; c < 3; ++c)
-          corners[c] = index_type(piece[c].tag) == tag
-                           ? piece[c].id
-                           : _vertex_offsets[std::size_t(tag) + 1] -
-                                 _vertex_offsets[std::size_t(tag)] +
-                                 index_type(std::lower_bound(begin, end,
-                                                             piece[c]) -
-                                            begin);
+          corners[c] =
+              index_type(piece[c].tag) == tag
+                  ? piece[c].id
+                  : _lattice.vertex_offsets()[std::size_t(tag) + 1] -
+                        _lattice.vertex_offsets()[std::size_t(tag)] +
+                        index_type(std::lower_bound(begin, end, piece[c]) -
+                                   begin);
       }
     }
   }
@@ -1054,7 +1053,6 @@ private:
   identities_type _identities;
   world_type _world;
   arrangement_type _arr;
-  tf::buffer<index_type> _vertex_offsets;
   tf::buffer<tf::point<resolved_int_type, 3>> _created_points;
   tf::buffer<std::array<vertex_t, 3>> _exposed_tris;
   tf::buffer<exposed_descriptor> _exposed_descriptors;

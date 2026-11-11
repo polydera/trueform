@@ -14,19 +14,20 @@
 
 #include "../../core/buffer.hpp"
 #include "../../exact/meta.hpp"
+#include "../../topology/winding/flood_triangle_winding.hpp"
+#include "../../topology/winding/loop_touches_itself.hpp"
 
 #include <algorithm>
 #include <array>
-#include <climits>
 #include <cstddef>
 #include <cstdlib>
 #include <type_traits>
 
 namespace tf::arrangement {
 
-/// Whether a lone member's loop touches itself: some vertex of the
-/// triangulation carries more than two of its passes. A loop that does not is
-/// a simple cycle, and its winding is its parity everywhere.
+/// Whether a lone member's loop touches itself
+/// (@ref tf::topology::loop_touches_itself), its passes read off the plane's
+/// constraints and tallied on the triangulation's vertices.
 ///
 /// A wall the loop states both ways cancels its winding, not its passes: the
 /// loop still runs it twice, and what it joins is still one loop. A wall no
@@ -42,26 +43,25 @@ auto plane_loop_touches_itself(const tf::buffer<Index> &cons,
                                tf::buffer<Index> &degree) -> bool {
   degree.allocate(n_vertices);
   std::fill(degree.begin(), degree.end(), Index(0));
-  for (std::size_t constraint = 0; constraint < cons_winding.size();
-       ++constraint) {
-    const auto winding = Index(std::abs(int(cons_winding[constraint])));
-    const auto multiplicity =
-        winding != Index(0) || cons_side[constraint] < short(0) ? winding
-                                                                : Index(2);
-    if (multiplicity == Index(0))
-      continue;
-    for (int end = 0; end < 2; ++end) {
-      auto &count = degree[std::size_t(
-          forward[std::size_t(cons[constraint * 2 + std::size_t(end)])])];
-      count += multiplicity;
-      if (count > Index(2))
-        return true;
-    }
-  }
-  return false;
+  return tf::topology::loop_touches_itself(
+      cons_winding.size(),
+      [&](std::size_t constraint) {
+        const auto winding = Index(std::abs(int(cons_winding[constraint])));
+        const auto multiplicity =
+            winding != Index(0) || cons_side[constraint] < short(0) ? winding
+                                                                    : Index(2);
+        return std::array<Index, 3>{
+            Index(forward[std::size_t(cons[constraint * 2])]),
+            Index(forward[std::size_t(cons[constraint * 2 + 1])]),
+            multiplicity};
+      },
+      [&degree](Index vertex, Index passes) {
+        return degree[std::size_t(vertex)] += passes;
+      });
 }
 
-/// The winding of a lone member's loop around every triangle of its carrier.
+/// The winding of a lone member's loop around every triangle of its carrier
+/// (@ref tf::topology::flood_triangle_winding), read off its triangulation.
 ///
 /// The hull exterior winds nothing, and a wall moves the winding by the
 /// multiplicity the member states it with, signed by the side it is crossed
@@ -112,30 +112,12 @@ auto flood_plane_triangle_winding(const Cdt &cdt, int cdt_orientation,
       along *= runs_with(owner.input_id, input);
     return int(cons_winding[std::size_t(input)]) * along * cdt_orientation;
   };
-  const auto unset = static_cast<signed char>(SCHAR_MIN);
-  winding.allocate(n_triangles);
-  std::fill(winding.begin(), winding.end(), unset);
-  stack.clear();
-  for (std::size_t triangle = 0; triangle < n_triangles; ++triangle)
-    for (int edge = 0; edge < 3; ++edge)
-      if (neighbors[triangle][std::size_t(edge)] == Index(-1)) {
-        winding[triangle] =
-            static_cast<signed char>(entering(Index(triangle), edge));
-        stack.push_back(Index(triangle));
-        break;
-      }
-  while (stack.size() != 0) {
-    const auto triangle = stack[stack.size() - 1];
-    stack.pop_back();
-    for (int edge = 0; edge < 3; ++edge) {
-      const auto next = neighbors[std::size_t(triangle)][std::size_t(edge)];
-      if (next == Index(-1) || winding[std::size_t(next)] != unset)
-        continue;
-      winding[std::size_t(next)] = static_cast<signed char>(
-          winding[std::size_t(triangle)] - entering(triangle, edge));
-      stack.push_back(next);
-    }
-  }
+  tf::topology::flood_triangle_winding(
+      n_triangles,
+      [&neighbors](Index triangle, int edge) {
+        return neighbors[std::size_t(triangle)][std::size_t(edge)];
+      },
+      entering, stack, winding);
 }
 
 } // namespace tf::arrangement

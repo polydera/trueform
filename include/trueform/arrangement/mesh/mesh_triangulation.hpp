@@ -35,6 +35,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <utility>
 
 namespace tf::arrangement {
 
@@ -77,10 +78,12 @@ public:
   using converter_type = tf::exact::vertex_converter<Int, RealT, Dims>;
 
   /// The world is a VIEW of this mesh, so it is constructed here and the build
-  /// below reads it — there is no empty triangulation to fill in later.
+  /// below reads it — there is no empty triangulation to fill in later. The
+  /// mesh is read on the lattice `converter` states.
   template <typename Policy>
-  explicit mesh_triangulation(const tf::polygons<Policy> &polygons)
-      : _converter(tf::exact::make_vertex_converter<Int, RealT>(polygons)),
+  mesh_triangulation(const tf::polygons<Policy> &polygons,
+                     converter_type converter)
+      : _converter(std::move(converter)),
         _world(make_world(polygons, _converter)),
         _n_original_points(Index(polygons.points().size())) {
     static_assert(tf::coordinate_dims_v<Policy> == Dims,
@@ -176,8 +179,9 @@ private:
   Index _n_original_points;
 };
 
-/// The triangulation of a mesh on the resolving tier. `Int` is the lattice the
-/// exact predicates run on; it is resolved against the input's own real type.
+/// The triangulation of a mesh on the resolving tier, on the house converter
+/// over it. `Int` is the lattice the exact predicates run on; it is resolved
+/// against the input's own real type.
 template <typename Int = tf::none_t, typename Policy>
 auto make_mesh_triangulation(const tf::polygons<Policy> &polygons) {
   using Index = std::decay_t<decltype(polygons.faces()[0][0])>;
@@ -185,7 +189,9 @@ auto make_mesh_triangulation(const tf::polygons<Policy> &polygons) {
   mesh_triangulation<Index, RealT, tf::exact::resolve_int_type<Int, RealT>,
                      tf::coordinate_dims_v<Policy>,
                      std::decay_t<decltype(polygons.faces())>>
-      product(polygons);
+      product(polygons,
+              tf::exact::make_vertex_converter<
+                  tf::exact::resolve_int_type<Int, RealT>, RealT>(polygons));
   product.build();
   return product;
 }

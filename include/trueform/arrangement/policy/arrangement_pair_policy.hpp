@@ -22,6 +22,7 @@
 #include "../../core/views/mapped_range.hpp"
 #include "../../core/views/offset_block_range.hpp"
 #include "../../exact/input_lattice.hpp"
+#include "../../exact/pt_converter.hpp"
 #include "../../exact/vertex_converter.hpp"
 #include "../../intersect/intersect_config.hpp"
 #include "../../spatial/policy/tree.hpp"
@@ -42,21 +43,19 @@ namespace tf::arrangement {
 ///        `apply_to_form(tag, f)`.
 template <typename F0, typename S0, typename F1, typename S1>
 struct arrangement_pair_policy {
-  using index_type =
-      std::common_type_t<std::decay_t<decltype(std::declval<F0>()
-                                                   .faces()[0][0])>,
-                         std::decay_t<decltype(std::declval<F1>()
-                                                   .faces()[0][0])>>;
+  using index_type = std::common_type_t<
+      std::decay_t<decltype(std::declval<F0>().faces()[0][0])>,
+      std::decay_t<decltype(std::declval<F1>().faces()[0][0])>>;
   using input_real_type = tf::coordinate_type<F0, F1>;
 
   /// Static face arity of the pair: triangles only when BOTH operands
   /// are triangles — a mixed pair must materialise per-face vertex
   /// counts, so it reports `tf::dynamic_size`.
   static constexpr std::size_t face_static_size =
-      (tf::static_size_v<std::decay_t<decltype(std::declval<F0>()
-                                                   .faces()[0])>> == 3 &&
-       tf::static_size_v<std::decay_t<decltype(std::declval<F1>()
-                                                   .faces()[0])>> == 3)
+      (tf::static_size_v<
+           std::decay_t<decltype(std::declval<F0>().faces()[0])>> == 3 &&
+       tf::static_size_v<
+           std::decay_t<decltype(std::declval<F1>().faces()[0])>> == 3)
           ? std::size_t(3)
           : tf::dynamic_size;
 
@@ -101,15 +100,23 @@ struct arrangement_pair_policy {
     };
   }
 
-  /// @brief The operands' lattice view: one converter over their union,
-  ///        the flat vertex space, and the door's placement when a
-  ///        tolerance is given. The arity the converter is built at is
-  ///        this policy's, exactly as `build_intersections`' is.
-  template <typename Int> auto make_lattice(double tolerance) const {
+  /// @brief The house converter over the two operands' union, read
+  ///        through their frames.
+  template <typename Int> auto make_converter() const {
+    return tf::exact::make_pt_converter<Int, input_real_type>(tagged0(),
+                                                              tagged1());
+  }
+
+  /// @brief The operands' lattice view on `converter`: the flat vertex
+  ///        space, and the door's placement when a tolerance is given.
+  template <typename Int>
+  auto make_lattice(
+      const tf::exact::pt_converter<Int, input_real_type, 3> &converter,
+      double tolerance) const {
     tf::exact::input_lattice<index_type, input_real_type, Int> lattice;
-    lattice.build(tf::exact::make_vertex_converter<Int, input_real_type>(
-                      tagged0(), tagged1()),
-                  make_apply_to_form(), n_tags(), tolerance);
+    lattice.build(
+        tf::exact::vertex_converter<Int, input_real_type, 3>{converter},
+        make_apply_to_form(), n_tags(), tolerance);
     return lattice;
   }
 
@@ -138,11 +145,9 @@ struct arrangement_pair_policy {
           tf::make_range(map_data.original_face_ids[std::size_t(t)]),
           tf::make_block_indirect_range(
               form.faces(),
-              tf::make_mapped_range(
-                  original_maps[t],
-                  [off = map_data.original_offsets[t]](Index x) {
-                    return x + off;
-                  })));
+              tf::make_mapped_range(original_maps[t],
+                                    [off = map_data.original_offsets[t]](
+                                        Index x) { return x + off; })));
     };
     auto uncut0 = uncut_of(tagged0(), index_type(0));
     auto uncut1 = uncut_of(tagged1(), index_type(1));

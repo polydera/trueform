@@ -373,6 +373,12 @@ public:
   /// withdrawn, and a diff value inherits it.
   auto record_near_identities(Int window) -> void { _near_window = window; }
   auto near_window() const -> Int { return _near_window; }
+  /// Ask every recovery wave to state the identities neither of which is an
+  /// original standing in one lattice box of side `window` as one — the
+  /// window is a grid, not a radius (@ref close_plane_recovery_identities);
+  /// the request stands until it is withdrawn, and a diff value inherits it.
+  auto weld_near_identities(Int window) -> void { _weld_window = window; }
+  auto weld_window() const -> Int { return _weld_window; }
   /// The near table the waves stated, deferred (@ref
   /// tf::intersect::graph::near_identity_rows), one block per wave in this
   /// value's currency; a reader resolves a retired member through the
@@ -625,7 +631,7 @@ private:
         identities, _vertex_offsets, n_flat_points(), _base_created,
         exact_point_of(identities, get_base_point, get_original_point),
         name_point_of(identities, get_base_point, get_original_point), _census,
-        frontier, Int(0), _near_rows);
+        frontier, Int(0), _near_rows, _weld_window);
     return result != plane_wave_result::unsupported;
   }
 
@@ -699,6 +705,7 @@ private:
     _record_arrangement = prior._record_arrangement;
     _record_cells = prior._record_cells;
     _near_window = prior._near_window;
+    _weld_window = prior._weld_window;
     // the one renumbering `prior` crosses into this value, and the moves the
     // statements stated in the local layer composed into this value's
     // evidence: the dirty set the statements touched gains what the world
@@ -1073,7 +1080,7 @@ private:
           identities, _vertex_offsets, n_flat_points(), _base_created,
           exact_point_of(identities, get_base_point, get_original_point),
           name_point_of(identities, get_base_point, get_original_point),
-          _census, frontier, _near_window, _near_rows);
+          _census, frontier, _near_window, _near_rows, _weld_window);
       if (result == plane_wave_result::unsupported) {
         fail_every_plane(world);
         return;
@@ -1614,7 +1621,8 @@ private:
                                _plane_ticket, _group_router, identities,
                                _vertex_offsets, n_flat_points(), _base_created,
                                exact_point, name_point, _failed, _census,
-                               frontier, _near_window, _near_rows, entrance);
+                               frontier, _near_window, _near_rows,
+                               _weld_window, entrance);
     };
     // The barrier: a round that saw something on a world with no group
     // space makes one and hands its carriers back — what it saw is not
@@ -2066,6 +2074,7 @@ private:
   bool _record_arrangement = false;
   bool _record_cells = false;
   Int _near_window = Int(0);
+  Int _weld_window = Int(0);
   tf::intersect::graph::near_identity_rows<Index, pt3_t> _near_rows;
   plane_arrangement_census _census;
   plane_refinement_census _refinement_census;

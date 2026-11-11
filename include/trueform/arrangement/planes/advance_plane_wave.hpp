@@ -111,7 +111,8 @@ enum class plane_wave_result {
 /// The wave's identity and census facts are the wave's until every seam of
 /// it validates; they join this arrangement in one place, last — the near
 /// table its position sort states at `near_window` among them (@ref
-/// close_plane_recovery_identities), appended to `near_rows`.
+/// close_plane_recovery_identities), appended to `near_rows`; `weld_window`
+/// is the closure's.
 template <typename Index, typename Int, typename World, typename VertexOffsets,
           typename ExactPoint, typename NamePoint,
           typename StateEntrance = tf::none_t>
@@ -126,7 +127,8 @@ auto advance_plane_wave(
     Int near_window,
     tf::intersect::graph::near_identity_rows<Index, tf::exact::pt3<Int>>
         &near_rows,
-    const StateEntrance &state_entrance = tf::none) -> plane_wave_result {
+    Int weld_window, const StateEntrance &state_entrance = tf::none)
+    -> plane_wave_result {
   using param_t = typename tf::exact::meta<Int>::param_type;
   using def_t = tf::intersect::graph::plane_edge_def<Index>;
   auto &delta = evidence.statements;
@@ -221,7 +223,7 @@ auto advance_plane_wave(
       base_created, n_flat, delta_class_id, delta_created_class, evidence.welds,
       identities.plane_merges(), delta_merges, candidate_points,
       topology_offsets, proposal_ends, identities.plane_created_classes(),
-      created_base, near_window, delta_near);
+      created_base, near_window, delta_near, weld_window);
 
   // A proposal reads the identity of its own class: the two carriers were
   // stated in one breath and closed on one key, so class position is the

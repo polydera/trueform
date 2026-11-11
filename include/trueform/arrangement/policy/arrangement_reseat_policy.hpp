@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../exact/pt_converter.hpp"
 #include "../../exact/resolve_int_type.hpp"
 #include "../../intersect/intersect_config.hpp"
 #include "../construct/arrangement_map_data.hpp"
@@ -41,10 +42,19 @@ template <typename Base, typename Int> struct arrangement_reseat_policy {
 
   auto make_apply_to_form() const { return _base.make_apply_to_form(); }
 
-  template <typename I> auto make_lattice(double tolerance) const {
+  template <typename I> auto make_converter() const {
     static_assert(std::is_same_v<I, Int>,
                   "the lattice is the one the policy builds on");
-    return _base.template make_lattice<Int>(tolerance);
+    return _base.template make_converter<Int>();
+  }
+
+  template <typename I>
+  auto make_lattice(
+      const tf::exact::pt_converter<Int, input_real_type, 3> &converter,
+      double tolerance) const {
+    static_assert(std::is_same_v<I, Int>,
+                  "the lattice is the one the policy builds on");
+    return _base.template make_lattice<Int>(converter, tolerance);
   }
 
   template <typename Ibp, typename Lattice>

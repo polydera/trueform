@@ -18,6 +18,7 @@
 #include "../../intersect/graph/plane_edge_def.hpp"
 #include "../../intersect/graph/plane_tables.hpp"
 #include "./plane_carrier_boundary.hpp"
+#include "./plane_chart_point.hpp"
 #include "./plane_definition_source.hpp"
 #include "./plane_member_statements.hpp"
 #include "./plane_tier_definitions.hpp"
@@ -87,7 +88,9 @@ auto prepare_plane_triangulation(
   local.pts3.clear();
   local.pts3.reserve(local.ends.size());
   for (const auto flat : local.ends) {
-    const auto q = point_of_flat(flat);
+    auto q = point_of_flat(flat);
+    if constexpr (states_chart_point<World, Index, decltype(q)>)
+      q = world.chart_point(plane, flat, q);
     local.pts2.emplace_back(q[frame.ax0], q[frame.ax1]);
     local.pts3.push_back(q);
   }
@@ -106,8 +109,7 @@ auto prepare_plane_triangulation(
   }
   const auto member_of = [&local, n_members](Index face) {
     const auto at =
-        std::lower_bound(local.member_ticket.begin(),
-                         local.member_ticket.end(),
+        std::lower_bound(local.member_ticket.begin(), local.member_ticket.end(),
                          std::array<Index, 2>{face, Index(0)});
     return at != local.member_ticket.end() && (*at)[0] == face
                ? std::size_t((*at)[1])
@@ -144,8 +146,7 @@ auto prepare_plane_triangulation(
     // cancels — the repeated-boundary law the triangulation itself states,
     // which the run collapse would otherwise lose
     int winding = 0;
-    while (j < plane_block.size() &&
-           tier.ticket(plane_block[j]) == ticket) {
+    while (j < plane_block.size() && tier.ticket(plane_block[j]) == ticket) {
       const auto &instance = tier[std::size_t(plane_block[j])];
       if (instance.ordinal >= 0) {
         const auto direction = static_cast<signed char>(
@@ -166,8 +167,7 @@ auto prepare_plane_triangulation(
       } else {
         const auto m = pooled ? member_of(instance.face) : std::size_t(0);
         if (m != n_members)
-          local.cons_cut.push_back(
-              {Index(local.bnd.size()), Index(m)});
+          local.cons_cut.push_back({Index(local.bnd.size()), Index(m)});
       }
       ++j;
     }
@@ -175,9 +175,8 @@ auto prepare_plane_triangulation(
     // the members stating this cut, once each and ascending
     std::sort(local.cons_cut.begin() + std::ptrdiff_t(cuts),
               local.cons_cut.end());
-    local.cons_cut.erase_till_end(
-        std::unique(local.cons_cut.begin() + std::ptrdiff_t(cuts),
-                    local.cons_cut.end()));
+    local.cons_cut.erase_till_end(std::unique(
+        local.cons_cut.begin() + std::ptrdiff_t(cuts), local.cons_cut.end()));
     if (pooled) {
       for (auto at = row; at < local.cons_statements.size(); ++at)
         boundary = boundary || (local.cons_statements[at].winding & 1) != 0;

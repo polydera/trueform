@@ -12,10 +12,12 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
+#include "../../core/memory.hpp"
 #include "../../core/polygons_buffer.hpp"
 #include "../../core/range.hpp"
 #include "../../core/small_vector.hpp"
 #include "../../exact/input_lattice.hpp"
+#include "../../exact/pt_converter.hpp"
 #include "../../intersect/graph/local_arrangement.hpp"
 #include "../../intersect/intersect_config.hpp"
 #include "../../intersect/polygon_intersections.hpp"
@@ -26,7 +28,6 @@
 #include <cstddef>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace tf::arrangement::reseat {
 
@@ -34,7 +35,8 @@ namespace tf::arrangement::reseat {
 /// records, planes, definitions and identities are what the full build
 /// would state for these faces, on these points, its identities in its own
 /// substrate. Every piece enters the cut world whether or not a record names
-/// it, as the carve's own faces do.
+/// it, as the carve's own faces do. Its points stand on the world's lattice,
+/// so its converter is the identity carrying the world's `quantum`.
 template <typename Index, typename Int> struct reseat_delta_world {
   using form_t = std::decay_t<
       decltype(std::declval<const tf::polygons_buffer<Index, Int, 3, 3> &>()
@@ -42,7 +44,8 @@ template <typename Index, typename Int> struct reseat_delta_world {
   using structs_t = decltype(tf::arrangement::dispatch::make_missing_structures(
       std::declval<form_t>()));
   using policy_t =
-      tf::arrangement::arrangement_range_policy<std::vector<form_t>, structs_t>;
+      tf::arrangement::arrangement_range_policy<tf::core::std_vector<form_t>,
+                                                structs_t>;
   using world_t = tf::intersect::graph::local_arrangement<Index, Int, Int>;
 
   policy_t policy;
@@ -57,11 +60,11 @@ template <typename Index, typename Int> struct reseat_delta_world {
 
 template <typename Index, typename Int>
 auto make_reseat_delta_world(const reseat_delta_forms<Index, Int> &forms,
-                             tf::intersect_config config)
+                             tf::intersect_config config, Int quantum)
     -> reseat_delta_world<Index, Int> {
   using delta_t = reseat_delta_world<Index, Int>;
   using form_t = typename delta_t::form_t;
-  std::vector<form_t> views;
+  tf::core::std_vector<form_t> views;
   for (const auto &mesh : forms.meshes)
     views.push_back(mesh.polygons());
   tf::small_vector<typename delta_t::structs_t, 10> structs(views.size());
@@ -74,7 +77,8 @@ auto make_reseat_delta_world(const reseat_delta_forms<Index, Int> &forms,
       {},
       {}};
   config.tolerance = 0.0;
-  delta.lattice = delta.policy.template make_lattice<Int>(0.0);
+  delta.lattice = delta.policy.template make_lattice<Int>(
+      tf::exact::pt_converter<Int, Int, 3>{{quantum}}, 0.0);
   const auto n_tags = delta.policy.n_tags();
   if (n_tags == Index(1))
     config.mode = config.mode | tf::intersect_mode::within;

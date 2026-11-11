@@ -172,6 +172,15 @@ auto state_reseat_pieces(const Rounds &rounds,
     // a side lying on `(a, b)` takes the ids strictly inside it: the whole
     // side, or — on a source side a standing carve split — the part of it
     // a piece holds
+    // The lists one tag's rounds walk on, cleared where each is filled.
+    struct along_point_t {
+      T2 along;
+      pt point;
+    };
+    tf::buffer<typename carve_round<Index, Int>::edge_t> edges;
+    tf::buffer<along_point_t> points;
+    tf::buffer<corner_t> ids;
+    tf::buffer<corner_t> inside;
     const auto split_edge = [&](const corner_t &a, const corner_t &b,
                                 const tf::buffer<corner_t> &ids) {
       const bool source_side = a.tag >= 0 && b.tag >= 0;
@@ -180,7 +189,6 @@ auto state_reseat_pieces(const Rounds &rounds,
       const auto along = [&](const corner_t &c) {
         return dot(diff(position(c), pa), ab);
       };
-      tf::buffer<corner_t> inside;
       const auto n = pieces.size();
       for (std::size_t f = 0; f < n; ++f) {
         if (dead[f])
@@ -262,7 +270,7 @@ auto state_reseat_pieces(const Rounds &rounds,
       for (std::size_t f = 0; f < pieces.size(); ++f)
         lineage[f] = sorted(pieces[f].corners);
 
-      tf::buffer<typename carve_round<Index, Int>::edge_t> edges;
+      edges.clear();
       for (const auto &e : round.edges)
         if (e.tag == tag) {
           auto edge = e;
@@ -286,11 +294,7 @@ auto state_reseat_pieces(const Rounds &rounds,
         enter_edge(ca, cb);
         const auto pa = position(ca);
         const auto along = diff(position(cb), pa);
-        struct along_point_t {
-          T2 along;
-          pt point;
-        };
-        tf::buffer<along_point_t> points;
+        points.clear();
         for (std::size_t k = i; k < j; ++k)
           points.push_back({dot(diff(edges[k].point, pa), along),
                             edges[k].point});
@@ -299,7 +303,7 @@ auto state_reseat_pieces(const Rounds &rounds,
                     return std::make_pair(x.along, key(x.point)) <
                            std::make_pair(y.along, key(y.point));
                   });
-        tf::buffer<corner_t> ids;
+        ids.clear();
         for (const auto &p : points) {
           const auto id = seat_of(p.point);
           if (ids.size() == 0 || !(ids[ids.size() - 1] == id))

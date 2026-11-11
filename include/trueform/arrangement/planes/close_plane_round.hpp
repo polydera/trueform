@@ -43,7 +43,8 @@ enum class plane_round_result { done, retry, aborted, entrance };
 /// set that refusal never triangulated, and the wave publishes it. A weld
 /// needs no refusal either: a triangulation that succeeded may still report
 /// two identities it could not tell apart, and that statement is the wave's.
-/// `near_window` and `near_rows` are the wave's (@ref advance_plane_wave).
+/// `near_window`, `near_rows` and `weld_window` are the wave's (@ref
+/// advance_plane_wave).
 template <typename Index, typename Int, typename World, typename Planes,
           typename VertexOffsets, typename ExactPoint, typename NamePoint,
           typename StateEntrance = tf::none_t>
@@ -59,7 +60,8 @@ auto close_plane_round(
     tf::buffer<Index> &frontier, Int near_window,
     tf::intersect::graph::near_identity_rows<Index, tf::exact::pt3<Int>>
         &near_rows,
-    const StateEntrance &state_entrance = tf::none) -> plane_round_result {
+    Int weld_window, const StateEntrance &state_entrance = tf::none)
+    -> plane_round_result {
   evidence.census.refusals += evidence.refused.size();
   census += evidence.census;
   census.planes = std::size_t(world.n_planes());
@@ -87,7 +89,7 @@ auto close_plane_round(
   const auto wave = advance_plane_wave(
       world, evidence, local_tables, plane_ticket, group_router, identities,
       vertex_offsets, n_flat, base_created, exact_point, name_point, census,
-      frontier, near_window, near_rows, state_entrance);
+      frontier, near_window, near_rows, weld_window, state_entrance);
   if (wave == plane_wave_result::unsupported)
     return plane_round_result::aborted;
   // a caller that states no entrance can never be answered with one
