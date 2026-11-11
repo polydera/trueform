@@ -1,3 +1,57 @@
+## trueform v0.10.10
+
+The tet mesher's public surface. `tf::make_tet_mesh(polygons)` now returns
+the tetrahedra and the `tf::tet_mesh_status` alone; `tf::return_report`
+returns the `tf::tet_mesh_report` in its place, its diagnostics measured
+only when asked, and composes with `tf::return_index_map`. The points are in
+double whatever the input's type, because they are lattice positions finer than a float holds
+and a float export reads some slivers inverted; `tf::make_tet_mesh<tf::none_t,
+float>` asks for float. The triangles covering each facet and the facets each
+input face lies in, the two members it returned between them, are
+`tf::tet_mesh_index_map`'s `facet_triangles` and `face_facets`, returned
+under `tf::return_index_map` and built only when asked. The call takes one
+`tf::tet_mesh_config`, the 2D CDT's shape: `split_constraints` (true cuts
+the crossings the recovery finds, false meshes the surface as given, where a
+clean surface gives the same cells and a crossing refuses), `tolerance`
+(plane pooling at the entrance, and every drain's band), and the integer
+`site_budget_ratio` that bounds the recovery's sites, set by name.
+A form tagged with a frame is meshed where the frame places it and comes
+back in world space, and a tagged tree, face membership and manifold edge
+link are read rather than rebuilt: the entrance's first pass arranges the
+form as tagged on the entrance's own lattice, through
+`tf::arrangement::make_arrangement_graph`, the arrangement's body, which
+takes the converter as stated, and the converter carries the lattice's
+quantum. That quantum is the input float's own, so seats the input cannot
+tell apart are refused in every pass where the integer image the entrance
+used to arrange minted them. Python gains `tf.tet_mesh` and TypeScript
+`tf.tetMesh` with its async twin, both over the same call.
+
+The tet mesher's constraint recovery runs across regions of the surface. A
+phase whose due set is large enough is divided by the surface's
+partition, each region's walks run beside the others' on their own rows,
+a walk that reaches another region's row stops where it stands and is
+finished after the barrier, and the product is one mesh at any worker
+count. On a 2.1M-vertex scan the recovery is a fifth faster at sixteen
+workers and on an 0.8M one two fifths; a mesh too small to divide runs
+the serial kernel byte for byte. `tf::tet_execution_tuning` carries the
+grain and the threshold the measurements chose.
+
+TypeScript: a library call that minted a native handle it did not return
+now disposes it itself, in every module. A getter such as `mesh.faceLink`
+hands out an independent handle sharing the mesh's storage, and the
+finalization registry releases it only when the event loop turns, so a
+synchronous loop over many meshes accumulated them; `connectedComponents`,
+the `mesh`, `pointCloud` and `curves` factories, `readObj`, the reindex and
+histogram conversions, the remesh region labels, `obbFrom` / `aabbFrom`,
+`NDArray.take` / `assign` and the CSG graph's cached lanes no longer leave a
+handle behind, and a result whose conversion throws releases its lanes.
+What a caller obtains stays the caller's to `delete()` in a loop;
+`tests/test_handle_lifetime.mjs` holds the heap flat over two hundred
+meshes.
+
+`tf::make_tube_mesh` winds its tubes outward. They were wound inward, so a renderer
+culling back faces showed the far inner wall of every tube.
+
 ## trueform v0.10.9
 
 Tetrahedral meshing. `tf::make_tet_mesh(polygons)` states the solid a
