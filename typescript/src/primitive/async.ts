@@ -13,7 +13,8 @@
 
 import { native, dispatcher } from "../native";
 import { NDArray } from "../ndarray/NDArray";
-import type { OBB } from "./factories";
+import { pointsOf, type OBB } from "./factories";
+import { coerce, disposeOwned } from "../internal/owned";
 
 /** Compute the oriented bounding box of points or a mesh (async). */
 export async function obbFrom(input: NDArray): Promise<OBB>;
@@ -21,15 +22,20 @@ export async function obbFrom(input: { points: NDArray }): Promise<OBB>;
 export async function obbFrom(
   input: NDArray | { points: NDArray },
 ): Promise<OBB> {
-  const pts = input instanceof NDArray ? input : input.points;
-  const dt = pts.dtype === "float64" ? "float64" : "float32";
-  const safe = pts.dtype === dt ? pts : pts.as(dt);
-  return dispatcher().run(
-    () => native()[`dispatch_obb_from_${dt}`](safe._handle),
-    (raw) => ({
-      origin: new NDArray(raw.origin, dt),
-      axes: new NDArray(raw.axes, dt),
-      extent: new NDArray(raw.extent, dt),
-    }),
-  );
+  const owned: NDArray[] = [];
+  try {
+    const pts = pointsOf(input, owned);
+    const dt = pts.dtype === "float64" ? "float64" : "float32";
+    const safe = coerce(pts, dt, owned);
+    return await dispatcher().run(
+      () => native()[`dispatch_obb_from_${dt}`](safe._handle),
+      (raw) => ({
+        origin: new NDArray(raw.origin, dt),
+        axes: new NDArray(raw.axes, dt),
+        extent: new NDArray(raw.extent, dt),
+      }),
+    );
+  } finally {
+    disposeOwned(owned);
+  }
 }

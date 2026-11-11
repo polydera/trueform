@@ -45,6 +45,9 @@ add_executable(trueform_wasm
     cpp/src/arrangement/polygon_arrangement_float64.cpp
     cpp/src/fill/fill_float32.cpp
     cpp/src/fill/fill_float64.cpp
+    cpp/src/tetmesh/tetmesh.cpp
+    cpp/src/tetmesh/tetmesh_float32.cpp
+    cpp/src/tetmesh/tetmesh_float64.cpp
     cpp/src/iso/isobands_float32.cpp
     cpp/src/iso/isobands_float64.cpp
     cpp/src/iso/isocontours_float32.cpp

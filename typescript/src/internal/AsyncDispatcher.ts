@@ -21,6 +21,8 @@
  * The C++ side stores a type-erased converter per context, so one generic
  * `retrieve` embind function serves all return types.
  */
+import { releaseHandle } from "./registry";
+
 interface NodeProcessLike {
   versions?: { node?: string };
 }
@@ -75,8 +77,28 @@ export class AsyncDispatcher {
     }
 
     // Single generic retrieve — C++ converter handles the type
+    return this._convert(slot, unwrap);
+  }
+
+  /**
+   * Retrieve the result and convert it. When `unwrap` throws, the native
+   * handles of the result that were not yet taken over by a wrapper (and
+   * the ones that were: the registry tolerates an already deleted handle)
+   * are released here, so a failed conversion leaves nothing pinned.
+   */
+  private _convert<T>(slot: number, unwrap?: (raw: any) => T): T {
     const raw = this._retrieve(slot);
-    return unwrap ? unwrap(raw) : raw;
+    if (!unwrap) return raw;
+    try {
+      return unwrap(raw);
+    } catch (e) {
+      const release = (v: any) => {
+        if (v !== null && typeof v === "object" && typeof v.delete === "function") releaseHandle(v);
+      };
+      release(raw);
+      if (raw !== null && typeof raw === "object") Object.values(raw).forEach(release);
+      throw e;
+    }
   }
 
   /**
@@ -101,7 +123,6 @@ export class AsyncDispatcher {
       throw new Error("Async operation failed");
     }
 
-    const raw = this._retrieve(slot);
-    return unwrap ? unwrap(raw) : raw;
+    return this._convert(slot, unwrap);
   }
 }

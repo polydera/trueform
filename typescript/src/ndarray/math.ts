@@ -240,11 +240,16 @@ export function normalize(arr: NDArray, axis?: number): NDArray {
     return arr.div(norm(arr) as number);
   }
   const n = norm(arr, axis) as NDArray;
-  const expanded = n.unsqueeze(axis);
-  n.delete();
-  const result = arr.div(expanded);
-  expanded.delete();
-  return result;
+  try {
+    const expanded = n.unsqueeze(axis);
+    try {
+      return arr.div(expanded);
+    } finally {
+      expanded.delete();
+    }
+  } finally {
+    n.delete();
+  }
 }
 
 /** L2-normalize an array in-place. */
@@ -253,10 +258,16 @@ export function normalize_(arr: NDArray, axis?: number): NDArray {
     return arr.div_(norm(arr) as number);
   }
   const n = norm(arr, axis) as NDArray;
-  const expanded = n.unsqueeze(axis);
-  n.delete();
-  arr.div_(expanded);
-  expanded.delete();
+  try {
+    const expanded = n.unsqueeze(axis);
+    try {
+      arr.div_(expanded);
+    } finally {
+      expanded.delete();
+    }
+  } finally {
+    n.delete();
+  }
   return arr;
 }
 

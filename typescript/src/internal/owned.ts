@@ -12,6 +12,7 @@
  */
 
 import { NDArray } from "../ndarray/NDArray";
+import type { Dtype } from "../ndarray/dtype";
 
 /**
  * An array a call creates only to feed native code is referenced by nobody
@@ -28,7 +29,7 @@ export function own<T extends NDArray>(arr: T, owned: NDArray[]): T {
 
 /** The array in `dtype`, converting and tracking it when it is not already. */
 export function coerce(
-  arr: NDArray, dtype: "float32" | "float64", owned: NDArray[],
+  arr: NDArray, dtype: Dtype, owned: NDArray[],
 ): NDArray {
   return arr.dtype === dtype ? arr : own(arr.as(dtype), owned);
 }

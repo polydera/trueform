@@ -99,6 +99,20 @@ const { hits, ts } = await tf.async.rayCast(rays, mesh);
 
 > [Full documentation](https://trueform.polydera.com/ts/modules) covers topology, isocontours, remeshing, registration, and more.
 
+## Tutorials
+
+One task per page, with full code, on polydera.com:
+
+- [Mesh booleans in JavaScript](https://polydera.com/tutorials/fast-mesh-booleans-in-javascript)
+- [Closest point on a mesh in JavaScript](https://polydera.com/tutorials/fast-closest-point-on-a-mesh-in-javascript)
+- [Mesh collision detection in JavaScript](https://polydera.com/tutorials/fast-mesh-collision-detection-in-javascript)
+- [Geodesic distances in JavaScript](https://polydera.com/tutorials/fast-geodesic-distances-in-javascript)
+- [Constrained Delaunay triangulation in JavaScript](https://polydera.com/tutorials/constrained-delaunay-triangulation-in-javascript)
+- [Isocontours on a triangle mesh in JavaScript](https://polydera.com/tutorials/isocontours-on-a-triangle-mesh-in-javascript)
+- [STL and OBJ reading in JavaScript](https://polydera.com/tutorials/fast-stl-and-obj-reading-in-javascript)
+
+> [All tutorials](https://polydera.com/tutorials)
+
 ## Examples
 
 - **[Guided Examples](https://trueform.polydera.com/ts/examples)** — Step-by-step walkthroughs for spatial queries, topology, and booleans

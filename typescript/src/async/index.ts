@@ -24,6 +24,7 @@ export {
 } from "../csg/async";
 export { meshArrangements, polygonArrangements } from "../arrangement/async";
 export { fillHoles, filledMesh } from "../fill/async";
+export { tetMesh } from "../tetmesh/async";
 export { isocontours, isobands } from "../iso/async";
 export { intersectionCurves, selfIntersectionCurves, hasSelfIntersections } from "../intersect/async";
 export {

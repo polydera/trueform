@@ -12,6 +12,7 @@
  */
 
 import { registry } from "../internal/registry";
+import { own, coerce, disposeOwned } from "../internal/owned";
 import { NDArray, NativeNDArray, NDArrayInt32, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer, NativeOffsetBlockedIntBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { ndarray } from "../ndarray/factories";
@@ -91,8 +92,13 @@ export class Mesh {
   set faces(f: NDArrayInt32 | Int32Array) {
     if (f instanceof NDArray) {
       this._handle.set_faces(f._handle);
-    } else {
-      this._handle.set_faces(ndarray(f, [f.length / 3, 3])._handle);
+      return;
+    }
+    const owned: NDArray[] = [];
+    try {
+      this._handle.set_faces(own(ndarray(f, [f.length / 3, 3]), owned)._handle);
+    } finally {
+      disposeOwned(owned);
     }
   }
 
@@ -105,11 +111,16 @@ export class Mesh {
   set points(p: NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array) {
     if (p instanceof NDArray) {
       this._handle.set_points(p._handle);
-    } else {
+      return;
+    }
+    const owned: NDArray[] = [];
+    try {
       const arr: NDArrayFloat32 | NDArrayFloat64 = p instanceof Float64Array
         ? ndarray(p, [p.length / 3, 3])
         : ndarray(p, [p.length / 3, 3]);
-      this._handle.set_points(arr._handle);
+      this._handle.set_points(own(arr, owned)._handle);
+    } finally {
+      disposeOwned(owned);
     }
   }
 
@@ -136,12 +147,15 @@ export class Mesh {
       this._handle.clear_transformation();
       return;
     }
-    const arr =
-      t instanceof NDArray ? t
-      : t instanceof Float64Array ? ndarray(t, [4, 4])
-      : ndarray(t, [4, 4]);
-    const safe = arr.dtype === this.dtype ? arr : arr.as(this.dtype);
-    this._handle.set_transformation(safe._handle);
+    const owned: NDArray[] = [];
+    try {
+      const arr =
+        t instanceof NDArray ? t
+        : own(t instanceof Float64Array ? ndarray(t, [4, 4]) : ndarray(t, [4, 4]), owned);
+      this._handle.set_transformation(coerce(arr, this.dtype, owned)._handle);
+    } finally {
+      disposeOwned(owned);
+    }
   }
 
   /**

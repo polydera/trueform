@@ -51,11 +51,12 @@ export class Primitive extends NDArray {
     return this.isBatch ? this.shape[0] : 1;
   }
 
-  /** For batch primitives, returns the i-th element as a single Primitive. */
+  /** For batch primitives, returns the i-th element as a single Primitive.
+   *  Always an independently owned handle: a single primitive yields a shallowCopy(), never `this`. */
   at(i: number): Primitive {
     if (!this.isBatch) {
       if (i !== 0) throw new RangeError("Single primitive, index must be 0");
-      return this;
+      return this.shallowCopy();
     }
     return new Primitive(
       this._handle.row(i),

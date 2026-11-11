@@ -425,6 +425,7 @@ export class CsgGraph {
   /**
    * Points the arrangement created (intersections; plus refinement points
    * under `triangulation: "refinedCdt"`), NDArray [K, 3] in the input dtype.
+   * Each access returns a fresh handle (like the Mesh getters); the graph keeps its own.
    */
   get createdPoints(): NDArrayFloat32 | NDArrayFloat64 {
     if (this._createdPoints === null) {
@@ -433,7 +434,7 @@ export class CsgGraph {
         this.dtype,
       ) as NDArrayFloat32 | NDArrayFloat64;
     }
-    return this._createdPoints;
+    return this._createdPoints.shallowCopy() as NDArrayFloat32 | NDArrayFloat64;
   }
 
   /**
@@ -449,7 +450,7 @@ export class CsgGraph {
         "int32",
       ) as NDArrayInt32;
     }
-    return this._sheetRimVolumes;
+    return this._sheetRimVolumes.shallowCopy() as NDArrayInt32;
   }
 
   /**
@@ -554,6 +555,10 @@ export class CsgGraph {
   }
 
   delete(): void {
+    this._createdPoints?.delete();
+    this._createdPoints = null;
+    this._sheetRimVolumes?.delete();
+    this._sheetRimVolumes = null;
     this._handle.destroy();
   }
 

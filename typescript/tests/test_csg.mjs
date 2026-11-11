@@ -372,10 +372,15 @@ for (const dtype of ["float32", "float64"]) {
         `one pair, got [${pairs.shape}]`);
       assert(JSON.stringify(Array.from(pairs.data)) === "[0,1]",
         "(sheet 0, box 1)");
-      assert(held.sheetRimVolumes === pairs, "cached on the graph");
+      const again = held.sheetRimVolumes;
+      assert(again !== pairs, "a fresh handle per access");
+      pairs.delete();
+      assert(JSON.stringify(Array.from(again.data)) === "[0,1]",
+        "the graph's cache survives a caller's delete");
+      again.delete();
       assert(held.numberOfSheetConflicts === 0, "no conflicts");
 
-      none.delete(); pairs.delete();
+      none.delete();
       divided.delete(); held.delete();
       dividing.delete(); floating.delete(); box.delete();
     });

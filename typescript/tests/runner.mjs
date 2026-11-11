@@ -32,6 +32,7 @@ await import("./test_clean.mjs");
 await import("./test_arrangement.mjs");
 await import("./test_intersect.mjs");
 await import("./test_fill.mjs");
+await import("./test_tetmesh.mjs");
 await import("./test_surface_fields.mjs");
 await import("./test_iso.mjs");
 await import("./test_io_roundtrip.mjs");

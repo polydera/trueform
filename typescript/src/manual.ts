@@ -113,6 +113,13 @@ export {
 } from "./fill/sync";
 export type { HoleFill, FillHolesOpts } from "./fill/sync";
 
+// Tetmesh operations
+export { tetMesh, deleteTetMesh, TetMeshStatus } from "./tetmesh/sync";
+export type {
+  TetMeshOpts, TetMeshResult, TetMeshResultWithIndexMap, TetMeshReport,
+  TetConstraintCensus, TetFaceCensus,
+} from "./tetmesh/sync";
+
 // Iso operations
 export { isocontours, isobands } from "./iso/sync";
 export type { IsobandsResult, IsobandsResultWithCurves } from "./iso/sync";

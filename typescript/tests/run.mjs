@@ -30,10 +30,12 @@ await import("./test_csg.mjs");
 await import("./test_domains.mjs");
 await import("./test_intersect.mjs");
 await import("./test_fill.mjs");
+await import("./test_tetmesh.mjs");
 await import("./test_surface_fields.mjs");
 await import("./test_iso.mjs");
 await import("./test_io_roundtrip.mjs");
 await import("./test_dtype_dispatch.mjs");
+await import("./test_handle_lifetime.mjs");
 
 // Load WASM module
 const tf = await import("../dist/index.js");

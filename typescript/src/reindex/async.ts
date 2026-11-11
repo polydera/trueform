@@ -17,6 +17,7 @@ import { NDArray, type NDArrayInt32, type NDArrayBool } from "../ndarray/NDArray
 import type { FloatDtype } from "../ndarray/dtype";
 import { IndexMap } from "../core/IndexMap";
 import { assertSameDtype } from "../internal/dtype";
+import { coerce, disposeOwned } from "../internal/owned";
 import type {
   ReindexedMeshResult, SplitResult,
   DomainLabelsInput, SplitDomainsResult,
@@ -75,26 +76,31 @@ export async function reindexedByMask(
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
   const dt = m.dtype as FloatDtype;
-  const safeMask = mask.dtype === "bool" ? mask : mask.as("bool");
-  if (opts?.returnIndexMap) {
-    return dispatcher().run(
-      () =>
-        native()[`dispatch_reindexed_by_mask_with_maps_${dt}`](
-          m._handle, safeMask._handle,
-        ),
-      (raw) => ({
-        mesh: new Mesh(raw.mesh, dt),
-        faceMap: new IndexMap(raw.faceMap),
-        pointMap: new IndexMap(raw.pointMap),
-      }),
+  const owned: NDArray[] = [];
+  try {
+    const safeMask = coerce(mask, "bool", owned);
+    if (opts?.returnIndexMap) {
+      return await dispatcher().run(
+        () =>
+          native()[`dispatch_reindexed_by_mask_with_maps_${dt}`](
+            m._handle, safeMask._handle,
+          ),
+        (raw) => ({
+          mesh: new Mesh(raw.mesh, dt),
+          faceMap: new IndexMap(raw.faceMap),
+          pointMap: new IndexMap(raw.pointMap),
+        }),
+      );
+    }
+    return await dispatcher().run(
+      () => native()[`dispatch_reindexed_by_mask_${dt}`](
+        m._handle, safeMask._handle,
+      ),
+      (raw) => new Mesh(raw, dt),
     );
+  } finally {
+    disposeOwned(owned);
   }
-  return dispatcher().run(
-    () => native()[`dispatch_reindexed_by_mask_${dt}`](
-      m._handle, safeMask._handle,
-    ),
-    (raw) => new Mesh(raw, dt),
-  );
 }
 
 // ============================================================================
@@ -118,26 +124,31 @@ export async function reindexedByIds(
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
   const dt = m.dtype as FloatDtype;
-  const safeIds = ids.dtype === "int32" ? ids : ids.as("int32");
-  if (opts?.returnIndexMap) {
-    return dispatcher().run(
-      () =>
-        native()[`dispatch_reindexed_by_ids_with_maps_${dt}`](
-          m._handle, safeIds._handle,
-        ),
-      (raw) => ({
-        mesh: new Mesh(raw.mesh, dt),
-        faceMap: new IndexMap(raw.faceMap),
-        pointMap: new IndexMap(raw.pointMap),
-      }),
+  const owned: NDArray[] = [];
+  try {
+    const safeIds = coerce(ids, "int32", owned);
+    if (opts?.returnIndexMap) {
+      return await dispatcher().run(
+        () =>
+          native()[`dispatch_reindexed_by_ids_with_maps_${dt}`](
+            m._handle, safeIds._handle,
+          ),
+        (raw) => ({
+          mesh: new Mesh(raw.mesh, dt),
+          faceMap: new IndexMap(raw.faceMap),
+          pointMap: new IndexMap(raw.pointMap),
+        }),
+      );
+    }
+    return await dispatcher().run(
+      () => native()[`dispatch_reindexed_by_ids_${dt}`](
+        m._handle, safeIds._handle,
+      ),
+      (raw) => new Mesh(raw, dt),
     );
+  } finally {
+    disposeOwned(owned);
   }
-  return dispatcher().run(
-    () => native()[`dispatch_reindexed_by_ids_${dt}`](
-      m._handle, safeIds._handle,
-    ),
-    (raw) => new Mesh(raw, dt),
-  );
 }
 
 // ============================================================================
@@ -161,27 +172,32 @@ export async function reindexedByMaskOnPoints(
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
   const dt = m.dtype as FloatDtype;
-  const safeMask = mask.dtype === "bool" ? mask : mask.as("bool");
-  if (opts?.returnIndexMap) {
-    return dispatcher().run(
+  const owned: NDArray[] = [];
+  try {
+    const safeMask = coerce(mask, "bool", owned);
+    if (opts?.returnIndexMap) {
+      return await dispatcher().run(
+        () =>
+          native()[`dispatch_reindexed_by_mask_on_points_with_maps_${dt}`](
+            m._handle, safeMask._handle,
+          ),
+        (raw) => ({
+          mesh: new Mesh(raw.mesh, dt),
+          faceMap: new IndexMap(raw.faceMap),
+          pointMap: new IndexMap(raw.pointMap),
+        }),
+      );
+    }
+    return await dispatcher().run(
       () =>
-        native()[`dispatch_reindexed_by_mask_on_points_with_maps_${dt}`](
+        native()[`dispatch_reindexed_by_mask_on_points_${dt}`](
           m._handle, safeMask._handle,
         ),
-      (raw) => ({
-        mesh: new Mesh(raw.mesh, dt),
-        faceMap: new IndexMap(raw.faceMap),
-        pointMap: new IndexMap(raw.pointMap),
-      }),
+      (raw) => new Mesh(raw, dt),
     );
+  } finally {
+    disposeOwned(owned);
   }
-  return dispatcher().run(
-    () =>
-      native()[`dispatch_reindexed_by_mask_on_points_${dt}`](
-        m._handle, safeMask._handle,
-      ),
-    (raw) => new Mesh(raw, dt),
-  );
 }
 
 // ============================================================================
@@ -205,27 +221,32 @@ export async function reindexedByIdsOnPoints(
   opts?: { returnIndexMap: true },
 ): Promise<Mesh | ReindexedMeshResult> {
   const dt = m.dtype as FloatDtype;
-  const safeIds = ids.dtype === "int32" ? ids : ids.as("int32");
-  if (opts?.returnIndexMap) {
-    return dispatcher().run(
+  const owned: NDArray[] = [];
+  try {
+    const safeIds = coerce(ids, "int32", owned);
+    if (opts?.returnIndexMap) {
+      return await dispatcher().run(
+        () =>
+          native()[`dispatch_reindexed_by_ids_on_points_with_maps_${dt}`](
+            m._handle, safeIds._handle,
+          ),
+        (raw) => ({
+          mesh: new Mesh(raw.mesh, dt),
+          faceMap: new IndexMap(raw.faceMap),
+          pointMap: new IndexMap(raw.pointMap),
+        }),
+      );
+    }
+    return await dispatcher().run(
       () =>
-        native()[`dispatch_reindexed_by_ids_on_points_with_maps_${dt}`](
+        native()[`dispatch_reindexed_by_ids_on_points_${dt}`](
           m._handle, safeIds._handle,
         ),
-      (raw) => ({
-        mesh: new Mesh(raw.mesh, dt),
-        faceMap: new IndexMap(raw.faceMap),
-        pointMap: new IndexMap(raw.pointMap),
-      }),
+      (raw) => new Mesh(raw, dt),
     );
+  } finally {
+    disposeOwned(owned);
   }
-  return dispatcher().run(
-    () =>
-      native()[`dispatch_reindexed_by_ids_on_points_${dt}`](
-        m._handle, safeIds._handle,
-      ),
-    (raw) => new Mesh(raw, dt),
-  );
 }
 
 // ============================================================================
@@ -258,18 +279,24 @@ export async function splitIntoComponents(
   labels: NDArrayInt32,
 ): Promise<SplitResult> {
   const dt = m.dtype as FloatDtype;
-  const safeLabels = labels.dtype === "int32" ? labels : labels.as("int32");
-  return dispatcher().run(
-    () => native()[`dispatch_split_into_components_${dt}`](
-      m._handle, safeLabels._handle,
-    ),
-    (raw) => {
-      const comps: Mesh[] = [];
-      for (let i = 0; i < raw.components.size(); i++)
-        comps.push(new Mesh(raw.components.get(i), dt));
-      return { components: comps, labels: new NDArray(raw.labels, "int32") };
-    },
-  );
+  const owned: NDArray[] = [];
+  try {
+    const safeLabels = coerce(labels, "int32", owned);
+    return await dispatcher().run(
+      () => native()[`dispatch_split_into_components_${dt}`](
+        m._handle, safeLabels._handle,
+      ),
+      (raw) => {
+        const comps: Mesh[] = [];
+        for (let i = 0; i < raw.components.size(); i++)
+          comps.push(new Mesh(raw.components.get(i), dt));
+        raw.components.delete();
+        return { components: comps, labels: new NDArray(raw.labels, "int32") };
+      },
+    );
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 // ============================================================================
@@ -288,6 +315,7 @@ export async function splitIntoDomains(
       const comps: Mesh[] = [];
       for (let i = 0; i < raw.components.size(); i++)
         comps.push(new Mesh(raw.components.get(i), dt));
+      raw.components.delete();
       return { components: comps, labels: new NDArray(raw.labels, "int32") };
     },
   );

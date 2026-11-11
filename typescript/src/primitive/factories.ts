@@ -18,7 +18,10 @@ import {
   Ray, Line, Plane, AABB, Polygon,
 } from "./Primitive";
 import { NDArray, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
-import { coerce, disposeOwned } from "../internal/owned";
+import { coerce, own, disposeOwned } from "../internal/owned";
+import { Mesh } from "../form/Mesh";
+import { PointCloud } from "../form/PointCloud";
+import { Curves } from "../form/Curves";
 
 /** Options selecting the coordinate dtype of a primitive factory. */
 export interface PrimitiveDtypeOptions {
@@ -547,14 +550,24 @@ export interface OBB {
   extent: NDArray;
 }
 
+/** The points of `input`: a Mesh / PointCloud / Curves getter mints a wrapper, which `owned` takes. */
+export function pointsOf<T extends NDArray>(
+  input: T | { points: T }, owned: NDArray[],
+): T {
+  if (input instanceof NDArray) return input;
+  const pts = input.points;
+  return input instanceof Mesh || input instanceof PointCloud || input instanceof Curves
+    ? own(pts, owned) : pts;
+}
+
 /** Compute the oriented bounding box of points or a mesh. */
 export function obbFrom(input: NDArray): OBB;
 export function obbFrom(input: { points: NDArray }): OBB;
 export function obbFrom(input: NDArray | { points: NDArray }): OBB {
-  const pts = input instanceof NDArray ? input : input.points;
-  const dt = pts.dtype === "float64" ? "float64" : "float32";
   const owned: NDArray[] = [];
   try {
+    const pts = pointsOf(input, owned);
+    const dt = pts.dtype === "float64" ? "float64" : "float32";
     const raw = native()[`obb_from_${dt}`](coerce(pts, dt, owned)._handle);
     return {
       origin: new NDArray(raw.origin, dt),
@@ -570,8 +583,15 @@ export function obbFrom(input: NDArray | { points: NDArray }): OBB {
 export function aabbFrom(input: ArrayLike32_64): AABB;
 export function aabbFrom(input: { points: ArrayLike32_64 }): AABB;
 export function aabbFrom(input: ArrayLike32_64 | { points: ArrayLike32_64 }): AABB {
-  const pts = input instanceof NDArray ? input : input.points;
-  return aabb(pts.min(0) as ArrayLike32_64, pts.max(0) as ArrayLike32_64);
+  const owned: NDArray[] = [];
+  try {
+    const pts = pointsOf(input, owned) as ArrayLike32_64;
+    const lo = own(pts.min(0) as ArrayLike32_64, owned);
+    const hi = own(pts.max(0) as ArrayLike32_64, owned);
+    return aabb(lo, hi);
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 // ============================================================================

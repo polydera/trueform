@@ -12,6 +12,7 @@
  */
 
 import { native } from "../native";
+import { coerce, disposeOwned } from "../internal/owned";
 import { NDArray, NDArrayInt32, NDArrayFloat32 } from "./NDArray";
 
 // ============================================================================
@@ -68,14 +69,6 @@ function wrapFloat(raw: any): HistogramResult {
   };
 }
 
-function coerceInt32(a: NDArray): NDArrayInt32 {
-  return (a.dtype === "int32" ? a : a.as("int32")) as NDArrayInt32;
-}
-
-function coerceFloat32(a: NDArray): NDArrayFloat32 {
-  return (a.dtype === "float32" ? a : a.as("float32")) as NDArrayFloat32;
-}
-
 // ============================================================================
 // bincount
 // ============================================================================
@@ -93,19 +86,24 @@ export function bincount(
   x: NDArray,
   opts?: BincountOptions,
 ): NDArrayInt32 | NDArrayFloat32 {
-  const safe = coerceInt32(x);
-  const minLen = opts?.minLength ?? 0;
-  if (opts?.weights) {
-    const w = coerceFloat32(opts.weights);
+  const owned: NDArray[] = [];
+  try {
+    const safe = coerce(x, "int32", owned);
+    const minLen = opts?.minLength ?? 0;
+    if (opts?.weights) {
+      const w = coerce(opts.weights, "float32", owned);
+      return new NDArray(
+        native().bincount_weighted_int32(safe._handle, w._handle, minLen),
+        "float32",
+      ) as NDArrayFloat32;
+    }
     return new NDArray(
-      native().bincount_weighted_int32(safe._handle, w._handle, minLen),
-      "float32",
-    ) as NDArrayFloat32;
+      native().bincount_int32(safe._handle, minLen),
+      "int32",
+    ) as NDArrayInt32;
+  } finally {
+    disposeOwned(owned);
   }
-  return new NDArray(
-    native().bincount_int32(safe._handle, minLen),
-    "int32",
-  ) as NDArrayInt32;
 }
 
 // ============================================================================
@@ -130,29 +128,34 @@ export function histogram(
   x: NDArray,
   opts?: HistogramOptions,
 ): HistogramResult {
-  const safe = coerceFloat32(x);
-  const bins = opts?.bins ?? 10;
-  const weights = opts?.weights ? coerceFloat32(opts.weights) : undefined;
-  const density = opts?.density ?? false;
-  const n = native();
+  const owned: NDArray[] = [];
+  try {
+    const safe = coerce(x, "float32", owned);
+    const bins = opts?.bins ?? 10;
+    const weights = opts?.weights ? coerce(opts.weights, "float32", owned) : undefined;
+    const density = opts?.density ?? false;
+    const n = native();
 
-  if (typeof bins === "number") {
-    const [lo, hi] = opts?.range ?? [NaN, NaN];
+    if (typeof bins === "number") {
+      const [lo, hi] = opts?.range ?? [NaN, NaN];
+      if (density)
+        return wrapFloat(n.histogram_density_equal_width_float32(
+          safe._handle, bins, lo, hi, weights?._handle));
+      if (weights)
+        return wrapFloat(n.histogram_equal_width_weighted_float32(
+          safe._handle, weights._handle, bins, lo, hi));
+      return wrapInt(n.histogram_equal_width_float32(safe._handle, bins, lo, hi));
+    }
+
+    const edges = coerce(bins, "float32", owned);
     if (density)
-      return wrapFloat(n.histogram_density_equal_width_float32(
-        safe._handle, bins, lo, hi, weights?._handle));
+      return wrapFloat(n.histogram_density_edges_float32(
+        safe._handle, edges._handle, weights?._handle));
     if (weights)
-      return wrapFloat(n.histogram_equal_width_weighted_float32(
-        safe._handle, weights._handle, bins, lo, hi));
-    return wrapInt(n.histogram_equal_width_float32(safe._handle, bins, lo, hi));
+      return wrapFloat(n.histogram_edges_weighted_float32(
+        safe._handle, weights._handle, edges._handle));
+    return wrapInt(n.histogram_edges_float32(safe._handle, edges._handle));
+  } finally {
+    disposeOwned(owned);
   }
-
-  const edges = coerceFloat32(bins);
-  if (density)
-    return wrapFloat(n.histogram_density_edges_float32(
-      safe._handle, edges._handle, weights?._handle));
-  if (weights)
-    return wrapFloat(n.histogram_edges_weighted_float32(
-      safe._handle, weights._handle, edges._handle));
-  return wrapInt(n.histogram_edges_float32(safe._handle, edges._handle));
 }

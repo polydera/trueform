@@ -149,9 +149,18 @@ export type ComponentType = "edge" | "manifoldEdge" | "vertex";
 /** Compute connected components of a mesh using the specified connectivity type. */
 export function connectedComponents(m: Mesh, type: ComponentType): ConnectedComponentsResult {
   switch (type) {
-    case "edge": return labelConnectedComponents(m.faceLink);
-    case "vertex": return labelConnectedComponents(m.vertexLink);
-    case "manifoldEdge": return labelConnectedComponents(m.manifoldEdgeLink);
+    case "edge": {
+      const link = m.faceLink;
+      try { return labelConnectedComponents(link); } finally { link.delete(); }
+    }
+    case "vertex": {
+      const link = m.vertexLink;
+      try { return labelConnectedComponents(link); } finally { link.delete(); }
+    }
+    case "manifoldEdge": {
+      const link = m.manifoldEdgeLink;
+      try { return labelConnectedComponents(link); } finally { link.delete(); }
+    }
   }
 }
 

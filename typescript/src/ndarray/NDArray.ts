@@ -510,16 +510,24 @@ export class NDArray<T = any> {
       );
     }
     // New path: multi-axis specs
-    const jsSpecs = args.map((s: any) => {
-      if (s === null || s === undefined) return null;
-      if (typeof s === "number") return s;
-      if (Array.isArray(s))
-        return native().NativeInt32NDArray.from_js(new Int32Array(s), [s.length]);
-      return s._handle; // NDArray<Int32Array>
-    });
-    return new NDArray<T>(
-      native()[`multi_take_${nd}`](this._handle, jsSpecs), this.dtype,
-    );
+    const minted: { delete(): void }[] = [];
+    try {
+      const jsSpecs = args.map((s: any) => {
+        if (s === null || s === undefined) return null;
+        if (typeof s === "number") return s;
+        if (Array.isArray(s)) {
+          const raw = native().NativeInt32NDArray.from_js(new Int32Array(s), [s.length]);
+          minted.push(raw);
+          return raw;
+        }
+        return s._handle; // NDArray<Int32Array>
+      });
+      return new NDArray<T>(
+        native()[`multi_take_${nd}`](this._handle, jsSpecs), this.dtype,
+      );
+    } finally {
+      for (const raw of minted) raw.delete();
+    }
   }
 
   /** Gather per-element along axis using index array (np.take_along_axis). */
@@ -581,25 +589,30 @@ export class NDArray<T = any> {
       }
     } else {
       // 2-arg: assign(selector, value) — auto-convert number[] to int32 NDArray
+      let created: NDArray | undefined;
       let sel: NDArray;
       if (Array.isArray(selectorOrValue)) {
         const arr = new Int32Array(selectorOrValue);
-        sel = new NDArray(native().NativeInt32NDArray.from_js(arr, [arr.length]), "int32");
+        sel = created = new NDArray(native().NativeInt32NDArray.from_js(arr, [arr.length]), "int32");
       } else {
         sel = selectorOrValue as NDArray;
       }
-      if (sel.dtype === "int32") {
-        if (typeof value === "number") {
-          native()[`assign_indexed_scalar_${nd}`](this._handle, sel._handle, value);
+      try {
+        if (sel.dtype === "int32") {
+          if (typeof value === "number") {
+            native()[`assign_indexed_scalar_${nd}`](this._handle, sel._handle, value);
+          } else {
+            native()[`assign_indexed_array_${nd}`](this._handle, sel._handle, (value as NDArray)._handle);
+          }
         } else {
-          native()[`assign_indexed_array_${nd}`](this._handle, sel._handle, (value as NDArray)._handle);
+          if (typeof value === "number") {
+            native()[`assign_masked_scalar_${nd}`](this._handle, sel._handle, value);
+          } else {
+            native()[`assign_masked_array_${nd}`](this._handle, sel._handle, (value as NDArray)._handle);
+          }
         }
-      } else {
-        if (typeof value === "number") {
-          native()[`assign_masked_scalar_${nd}`](this._handle, sel._handle, value);
-        } else {
-          native()[`assign_masked_array_${nd}`](this._handle, sel._handle, (value as NDArray)._handle);
-        }
+      } finally {
+        created?.delete();
       }
     }
     return this;

@@ -150,9 +150,18 @@ export async function labelConnectedComponents(connectivity: OffsetBlockedBuffer
 
 export async function connectedComponents(m: Mesh, type: ComponentType): Promise<ConnectedComponentsResult> {
   switch (type) {
-    case "edge": return labelConnectedComponents(m.faceLink);
-    case "vertex": return labelConnectedComponents(m.vertexLink);
-    case "manifoldEdge": return labelConnectedComponents(m.manifoldEdgeLink);
+    case "edge": {
+      const link = m.faceLink;
+      try { return await labelConnectedComponents(link); } finally { link.delete(); }
+    }
+    case "vertex": {
+      const link = m.vertexLink;
+      try { return await labelConnectedComponents(link); } finally { link.delete(); }
+    }
+    case "manifoldEdge": {
+      const link = m.manifoldEdgeLink;
+      try { return await labelConnectedComponents(link); } finally { link.delete(); }
+    }
   }
 }
 

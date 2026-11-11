@@ -49,7 +49,13 @@ export function readObj(data: ArrayBuffer | Uint8Array, opts?: ReadObjOptions): 
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
   const dtype = opts?.dtype ?? "float32";
   if (opts?.dynamic) {
-    return triangulate(readObjData(bytes, { dynamic: true, dtype }));
+    const data = readObjData(bytes, { dynamic: true, dtype });
+    try {
+      return triangulate(data);
+    } finally {
+      data.faces.delete();
+      data.points.delete();
+    }
   }
   return new Mesh(native()[`read_obj_buffer_${dtype}`](bytes), dtype);
 }

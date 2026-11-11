@@ -15,6 +15,7 @@ import { native } from "../native";
 import { NDArray, NDArrayInt32, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { ndarray } from "../ndarray/factories";
+import { own, disposeOwned } from "../internal/owned";
 import { Mesh } from "./Mesh";
 import { PointCloud } from "./PointCloud";
 import { Curves } from "./Curves";
@@ -24,16 +25,21 @@ export function mesh(
   faces: NDArrayInt32 | Int32Array,
   points: NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array,
 ): Mesh {
-  const f = faces instanceof NDArray ? faces : ndarray(faces, [faces.length / 3, 3]);
-  const p: NDArrayFloat32 | NDArrayFloat64 = points instanceof NDArray
-    ? points
-    : points instanceof Float64Array
-      ? ndarray(points, [points.length / 3, 3])
-      : ndarray(points, [points.length / 3, 3]);
-  const dtype: "float32" | "float64" = p.dtype === "float64" ? "float64" : "float32";
-  const m = native();
-  const NativeMeshCtor = dtype === "float64" ? m.NativeFloat64Mesh : m.NativeFloat32Mesh;
-  return new Mesh(NativeMeshCtor.create(f._handle, p._handle), dtype);
+  const owned: NDArray[] = [];
+  try {
+    const f = faces instanceof NDArray ? faces : own(ndarray(faces, [faces.length / 3, 3]), owned);
+    const p: NDArrayFloat32 | NDArrayFloat64 = points instanceof NDArray
+      ? points
+      : points instanceof Float64Array
+        ? own(ndarray(points, [points.length / 3, 3]), owned)
+        : own(ndarray(points, [points.length / 3, 3]), owned);
+    const dtype: "float32" | "float64" = p.dtype === "float64" ? "float64" : "float32";
+    const m = native();
+    const NativeMeshCtor = dtype === "float64" ? m.NativeFloat64Mesh : m.NativeFloat32Mesh;
+    return new Mesh(NativeMeshCtor.create(f._handle, p._handle), dtype);
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /** Create a WASM-resident point cloud from point coordinates or a Mesh. */
@@ -41,15 +47,20 @@ export function pointCloud(
   input: Mesh | NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array,
 ): PointCloud {
   if (input instanceof Mesh) return PointCloud.fromMesh(input);
-  const p: NDArrayFloat32 | NDArrayFloat64 = input instanceof NDArray
-    ? input
-    : input instanceof Float64Array
-      ? ndarray(input, [input.length / 3, 3])
-      : ndarray(input, [input.length / 3, 3]);
-  const dtype: "float32" | "float64" = p.dtype === "float64" ? "float64" : "float32";
-  const n = native();
-  const Native = dtype === "float64" ? n.NativeFloat64PointCloud : n.NativeFloat32PointCloud;
-  return new PointCloud(Native.create(p._handle), dtype);
+  const owned: NDArray[] = [];
+  try {
+    const p: NDArrayFloat32 | NDArrayFloat64 = input instanceof NDArray
+      ? input
+      : input instanceof Float64Array
+        ? own(ndarray(input, [input.length / 3, 3]), owned)
+        : own(ndarray(input, [input.length / 3, 3]), owned);
+    const dtype: "float32" | "float64" = p.dtype === "float64" ? "float64" : "float32";
+    const n = native();
+    const Native = dtype === "float64" ? n.NativeFloat64PointCloud : n.NativeFloat32PointCloud;
+    return new PointCloud(Native.create(p._handle), dtype);
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /** Create WASM-resident curves from path indices and point coordinates. */
@@ -57,13 +68,18 @@ export function curves(
   paths: OffsetBlockedBuffer,
   points: NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array,
 ): Curves {
-  const p: NDArrayFloat32 | NDArrayFloat64 = points instanceof NDArray
-    ? points
-    : points instanceof Float64Array
-      ? ndarray(points, [points.length / 3, 3])
-      : ndarray(points, [points.length / 3, 3]);
-  const dtype: "float32" | "float64" = p.dtype === "float64" ? "float64" : "float32";
-  const n = native();
-  const Native = dtype === "float64" ? n.NativeFloat64Curves : n.NativeFloat32Curves;
-  return new Curves(Native.create(paths._handle, p._handle), dtype);
+  const owned: NDArray[] = [];
+  try {
+    const p: NDArrayFloat32 | NDArrayFloat64 = points instanceof NDArray
+      ? points
+      : points instanceof Float64Array
+        ? own(ndarray(points, [points.length / 3, 3]), owned)
+        : own(ndarray(points, [points.length / 3, 3]), owned);
+    const dtype: "float32" | "float64" = p.dtype === "float64" ? "float64" : "float32";
+    const n = native();
+    const Native = dtype === "float64" ? n.NativeFloat64Curves : n.NativeFloat32Curves;
+    return new Curves(Native.create(paths._handle, p._handle), dtype);
+  } finally {
+    disposeOwned(owned);
+  }
 }

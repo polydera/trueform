@@ -12,6 +12,7 @@
  */
 
 import { native, dispatcher } from "../native";
+import { disposeOwned } from "../internal/owned";
 import { Mesh } from "../form/Mesh";
 import { NDArray } from "../ndarray/NDArray";
 
@@ -34,26 +35,34 @@ export async function decimated(m: Mesh, targetProportion: number,
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
   const dt = m.dtype;
-  const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces);
-  const wantRegions = opts?.preserveRegions != null;
-  return dispatcher().run(
-    () => native()[`dispatch_decimated_${dt}`](
-      m._handle,
-      targetProportion,
-      opts?.minQuality ?? -1,
-      opts?.preserveBoundary ?? true,
-      opts?.stabilizer ?? 1e-3,
-      opts?.parallel ?? true,
-      fa,
-      opts?.featureWeight ?? 100,
-      regions._handle,
-    ),
-    (raw) => {
-      const mesh = new Mesh(raw.mesh, dt);
-      const outRegions = new NDArray<Int32Array>(raw.regions, "int32");
-      return wantRegions ? { mesh, regions: outRegions } : mesh;
-    },
-  );
+  const owned: NDArray[] = [];
+  try {
+    const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces, owned);
+    const wantRegions = opts?.preserveRegions != null;
+    return await dispatcher().run(
+      () => native()[`dispatch_decimated_${dt}`](
+        m._handle,
+        targetProportion,
+        opts?.minQuality ?? -1,
+        opts?.preserveBoundary ?? true,
+        opts?.stabilizer ?? 1e-3,
+        opts?.parallel ?? true,
+        fa,
+        opts?.featureWeight ?? 100,
+        regions._handle,
+      ),
+      (raw) => {
+        const mesh = new Mesh(raw.mesh, dt);
+        if (!wantRegions) {
+          raw.regions.delete();
+          return mesh;
+        }
+        return { mesh, regions: new NDArray<Int32Array>(raw.regions, "int32") };
+      },
+    );
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /** Simplify a mesh to an error budget using quadric error metrics (async). Returns a
@@ -66,30 +75,38 @@ export async function simplified(m: Mesh,
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
   const dt = m.dtype;
-  const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces);
-  const wantRegions = opts?.preserveRegions != null;
-  return dispatcher().run(
-    () => native()[`dispatch_simplified_${dt}`](
-      m._handle,
-      opts?.errorRel ?? 0.002,
-      opts?.optimizeIterations ?? 3,
-      opts?.minQuality ?? 0.3,
-      opts?.preserveBoundary ?? true,
-      opts?.stabilizer ?? 1e-3,
-      opts?.parallel ?? true,
-      fa,
-      opts?.featureWeight ?? 100,
-      opts?.iterations ?? 1,
-      opts?.relaxationIters ?? 3,
-      opts?.lambda ?? 0.5,
-      regions._handle,
-    ),
-    (raw) => {
-      const mesh = new Mesh(raw.mesh, dt);
-      const outRegions = new NDArray<Int32Array>(raw.regions, "int32");
-      return wantRegions ? { mesh, regions: outRegions } : mesh;
-    },
-  );
+  const owned: NDArray[] = [];
+  try {
+    const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces, owned);
+    const wantRegions = opts?.preserveRegions != null;
+    return await dispatcher().run(
+      () => native()[`dispatch_simplified_${dt}`](
+        m._handle,
+        opts?.errorRel ?? 0.002,
+        opts?.optimizeIterations ?? 3,
+        opts?.minQuality ?? 0.3,
+        opts?.preserveBoundary ?? true,
+        opts?.stabilizer ?? 1e-3,
+        opts?.parallel ?? true,
+        fa,
+        opts?.featureWeight ?? 100,
+        opts?.iterations ?? 1,
+        opts?.relaxationIters ?? 3,
+        opts?.lambda ?? 0.5,
+        regions._handle,
+      ),
+      (raw) => {
+        const mesh = new Mesh(raw.mesh, dt);
+        if (!wantRegions) {
+          raw.regions.delete();
+          return mesh;
+        }
+        return { mesh, regions: new NDArray<Int32Array>(raw.regions, "int32") };
+      },
+    );
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /** Isotropic remesh to uniform target edge length (async). Returns a new Mesh, or
@@ -102,27 +119,35 @@ export async function isotropicRemeshed(m: Mesh, targetLength: number,
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
   const dt = m.dtype;
-  const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces);
-  const wantRegions = opts?.preserveRegions != null;
-  return dispatcher().run(
-    () => native()[`dispatch_isotropic_remeshed_${dt}`](
-      m._handle,
-      targetLength,
-      opts?.iterations ?? 3,
-      opts?.relaxationIters ?? 3,
-      opts?.minQuality ?? 0.3,
-      opts?.lambda ?? 0.5,
-      opts?.preserveBoundary ?? true,
-      opts?.useQuadric ?? false,
-      opts?.parallel ?? true,
-      fa,
-      opts?.featureWeight ?? 100,
-      regions._handle,
-    ),
-    (raw) => {
-      const mesh = new Mesh(raw.mesh, dt);
-      const outRegions = new NDArray<Int32Array>(raw.regions, "int32");
-      return wantRegions ? { mesh, regions: outRegions } : mesh;
-    },
-  );
+  const owned: NDArray[] = [];
+  try {
+    const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces, owned);
+    const wantRegions = opts?.preserveRegions != null;
+    return await dispatcher().run(
+      () => native()[`dispatch_isotropic_remeshed_${dt}`](
+        m._handle,
+        targetLength,
+        opts?.iterations ?? 3,
+        opts?.relaxationIters ?? 3,
+        opts?.minQuality ?? 0.3,
+        opts?.lambda ?? 0.5,
+        opts?.preserveBoundary ?? true,
+        opts?.useQuadric ?? false,
+        opts?.parallel ?? true,
+        fa,
+        opts?.featureWeight ?? 100,
+        regions._handle,
+      ),
+      (raw) => {
+        const mesh = new Mesh(raw.mesh, dt);
+        if (!wantRegions) {
+          raw.regions.delete();
+          return mesh;
+        }
+        return { mesh, regions: new NDArray<Int32Array>(raw.regions, "int32") };
+      },
+    );
+  } finally {
+    disposeOwned(owned);
+  }
 }

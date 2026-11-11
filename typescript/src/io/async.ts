@@ -49,7 +49,13 @@ export async function readObj(data: ArrayBuffer | Uint8Array, opts?: ReadObjOpti
   const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
   const dtype = opts?.dtype ?? "float32";
   if (opts?.dynamic) {
-    return triangulate(await readObjData(bytes, { dynamic: true, dtype }));
+    const data = await readObjData(bytes, { dynamic: true, dtype });
+    try {
+      return await triangulate(data);
+    } finally {
+      data.faces.delete();
+      data.points.delete();
+    }
   }
   return dispatcher().run(
     () => native()[`dispatch_read_obj_buffer_${dtype}`](bytes),

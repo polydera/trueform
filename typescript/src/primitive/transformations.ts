@@ -12,6 +12,7 @@
  */
 
 import { native } from "../native";
+import { coerce, disposeOwned } from "../internal/owned";
 import { NDArray } from "../ndarray/NDArray";
 import { ndarray } from "../ndarray/factories";
 import type { NDArrayFloat32 } from "../ndarray/NDArray";
@@ -134,8 +135,13 @@ export function inverted(m: NDArray): NDArray {
     );
   }
   const dt = m.dtype === "float64" ? "float64" : "float32";
-  const safe = m.dtype === dt ? m : m.as(dt);
-  return new NDArray(native()[`inverted_${dt}`](safe._handle), dt);
+  const owned: NDArray[] = [];
+  try {
+    const safe = coerce(m, dt, owned);
+    return new NDArray(native()[`inverted_${dt}`](safe._handle), dt);
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /**

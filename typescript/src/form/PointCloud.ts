@@ -13,6 +13,7 @@
 
 import { native } from "../native";
 import { registry } from "../internal/registry";
+import { own, coerce, disposeOwned } from "../internal/owned";
 import { NDArray, NativeNDArray, NDArrayFloat32, NDArrayFloat64 } from "../ndarray/NDArray";
 import { OffsetBlockedBuffer, NativeOffsetBlockedIntBuffer } from "../ndarray/OffsetBlockedBuffer";
 import { ndarray } from "../ndarray/factories";
@@ -82,11 +83,16 @@ export class PointCloud {
   set points(p: NDArrayFloat32 | NDArrayFloat64 | Float32Array | Float64Array) {
     if (p instanceof NDArray) {
       this._handle.set_points(p._handle);
-    } else {
+      return;
+    }
+    const owned: NDArray[] = [];
+    try {
       const arr: NDArrayFloat32 | NDArrayFloat64 = p instanceof Float64Array
         ? ndarray(p, [p.length / 3, 3])
         : ndarray(p, [p.length / 3, 3]);
-      this._handle.set_points(arr._handle);
+      this._handle.set_points(own(arr, owned)._handle);
+    } finally {
+      disposeOwned(owned);
     }
   }
 
@@ -130,12 +136,15 @@ export class PointCloud {
       this._handle.clear_transformation();
       return;
     }
-    const arr =
-      t instanceof NDArray ? t
-      : t instanceof Float64Array ? ndarray(t, [4, 4])
-      : ndarray(t, [4, 4]);
-    const safe = arr.dtype === this.dtype ? arr : arr.as(this.dtype);
-    this._handle.set_transformation(safe._handle);
+    const owned: NDArray[] = [];
+    try {
+      const arr =
+        t instanceof NDArray ? t
+        : own(t instanceof Float64Array ? ndarray(t, [4, 4]) : ndarray(t, [4, 4]), owned);
+      this._handle.set_transformation(coerce(arr, this.dtype, owned)._handle);
+    } finally {
+      disposeOwned(owned);
+    }
   }
 
   /**
@@ -160,13 +169,23 @@ export class PointCloud {
   static fromMesh(m: Mesh): PointCloud {
     const n = native();
     const Native = m.dtype === "float64" ? n.NativeFloat64PointCloud : n.NativeFloat32PointCloud;
-    const pc = new PointCloud(
-      Native.create(m._handle.points()),
-      m.dtype,
-    );
-    pc._handle.set_vertex_link(m._handle.vertex_link());
-    pc._handle.set_normals(m._handle.point_normals());
-    return pc;
+    // The cloud takes its own shared_ptr copies; the minted handles are ours.
+    let points: NativePointNDArray | undefined;
+    let vertexLink: NativeOffsetBlockedIntBuffer | undefined;
+    let pointNormals: NativePointNDArray | undefined;
+    try {
+      points = m._handle.points();
+      const pc = new PointCloud(Native.create(points), m.dtype);
+      vertexLink = m._handle.vertex_link();
+      pc._handle.set_vertex_link(vertexLink);
+      pointNormals = m._handle.point_normals();
+      pc._handle.set_normals(pointNormals);
+      return pc;
+    } finally {
+      pointNormals?.delete();
+      vertexLink?.delete();
+      points?.delete();
+    }
   }
 
   delete(): void {

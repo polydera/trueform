@@ -12,9 +12,14 @@
  */
 
 interface Release {
-  handle: { delete(): void };
+  handle: { delete(): void; isDeleted?(): boolean };
+}
+
+/** Delete an embind handle once; a handle already deleted is left alone. */
+export function releaseHandle(handle: Release["handle"]): void {
+  if (!handle.isDeleted?.()) handle.delete();
 }
 
 export const registry = new FinalizationRegistry<Release>((ref) => {
-  ref.handle.delete();
+  releaseHandle(ref.handle);
 });

@@ -12,6 +12,7 @@
  */
 
 import { native } from "../native";
+import { own, disposeOwned } from "../internal/owned";
 import { Mesh } from "../form/Mesh";
 import { ndarray } from "../ndarray/factories";
 import { NDArray, type NDArrayInt32 } from "../ndarray/NDArray";
@@ -30,8 +31,8 @@ export interface RemeshWithRegions {
  *  the plain path. A supplied array must have exactly one label per face, else
  *  the WASM side would read out of bounds -- so it is validated here. */
 export function _regionsNd(preserveRegions: RegionsInput | undefined,
-  nFaces: number): NDArray {
-  if (preserveRegions == null) return ndarray(new Int32Array(0));
+  nFaces: number, owned: NDArray[]): NDArray {
+  if (preserveRegions == null) return own(ndarray(new Int32Array(0)), owned);
   const len = preserveRegions.length;
   if (len !== nFaces)
     throw new Error(
@@ -41,7 +42,7 @@ export function _regionsNd(preserveRegions: RegionsInput | undefined,
   const arr = preserveRegions instanceof Int32Array
     ? preserveRegions
     : Int32Array.from(preserveRegions);
-  return ndarray(arr);
+  return own(ndarray(arr), owned);
 }
 
 /** Options for quadric error metric decimation. */
@@ -102,21 +103,29 @@ export function decimated(m: Mesh, targetProportion: number,
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
   const dt = m.dtype;
-  const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces);
-  const raw = native()[`decimated_${dt}`](
-    m._handle,
-    targetProportion,
-    opts?.minQuality ?? -1,
-    opts?.preserveBoundary ?? true,
-    opts?.stabilizer ?? 1e-3,
-    opts?.parallel ?? true,
-    fa,
-    opts?.featureWeight ?? 100,
-    regions._handle,
-  );
-  const mesh = new Mesh(raw.mesh, dt);
-  const outRegions = new NDArray<Int32Array>(raw.regions, "int32");
-  return opts?.preserveRegions != null ? { mesh, regions: outRegions } : mesh;
+  const owned: NDArray[] = [];
+  try {
+    const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces, owned);
+    const raw = native()[`decimated_${dt}`](
+      m._handle,
+      targetProportion,
+      opts?.minQuality ?? -1,
+      opts?.preserveBoundary ?? true,
+      opts?.stabilizer ?? 1e-3,
+      opts?.parallel ?? true,
+      fa,
+      opts?.featureWeight ?? 100,
+      regions._handle,
+    );
+    const mesh = new Mesh(raw.mesh, dt);
+    if (opts?.preserveRegions == null) {
+      raw.regions.delete();
+      return mesh;
+    }
+    return { mesh, regions: new NDArray<Int32Array>(raw.regions, "int32") };
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /** Options for error-budget simplification. */
@@ -164,24 +173,32 @@ export function isotropicRemeshed(m: Mesh, targetLength: number,
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
   const dt = m.dtype;
-  const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces);
-  const raw = native()[`isotropic_remeshed_${dt}`](
-    m._handle,
-    targetLength,
-    opts?.iterations ?? 3,
-    opts?.relaxationIters ?? 3,
-    opts?.minQuality ?? 0.3,
-    opts?.lambda ?? 0.5,
-    opts?.preserveBoundary ?? true,
-    opts?.useQuadric ?? false,
-    opts?.parallel ?? true,
-    fa,
-    opts?.featureWeight ?? 100,
-    regions._handle,
-  );
-  const mesh = new Mesh(raw.mesh, dt);
-  const outRegions = new NDArray<Int32Array>(raw.regions, "int32");
-  return opts?.preserveRegions != null ? { mesh, regions: outRegions } : mesh;
+  const owned: NDArray[] = [];
+  try {
+    const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces, owned);
+    const raw = native()[`isotropic_remeshed_${dt}`](
+      m._handle,
+      targetLength,
+      opts?.iterations ?? 3,
+      opts?.relaxationIters ?? 3,
+      opts?.minQuality ?? 0.3,
+      opts?.lambda ?? 0.5,
+      opts?.preserveBoundary ?? true,
+      opts?.useQuadric ?? false,
+      opts?.parallel ?? true,
+      fa,
+      opts?.featureWeight ?? 100,
+      regions._handle,
+    );
+    const mesh = new Mesh(raw.mesh, dt);
+    if (opts?.preserveRegions == null) {
+      raw.regions.delete();
+      return mesh;
+    }
+    return { mesh, regions: new NDArray<Int32Array>(raw.regions, "int32") };
+  } finally {
+    disposeOwned(owned);
+  }
 }
 
 /** Simplify a mesh to an error budget using quadric error metrics. Returns a new
@@ -193,23 +210,31 @@ export function simplified(m: Mesh, opts?: SimplifyOptions): Mesh | RemeshWithRe
   const fa = opts?.featureAngle != null && opts.featureAngle >= 0
     ? opts.featureAngle * Math.PI / 180 : -1;
   const dt = m.dtype;
-  const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces);
-  const raw = native()[`simplified_${dt}`](
-    m._handle,
-    opts?.errorRel ?? 0.002,
-    opts?.optimizeIterations ?? 3,
-    opts?.minQuality ?? 0.3,
-    opts?.preserveBoundary ?? true,
-    opts?.stabilizer ?? 1e-3,
-    opts?.parallel ?? true,
-    fa,
-    opts?.featureWeight ?? 100,
-    opts?.iterations ?? 1,
-    opts?.relaxationIters ?? 3,
-    opts?.lambda ?? 0.5,
-    regions._handle,
-  );
-  const mesh = new Mesh(raw.mesh, dt);
-  const outRegions = new NDArray<Int32Array>(raw.regions, "int32");
-  return opts?.preserveRegions != null ? { mesh, regions: outRegions } : mesh;
+  const owned: NDArray[] = [];
+  try {
+    const regions = _regionsNd(opts?.preserveRegions, m.numberOfFaces, owned);
+    const raw = native()[`simplified_${dt}`](
+      m._handle,
+      opts?.errorRel ?? 0.002,
+      opts?.optimizeIterations ?? 3,
+      opts?.minQuality ?? 0.3,
+      opts?.preserveBoundary ?? true,
+      opts?.stabilizer ?? 1e-3,
+      opts?.parallel ?? true,
+      fa,
+      opts?.featureWeight ?? 100,
+      opts?.iterations ?? 1,
+      opts?.relaxationIters ?? 3,
+      opts?.lambda ?? 0.5,
+      regions._handle,
+    );
+    const mesh = new Mesh(raw.mesh, dt);
+    if (opts?.preserveRegions == null) {
+      raw.regions.delete();
+      return mesh;
+    }
+    return { mesh, regions: new NDArray<Int32Array>(raw.regions, "int32") };
+  } finally {
+    disposeOwned(owned);
+  }
 }
