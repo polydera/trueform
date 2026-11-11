@@ -40,9 +40,10 @@ namespace tf {
 ///
 /// The verdict of @ref tf::polygon_intersections' one-form build: true
 /// exactly when that build would state a self record. This is that build's
-/// discovery tier, elections and all, stopped at the first record — so a
-/// mesh that meets itself is answered without the rest of it being seen,
-/// and a mesh that does not is the whole discovery and nothing above it.
+/// discovery tier, elections and all, stopped at the first record: the
+/// form's faces are imaged once and the walk ends at the pair that proved
+/// the verdict, so a mesh that does not meet itself is the whole discovery
+/// and nothing above it.
 ///
 /// A shared vertex or edge is not itself a contact; any other touching —
 /// between neighbouring faces too — is one, and the lattice decides it

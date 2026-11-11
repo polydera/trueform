@@ -26,6 +26,7 @@
 #include "../topology/policy/face_membership.hpp"
 #include "../topology/policy/manifold_edge_link.hpp"
 #include "./classify/intersection_payload.hpp"
+#include "./face_pairs/face_images.hpp"
 #include "./face_pairs/face_pair_kernels.hpp"
 #include "./face_pairs/face_pair_search.hpp"
 #include "./face_pairs/face_self_kernels.hpp"
@@ -43,7 +44,9 @@
 #include "./records/make_pair_group_gate.hpp"
 #include "./records/pair_group_gate.hpp"
 #include "./records/point_delivery.hpp"
+#include "./records/shared_vertex_claim.hpp"
 #include "./records/state_rim_edge_names.hpp"
+#include "./records/state_shared_vertex_fans.hpp"
 #include "./records/tagged_intersection.hpp"
 #include "tbb/task_group.h"
 
@@ -350,8 +353,10 @@ private:
     auto &&mel = form.manifold_edge_link();
     tf::intersect::search_face_pairs_self(
         form, tag, lattice, ws,
-        [&, tag](workspace_t &w, bool is_self) {
-          tf::intersect::self_sos_process(w, is_self, form, tag, mel);
+        [&, tag](workspace_t &w,
+                 const tf::intersect::face_images<Index, Int> &images,
+                 bool is_self) {
+          tf::intersect::self_sos_process(w, images, is_self, form, tag, mel);
         },
         [] { return false; });
   }
@@ -364,8 +369,10 @@ private:
     auto &&fm = form.face_membership();
     tf::intersect::search_face_pairs_self(
         form, tag, lattice, ws,
-        [&, tag](workspace_t &w, bool is_self) {
-          tf::intersect::self_process(w, is_self, form, tag, mel, fm);
+        [&, tag](workspace_t &w,
+                 const tf::intersect::face_images<Index, Int> &images,
+                 bool is_self) {
+          tf::intersect::self_process(w, images, is_self, form, tag, mel, fm);
         },
         [] { return false; });
   }
@@ -377,10 +384,9 @@ private:
   /// instead re-copies the whole table on every growth, which on a tiling
   /// model is the table's own size again and again.
   template <typename Count, typename Allocate, typename Write>
-  static auto write_fans(std::array<tf::buffer<std::size_t>, 2> &offsets,
+  static auto write_fans(std::array<tf::buffer<std::size_t>, 3> &offsets,
                          std::size_t n_raw, const Count &count,
-                         const Allocate &allocate, const Write &write)
-      -> void {
+                         const Allocate &allocate, const Write &write) -> void {
     for (auto &side : offsets) {
       side.allocate(n_raw + 1);
       side[0] = 0;
@@ -391,17 +397,19 @@ private:
           const auto counts = count(r, scratch);
           offsets[0][r + 1] = counts[0];
           offsets[1][r + 1] = counts[1];
+          offsets[2][r + 1] = counts[2];
         },
         fan_scratch_t{}, tf::checked);
     for (std::size_t r = 1; r <= n_raw; ++r) {
       offsets[0][r] += offsets[0][r - 1];
       offsets[1][r] += offsets[1][r - 1];
+      offsets[2][r] += offsets[2][r - 1];
     }
-    allocate(offsets[0][n_raw], offsets[1][n_raw]);
+    allocate(offsets[0][n_raw], offsets[1][n_raw], offsets[2][n_raw]);
     tf::parallel_for_each(
         tf::make_sequence_range(n_raw),
         [&](std::size_t r, fan_scratch_t &scratch) {
-          write(r, offsets[0][r], offsets[1][r], scratch);
+          write(r, offsets[0][r], offsets[1][r], offsets[2][r], scratch);
         },
         fan_scratch_t{}, tf::checked);
   }
@@ -425,6 +433,15 @@ private:
   /// ticket pass: `{flat face, point}`, eight bytes, and only for the
   /// faces some product fan touches. Where nothing is a product there are
   /// no marks, no tickets, and no second sort.
+  ///
+  /// The self family's shared vertices state a third fact whose carrier
+  /// is neither the pair nor the instance but the corner: the claim
+  /// currency (@ref tf::intersect::shared_vertex_claim) carries it,
+  /// counted by the same walk, and
+  /// @ref tf::intersect::state_shared_vertex_fans states each claimed
+  /// fan once. A build with no self family claims nothing, so the
+  /// currency is empty, its slices are never written, and the pass
+  /// returns at its first line.
   template <typename ApplyToForm, typename Lattice>
   auto finalize_identity(tf::local_value<workspace_t> &ws,
                          const ApplyToForm &apply_to_form, Index n_tags,
@@ -481,10 +498,10 @@ private:
 
     const auto sentinel_base =
         (!with_self || sos) ? Index(0) : Index(parameters.size());
-    const auto self_sentinel = [&](const intersection_t &rec) {
+    const auto self_sentinel = [&](std::int16_t tag) {
       return sentinel_base == Index(0)
                  ? Index(0)
-                 : sentinel_base + _vertex_offsets[std::size_t(rec.tag)];
+                 : sentinel_base + _vertex_offsets[std::size_t(tag)];
     };
     tf::buffer<Index> face_offsets;
     face_offsets.push_back(Index(0));
@@ -611,12 +628,13 @@ private:
         delivered_points, coplanar_offsets, coplanar_partners);
 
     const auto duplicate = [&](const intersection_t &rec, auto &sink,
-                               auto &deliveries, fan_scratch_t &scratch) {
+                               auto &deliveries, auto &claims,
+                               fan_scratch_t &scratch) {
       if (rec.tag == rec.tag_other) {
         apply_to_form(int(rec.tag), [&](const auto &form) {
           tf::intersect::duplicate_intersection_self(
               form.faces(), form.face_membership(), form.manifold_edge_link(),
-              rec, sink, deliveries, self_sentinel(rec), scratch);
+              rec, sink, deliveries, claims, self_sentinel(rec.tag), scratch);
         });
       } else {
         apply_to_form(int(rec.tag), [&](const auto &form0) {
@@ -625,33 +643,42 @@ private:
                 form0.faces(), form0.face_membership(),
                 form0.manifold_edge_link(), form1.faces(),
                 form1.face_membership(), form1.manifold_edge_link(), rec, sink,
-                deliveries, gate, scratch);
+                deliveries, claims, gate, scratch);
           });
         });
       }
     };
-    std::array<tf::buffer<std::size_t>, 2> fan_offsets;
+    tf::buffer<tf::intersect::shared_vertex_claim<Index>> claims;
+    std::array<tf::buffer<std::size_t>, 3> fan_offsets;
     write_fans(
         fan_offsets, raw.size(),
         [&](std::size_t r, fan_scratch_t &scratch) {
           tf::intersect::duplicate_counting_sink<Index> pairs;
           tf::intersect::delivery_counting_sink<Index> deliveries;
-          duplicate(raw[r], pairs, deliveries, scratch);
-          return std::array<std::size_t, 2>{pairs.count, deliveries.count};
+          tf::intersect::claim_counting_sink<Index> claimed;
+          duplicate(raw[r], pairs, deliveries, claimed, scratch);
+          return std::array<std::size_t, 3>{pairs.count, deliveries.count,
+                                            claimed.count};
         },
-        [&](std::size_t n_pairs, std::size_t n_deliveries) {
+        [&](std::size_t n_pairs, std::size_t n_deliveries,
+            std::size_t n_claims) {
           _intersections.allocate(n_pairs);
           _deliveries.allocate(n_deliveries);
+          claims.allocate(n_claims);
         },
         [&](std::size_t r, std::size_t pair_at, std::size_t delivery_at,
-            fan_scratch_t &scratch) {
+            std::size_t claim_at, fan_scratch_t &scratch) {
           tf::intersect::duplicate_span_sink<Index> pairs{
               _intersections.begin() + std::ptrdiff_t(pair_at)};
           tf::intersect::delivery_span_sink<Index> deliveries{
               _deliveries.begin() + std::ptrdiff_t(delivery_at)};
-          duplicate(raw[r], pairs, deliveries, scratch);
+          tf::intersect::claim_span_sink<Index> claimed{
+              claims.begin() + std::ptrdiff_t(claim_at)};
+          duplicate(raw[r], pairs, deliveries, claimed, scratch);
         });
 
+    tf::intersect::state_shared_vertex_fans(claims, apply_to_form,
+                                            self_sentinel, _intersections);
     tf::intersect::dedup_generator_records(_intersections);
     tf::intersect::dedup_point_deliveries(_deliveries);
     if (sentinel_base != Index(0))

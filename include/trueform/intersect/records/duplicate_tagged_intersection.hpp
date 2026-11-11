@@ -18,9 +18,9 @@
 #include "../../topology/vertex_id_in_face.hpp"
 #include "./expand_intersection_sides.hpp"
 #include "./point_delivery.hpp"
+#include "./shared_vertex_claim.hpp"
 #include "./tagged_intersection.hpp"
 
-#include <array>
 #include <cstddef>
 #include <type_traits>
 #include <utility>
@@ -54,10 +54,21 @@ template <typename Index> struct delivery_span_sink {
   auto push_back(const point_delivery<Index> &rec) -> void { *at++ = rec; }
 };
 
+template <typename Index> struct claim_counting_sink {
+  std::size_t count = 0;
+  auto push_back(const shared_vertex_claim<Index> &) -> void { ++count; }
+};
+
+template <typename Index> struct claim_span_sink {
+  shared_vertex_claim<Index> *at;
+  auto push_back(const shared_vertex_claim<Index> &claim) -> void {
+    *at++ = claim;
+  }
+};
+
 /// The fan's block-local scratch: the two feature expansions, a
 /// non-manifold edge's faces, the gate's answer for one side of the
-/// product, which instances of each side a kept pair already names, and
-/// the pairs whose shared vertices were already delivered.
+/// product, and which instances of each side a kept pair already names.
 template <typename Index, typename Side> struct intersection_fan_scratch {
   tf::small_vector<feature_instance<Index>, 16> own;
   tf::small_vector<feature_instance<Index>, 16> other;
@@ -65,10 +76,9 @@ template <typename Index, typename Side> struct intersection_fan_scratch {
   tf::small_vector<Side, 16> other_sides;
   tf::small_vector<char, 16> own_named;
   tf::small_vector<char, 16> other_named;
-  tf::small_vector<std::array<Index, 2>, 16> pairs_done;
 };
 
-/// The fan's two currencies, stated in ONE walk.
+/// The fan's three currencies, stated in ONE walk.
 ///
 /// The pair currency is one record per (face, face) the contact's two
 /// features stand on, both orientations, for the pairs the gate admits —
@@ -78,35 +88,36 @@ template <typename Index, typename Side> struct intersection_fan_scratch {
 /// names, and nothing else. A record the gate never asks about names
 /// every instance, so its difference is empty.
 ///
+/// The claim currency is what the self family leaves for
+/// @ref state_shared_vertex_fans: one `{tag, face, vertex}` per shared
+/// vertex of a pair it states, whose fan is not this walk's fact to
+/// state — it is a function of the claim alone, and any number of pairs
+/// make the same claim.
+///
 /// Passing @ref tf::none_t for the gate admits every pair — what the self
 /// family needs, its emissions being the discovery site of its own
 /// shared-vertex deliveries.
 template <typename Index, typename Faces0, typename FE0, typename MEL0,
           typename Faces1, typename FE1, typename MEL1, typename Sink,
-          typename Deliveries, typename Gate, typename Scratch>
+          typename Deliveries, typename Claims, typename Gate, typename Scratch>
 auto duplicate_intersection_impl(const Faces0 &faces0, const FE0 &fe0,
                                  const MEL0 &mel0, const Faces1 &faces1,
                                  const FE1 &fe1, const MEL1 &mel1,
                                  const tagged_intersection<Index> &rec,
                                  Sink &out, Deliveries &deliveries,
-                                 bool is_self, Index sentinel_base,
-                                 const Gate &gate, Scratch &scratch) {
-  auto &pairs_done = scratch.pairs_done;
-  pairs_done.clear();
-
-  // Any record delivered to a self pair whose faces share vertices
-  // delivers those vertices too: the shared vertex lies on the pair's
-  // intersection (it is in both faces), and it is the chord endpoint the
-  // shared-mask suppression never records. Pure id scan — no geometry.
-  // The id is a sentinel (sentinel_base + global vertex id) resolved to a
-  // point after the generate pass, upstream of dedup.
+                                 Claims &claims, bool is_self,
+                                 Index sentinel_base, const Gate &gate,
+                                 Scratch &scratch) {
+  // Any record delivered to a self pair whose faces share vertices states
+  // those vertices too: the shared vertex lies on the pair's intersection
+  // (it is in both faces), and it is the chord endpoint the shared-mask
+  // suppression never records. Pure id scan — no geometry. The id is a
+  // sentinel (sentinel_base + global vertex id) resolved to a point after
+  // the generate pass, upstream of dedup. The vertex's own fan is the
+  // claim's fact, not this pair's.
   auto deliver_shared_vertices = [&](const tagged_intersection<Index> &r) {
     if (!is_self || sentinel_base == 0 || r.object == r.object_other)
       return;
-    for (const auto &p : pairs_done)
-      if (p[0] == r.object && p[1] == r.object_other)
-        return;
-    pairs_done.push_back({r.object, r.object_other});
     auto &&f0 = faces0[r.object];
     auto &&f1 = faces1[r.object_other];
     Index n0 = Index(f0.size());
@@ -115,36 +126,23 @@ auto duplicate_intersection_impl(const Faces0 &faces0, const FE0 &fe0,
       for (Index j = 0; j < n1; ++j) {
         if (Index(f0[i]) != Index(f1[j]))
           continue;
-        // The record fans across the vertex's whole face fan (one copy
-        // per incident face, anchored to the contact pair) — the same
-        // identity synchronization ordinary vertex-target records get
-        // from the fan expansion: every incident loop substitutes the
-        // corner with the SAME created point, so cut and uncut faces
-        // agree on the vertex's identity. Fan copies landing in
-        // non-contact groups are vertex-only and stay silent.
         const Index vid = Index(f0[i]);
-        for (auto g : fe0[vid]) {
-          const Index partner =
-              Index(g) == r.object ? r.object_other : r.object;
-          if (Index(g) == partner)
-            continue;
-          tagged_intersection<Index> v;
-          v.tag = r.tag;
-          v.tag_other = r.tag_other;
-          v.object = Index(g);
-          v.object_other = partner;
-          v.target = {tf::vertex_id_in_face<Index>(vid, faces0[Index(g)]),
-                      tf::topo_type::vertex};
-          v.target_other =
-              {tf::vertex_id_in_face<Index>(vid, faces0[partner]),
-               tf::topo_type::vertex};
-          v.id = sentinel_base + vid;
-          out.push_back(v);
-          std::swap(v.tag, v.tag_other);
-          std::swap(v.object, v.object_other);
-          std::swap(v.target, v.target_other);
-          out.push_back(v);
-        }
+        tagged_intersection<Index> v;
+        v.tag = r.tag;
+        v.tag_other = r.tag_other;
+        v.object = r.object;
+        v.object_other = r.object_other;
+        v.target = {tf::vertex_id_in_face<Index>(vid, f0),
+                    tf::topo_type::vertex};
+        v.target_other = {tf::vertex_id_in_face<Index>(vid, f1),
+                          tf::topo_type::vertex};
+        v.id = sentinel_base + vid;
+        out.push_back(v);
+        std::swap(v.tag, v.tag_other);
+        std::swap(v.object, v.object_other);
+        std::swap(v.target, v.target_other);
+        out.push_back(v);
+        claims.push_back({r.tag, r.object, vid});
         break;
       }
   };
@@ -218,29 +216,31 @@ auto duplicate_intersection_impl(const Faces0 &faces0, const FE0 &fe0,
 /// Two-mesh duplicate_intersection (is_self = false).
 template <typename Index, typename Faces0, typename FE0, typename MEL0,
           typename Faces1, typename FE1, typename MEL1, typename Sink,
-          typename Deliveries, typename Gate, typename Scratch>
+          typename Deliveries, typename Claims, typename Gate, typename Scratch>
 auto duplicate_intersection(const Faces0 &faces0, const FE0 &fe0,
                             const MEL0 &mel0, const Faces1 &faces1,
                             const FE1 &fe1, const MEL1 &mel1,
                             const tagged_intersection<Index> &rec, Sink &out,
-                            Deliveries &deliveries, const Gate &gate,
-                            Scratch &scratch) {
+                            Deliveries &deliveries, Claims &claims,
+                            const Gate &gate, Scratch &scratch) {
   duplicate_intersection_impl(faces0, fe0, mel0, faces1, fe1, mel1, rec, out,
-                              deliveries, false, Index(0), gate, scratch);
+                              deliveries, claims, false, Index(0), gate,
+                              scratch);
 }
 
 /// Self-intersection duplicate_intersection (is_self = true).
 /// `sentinel_base` (= point count before duplication) keys the sentinel
 /// ids of delivered shared-vertex records.
 template <typename Index, typename Faces, typename FE, typename MEL,
-          typename Sink, typename Deliveries, typename Scratch>
+          typename Sink, typename Deliveries, typename Claims, typename Scratch>
 auto duplicate_intersection_self(const Faces &faces, const FE &fe,
                                  const MEL &mel,
                                  const tagged_intersection<Index> &rec,
                                  Sink &out, Deliveries &deliveries,
-                                 Index sentinel_base, Scratch &scratch) {
+                                 Claims &claims, Index sentinel_base,
+                                 Scratch &scratch) {
   duplicate_intersection_impl(faces, fe, mel, faces, fe, mel, rec, out,
-                              deliveries, true, sentinel_base, tf::none,
+                              deliveries, claims, true, sentinel_base, tf::none,
                               scratch);
 }
 

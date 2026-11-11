@@ -19,6 +19,7 @@
 #include "../../topology/face_edge_neighbors.hpp"
 #include "tbb/parallel_sort.h"
 #include <algorithm>
+#include <array>
 #include <cstddef>
 
 namespace tf::intersect::graph {
@@ -50,14 +51,37 @@ auto plane_graph_names_face(const Descriptors &descriptors,
          face_offsets[std::size_t(at->tag)] + at->object == key;
 }
 
-/// The source faces a retired original vertex reaches and the world of the
-/// asking tier never named.
+/// The faces a retired original vertex reaches and the world of the asking
+/// tier never named.
 ///
-/// A weld moves an original vertex onto another identity. Every source face
-/// incident to that vertex holds an instance of it, so the source mesh's own
-/// vertex -> faces membership IS the ring the identity leaves the cut world
-/// to reach, and the mask alone decides which of them is new: a face the
-/// world named already states the vertex through its own definitions.
+/// A weld moves an original vertex onto another identity. Every face
+/// incident to that vertex holds an instance of it, so the vertex's faces
+/// ARE the ring the identity leaves the cut world to reach, and the mask
+/// alone decides which of them is new: a face the world named already states
+/// the vertex through its own definitions. `holders(vertex, f)` calls
+/// `f(face, entrant)` for every face holding `vertex`, `face` as `is_named`
+/// reads it and `entrant` the key appended to `entrants`, unordered and
+/// unique only per vertex.
+template <typename Index, typename Retired, typename Holders, typename IsNamed>
+auto discover_weld_entrants(const Retired &retired_originals,
+                            const Holders &holders, const IsNamed &is_named,
+                            tf::buffer<Index> &entrants) -> void {
+  if (retired_originals.size() == 0)
+    return;
+  tf::generic_generate(
+      retired_originals, entrants,
+      [&](Index flat, tf::buffer<Index> &out) {
+        holders(flat, [&](const auto &face, Index entrant) {
+          if (!is_named(face))
+            out.push_back(entrant);
+        });
+      },
+      tf::checked);
+}
+
+/// The source faces a retired original vertex reaches, read through the
+/// source mesh's own vertex -> faces membership: per flat vertex its form's
+/// `face_membership()` row, each face keyed by its form's face offset.
 template <typename Index, typename Retired, typename VertexOffsets,
           typename FaceOffsets, typename ApplyToForm, typename IsNamed>
 auto discover_weld_entrants(const Retired &retired_originals,
@@ -66,20 +90,21 @@ auto discover_weld_entrants(const Retired &retired_originals,
                             const ApplyToForm &apply_to_form,
                             const IsNamed &is_named,
                             tf::buffer<Index> &entrants) -> void {
-  if (retired_originals.size() == 0)
-    return;
-  tf::generic_generate(
-      retired_originals, entrants,
-      [&](Index flat, tf::buffer<Index> &out) {
+  discover_weld_entrants<Index>(
+      retired_originals,
+      [&](Index flat, const auto &f) {
         const auto tag = tf::exact::tag_of_flat_vertex(vertex_offsets, flat);
-        const auto vertex = flat - vertex_offsets[std::size_t(tag)];
+        const auto own = flat - vertex_offsets[std::size_t(tag)];
         apply_to_form(tag, [&](const auto &form) {
-          for (const auto face : form.face_membership()[vertex])
-            if (!is_named(Index(tag), Index(face)))
-              out.push_back(face_offsets[std::size_t(tag)] + Index(face));
+          for (const auto face : form.face_membership()[own])
+            f(std::array<Index, 2>{Index(tag), Index(face)},
+              face_offsets[std::size_t(tag)] + Index(face));
         });
       },
-      tf::checked);
+      [&is_named](const std::array<Index, 2> &face) {
+        return is_named(face[0], face[1]);
+      },
+      entrants);
 }
 
 /// The source faces a split on an original edge reaches and the world of the

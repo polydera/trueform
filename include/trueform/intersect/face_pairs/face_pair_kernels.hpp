@@ -24,6 +24,7 @@
 #include "../classify/intersection_payload.hpp"
 #include "../classify/vertex_face.hpp"
 #include "./face_pair_search.hpp"
+#include "./keep_face_pair_block.hpp"
 #include "./prepare_face_pair_block.hpp"
 
 #include <array>
@@ -47,21 +48,25 @@ auto edge_vs_convex_face_sos(tf::exact::vertex_range<Index, Int> face,
 }
 
 /// The payload of an edge's SoS pierce through a convex face: the id of
-/// the pushed payload, `-1` when the edge misses. `fp` is the face's
-/// supporting plane — the payload's second generator — so the caller
-/// finds it once per call rather than per crossing.
+/// the pushed payload, `-1` when the edge misses. The face's support is the
+/// payload's second generator, scanned only once the pierce is proved; a
+/// face whose corners state no plane generates it from its own first
+/// corner alone, so no point the face does not hold enters the parameter.
 template <typename Index, typename Int, typename Pts>
 auto push_sos_edge_plane_hit(tf::exact::vertex_range<Index, Int> face_verts,
-                             const tf::exact::face_plane<Int> &fp,
                              const tf::exact::vertex<Index, Int> &v0,
                              const tf::exact::vertex<Index, Int> &v1, Pts &pts)
     -> Index {
   if (!edge_vs_convex_face_sos(face_verts, v0, v1))
     return Index(-1);
   Index id = pts.size();
+  std::array<std::size_t, 3> at{};
+  const auto support = tf::exact::scan_face_support(face_verts, at);
+  const auto &base = support.point[0];
+  const bool planed = support.size == 3;
   pts.push_back(tf::exact::make_sos_edge_plane_payload(
-      face_verts[fp.info.i0].pt, face_verts[fp.info.i1].pt,
-      face_verts[fp.info.i2].pt, v0, v1));
+      base, planed ? support.point[1] : base, planed ? support.point[2] : base,
+      v0, v1));
   return id;
 }
 
@@ -74,12 +79,11 @@ auto edges_vs_face_sos(tf::exact::vertex_range<Index, Int> edge_verts,
                        Index face_id, int edge_tag, int face_tag,
                        const EdgeIsRep &edge_is_rep, Ints &ints, Pts &pts) {
   auto n = edge_verts.size();
-  auto fp = tf::exact::make_face_plane(face_verts);
   for (std::size_t j = 0; j < n; ++j) {
     if (!edge_is_rep(j))
       continue;
     auto next_j = tf::circular_increment(j, n);
-    auto id = push_sos_edge_plane_hit(face_verts, fp, edge_verts[j],
+    auto id = push_sos_edge_plane_hit(face_verts, edge_verts[j],
                                       edge_verts[next_j], pts);
     if (id == Index(-1))
       continue;
@@ -94,25 +98,23 @@ auto edges_vs_face_sos(tf::exact::vertex_range<Index, Int> edge_verts,
 template <typename Index, typename Int, typename MEL0, typename MEL1>
 void sos_process(face_pair_workspace<Index, Int> &ws, int tag0, int tag1,
                  const MEL0 &mel0, const MEL1 &mel1) {
-  auto n0 = ws.n0();
-  auto n1 = ws.n1();
-  for (std::size_t i = 0; i < n0; ++i)
-    for (std::size_t j = 0; j < n1; ++j) {
-      if (!tf::intersects(ws.ibox0[i], ws.ibox1[j]))
-        continue;
-      auto id0 = Index(ws.ids0[i]);
-      auto id1 = Index(ws.ids1[j]);
-      auto erep0 = [&](std::size_t e) {
-        return mel0[id0][e].is_representative(id0);
-      };
-      auto erep1 = [&](std::size_t e) {
-        return mel1[id1][e].is_representative(id1);
-      };
-      edges_vs_face_sos(ws.face0(i), id0, ws.face1(j), id1, tag0, tag1, erep0,
-                        ws.intersections, ws.payloads);
-      edges_vs_face_sos(ws.face1(j), id1, ws.face0(i), id0, tag1, tag0, erep1,
-                        ws.intersections, ws.payloads);
-    }
+  keep_face_pair_block(ws, false);
+  for (const auto &kept : ws.kept_pairs) {
+    const auto i = std::size_t(kept[0]);
+    const auto j = std::size_t(kept[1]);
+    auto id0 = Index(ws.ids0[i]);
+    auto id1 = Index(ws.ids1[j]);
+    auto erep0 = [&](std::size_t e) {
+      return mel0[id0][e].is_representative(id0);
+    };
+    auto erep1 = [&](std::size_t e) {
+      return mel1[id1][e].is_representative(id1);
+    };
+    edges_vs_face_sos(ws.face0(i), id0, ws.face1(j), id1, tag0, tag1, erep0,
+                      ws.intersections, ws.payloads);
+    edges_vs_face_sos(ws.face1(j), id1, ws.face0(i), id0, tag1, tag0, erep1,
+                      ws.intersections, ws.payloads);
+  }
 }
 
 /// A plane's exact orient3d values at another face's vertices. They are
@@ -147,8 +149,8 @@ auto primitives_polygon_pair_prepped(
   auto n0 = face_buf0.size();
   auto n1 = face_buf1.size();
 
-  const auto &plane0 = fp0.info;
-  const auto &plane1 = fp1.info;
+  const auto plane0 = tf::exact::face_orient3d_plane(fp0, face_buf0);
+  const auto plane1 = tf::exact::face_orient3d_plane(fp1, face_buf1);
 
   // Compute orient3d_sign for all vertices vs opposite face plane.
   // sign_mask bits: 0 = has_negative, 1 = has_zero, 2 = has_positive.
@@ -166,15 +168,15 @@ auto primitives_polygon_pair_prepped(
   int mask0 = 0, mask1 = 0;
   // The signs are the one producer of "on the plane" — the separating
   // reject and every coplanarity guard below read them.
-  if (plane1.valid) {
+  if (fp1.valid()) {
     for (decltype(n0) i = 0; i < n0; ++i) {
-      signs0[i] = tf::exact::orient3d_plane_sign(fp1.plane, face_buf0[i].pt);
+      signs0[i] = tf::exact::orient3d_plane_sign(plane1, face_buf0[i].pt);
       mask0 |= 1 << (signs0[i] + 1);
     }
   }
-  if (plane0.valid) {
+  if (fp0.valid()) {
     for (decltype(n1) j = 0; j < n1; ++j) {
-      signs1[j] = tf::exact::orient3d_plane_sign(fp0.plane, face_buf1[j].pt);
+      signs1[j] = tf::exact::orient3d_plane_sign(plane0, face_buf1[j].pt);
       mask1 |= 1 << (signs1[j] + 1);
     }
   }
@@ -207,14 +209,14 @@ auto primitives_polygon_pair_prepped(
   bool both_crossing = (mask0 & has_crossing) == has_crossing &&
                        (mask1 & has_crossing) == has_crossing;
   if ((mask0 & has_crossing) == has_crossing) {
-    compute_plane_values(fp1.plane, face_buf0, ws.values0);
+    compute_plane_values(plane1, face_buf0, ws.values0);
     tf::exact::crossing_edges_vs_face(
         face_buf0, n0, face_buf1, n1, signs0, ws.values0, tag0, tag1, face0_id,
         face1_id, is_rep0, is_rep1, ws.intersections, ws.payloads,
         both_crossing);
   }
   if ((mask1 & has_crossing) == has_crossing) {
-    compute_plane_values(fp0.plane, face_buf1, ws.values1);
+    compute_plane_values(plane0, face_buf1, ws.values1);
     tf::exact::crossing_edges_vs_face(
         face_buf1, n1, face_buf0, n0, signs1, ws.values1, tag1, tag0, face1_id,
         face0_id, is_rep1, is_rep0, ws.intersections, ws.payloads,
@@ -224,10 +226,11 @@ auto primitives_polygon_pair_prepped(
     return;
 
   // VV / coplanar-VE / coplanar-EE
-  tf::exact::coplanar_primitives(face_buf0, n0, face_buf1, n1, signs0, signs1,
-                                 tag0, tag1, face0_id, face1_id, is_rep0,
-                                 is_rep1, plane0, plane1, ws.intersections,
-                                 ws.payloads);
+  const auto info0 = tf::exact::make_face_plane_info(fp0);
+  const auto info1 = tf::exact::make_face_plane_info(fp1);
+  tf::exact::coplanar_primitives(
+      face_buf0, n0, face_buf1, n1, signs0, signs1, tag0, tag1, face0_id,
+      face1_id, is_rep0, is_rep1, info0, info1, ws.intersections, ws.payloads);
 
   // VF (both directions)
   auto vrep0 = [&](std::size_t i) {
@@ -237,10 +240,10 @@ auto primitives_polygon_pair_prepped(
     return Index(fm1[Index(poly1.indices()[j])].front()) == face1_id;
   };
   tf::exact::vertex_face(face_buf0, n0, face_buf1, n1, signs0, tag0, tag1,
-                         face0_id, face1_id, vrep0, plane1, ws.intersections,
+                         face0_id, face1_id, vrep0, info1, ws.intersections,
                          ws.payloads);
   tf::exact::vertex_face(face_buf1, n1, face_buf0, n0, signs1, tag1, tag0,
-                         face1_id, face0_id, vrep1, plane0, ws.intersections,
+                         face1_id, face0_id, vrep1, info0, ws.intersections,
                          ws.payloads);
 
   // COPLANARITY IS THE NAME, AND THE SIGNS ARE ITS ROUTE.
@@ -255,21 +258,27 @@ auto primitives_polygon_pair_prepped(
   // one name put each other's support corners on their own plane. A pair
   // that fails this reading can therefore never be name-equal, and never
   // asks. The reading is the sign array the decision tree has already
-  // filled, so the average pair pays a comparison it has already made and
-  // no carrier is named to answer a question that is already settled.
+  // filled at the corners the support scan keeps, so a pair on the zero
+  // route pays a scan and a comparison and no carrier is named to answer a
+  // question that is already settled.
   //
   // The fact belongs to the PAIR, not to records: representative gating
   // may route contacts through other pairs' calls, so a stamp on this
   // call's emissions can be lost. Collected here, distributed onto the
   // final records after the build.
-  const auto support_on_plane = [](const tf::exact::face_plane_info &info,
+  if (!info0.valid || !info1.valid)
+    return;
+  const auto support_on_plane = [](const std::array<std::size_t, 3> &at,
                                    const auto &signs) {
-    return signs[info.i0] == 0 && signs[info.i1] == 0 && signs[info.i2] == 0;
+    return signs[at[0]] == 0 && signs[at[1]] == 0 && signs[at[2]] == 0;
   };
-  if (plane0.valid && plane1.valid && support_on_plane(plane0, signs0) &&
-      support_on_plane(plane1, signs1) &&
-      tf::exact::face_plane_name(fp0, face_buf0) ==
-          tf::exact::face_plane_name(fp1, face_buf1))
+  std::array<std::size_t, 3> at0{}, at1{};
+  const auto support0 = tf::exact::scan_face_support(face_buf0, at0);
+  if (!support_on_plane(at0, signs0))
+    return;
+  const auto support1 = tf::exact::scan_face_support(face_buf1, at1);
+  if (support_on_plane(at1, signs1) && tf::exact::face_plane_name(support0) ==
+                                           tf::exact::face_plane_name(support1))
     ws.coplanar_pairs.push_back({Index(tag0), face0_id, Index(tag1), face1_id});
 }
 
@@ -280,18 +289,15 @@ void primitives_process(face_pair_workspace<Index, Int> &ws, const Form0 &form0,
                         const Form1 &form1, int tag0, int tag1,
                         const MEL0 &mel0, const MEL1 &mel1, const FM0 &fm0,
                         const FM1 &fm1) {
-  auto n0 = ws.n0();
-  auto n1 = ws.n1();
   prepare_face_pair_block(ws, false);
-  for (std::size_t i = 0; i < n0; ++i)
-    for (std::size_t j = 0; j < n1; ++j) {
-      if (!ws.pair_kept[i * n1 + j])
-        continue;
-      primitives_polygon_pair_prepped(
-          ws, tf::tag_id(Index(ws.ids0[i]), form0[ws.ids0[i]]),
-          tf::tag_id(Index(ws.ids1[j]), form1[ws.ids1[j]]), tag0, tag1, mel0,
-          mel1, fm0, fm1, ws.face0(i), ws.fp0[i], ws.face1(j), ws.fp1[j]);
-    }
+  for (const auto &kept : ws.kept_pairs) {
+    const auto i = std::size_t(kept[0]);
+    const auto j = std::size_t(kept[1]);
+    primitives_polygon_pair_prepped(
+        ws, tf::tag_id(Index(ws.ids0[i]), form0[ws.ids0[i]]),
+        tf::tag_id(Index(ws.ids1[j]), form1[ws.ids1[j]]), tag0, tag1, mel0,
+        mel1, fm0, fm1, ws.face0(i), ws.fp0[i], ws.face1(j), ws.fp1[j]);
+  }
 }
 
 } // namespace tf::intersect

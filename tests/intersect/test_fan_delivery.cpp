@@ -18,10 +18,14 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <trueform/core/buffer.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/intersect/intersect_config.hpp>
 #include <trueform/intersect/polygon_intersections.hpp>
+#include <trueform/intersect/records/shared_vertex_claim.hpp>
+#include <trueform/intersect/records/state_shared_vertex_fans.hpp>
+#include <trueform/intersect/records/tagged_intersection.hpp>
 #include <trueform/spatial/aabb_tree.hpp>
 #include <trueform/topology/is_closed.hpp>
 #include <trueform/topology/make_face_membership.hpp>
@@ -31,8 +35,10 @@
 
 #include "input_lattice_for.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <set>
 #include <tuple>
@@ -226,6 +232,48 @@ auto build_pair(fan_delivery_fixture &a, fan_delivery_fixture &b)
   return ibp;
 }
 
+/// Coplanar wedges of ONE mesh spreading from a shared hub vertex in
+/// z = 0: `overlapping` of them pairwise overlap in area, so every pair of
+/// them is a contact that claims the hub, and `lone` of them share the hub
+/// and nothing else, so only the hub's own statement ever reaches them.
+/// The hub is slot 0 of every face and its fan is the whole mesh.
+auto fan_delivery_hub_wedges(fan_delivery_index_t overlapping,
+                             fan_delivery_index_t lone) -> fan_delivery_mesh_t {
+  std::vector<std::array<int, 3>> pts{{0, 0, 0}};
+  std::vector<std::array<fan_delivery_index_t, 3>> faces;
+  for (fan_delivery_index_t k = 0; k < overlapping; ++k) {
+    pts.push_back({10, 3 * k, 0});
+    pts.push_back({10, 3 * k + 10, 0});
+    faces.push_back({0, fan_delivery_index_t(pts.size()) - 2,
+                     fan_delivery_index_t(pts.size()) - 1});
+  }
+  for (fan_delivery_index_t k = 0; k < lone; ++k) {
+    pts.push_back({-10, 40 * (k + 1), 0});
+    pts.push_back({-10, 40 * (k + 1) + 5, 0});
+    faces.push_back({0, fan_delivery_index_t(pts.size()) - 1,
+                     fan_delivery_index_t(pts.size()) - 2});
+  }
+  return make_fan_delivery_mesh(pts, faces);
+}
+
+/// Every record whose two targets are the hub corner, as the ordered face
+/// pair it names, beside the point ids those records carry.
+auto fan_delivery_hub_pairs(const fan_delivery_ibp_t &ibp,
+                            std::set<fan_delivery_index_t> &ids)
+    -> std::vector<std::pair<fan_delivery_index_t, fan_delivery_index_t>> {
+  std::vector<std::pair<fan_delivery_index_t, fan_delivery_index_t>> out;
+  for (const auto &r : ibp.flat_intersections()) {
+    if (r.target.label != tf::topo_type::vertex ||
+        r.target_other.label != tf::topo_type::vertex)
+      continue;
+    if (r.target.id != 0 || r.target_other.id != 0)
+      continue;
+    out.push_back({r.object, r.object_other});
+    ids.insert(r.id);
+  }
+  return out;
+}
+
 /// A hexagonal pyramid: apex at `apex`, its rim a hexagon at `z`, closed by a
 /// rim fan through the base centre. The apex has valence SIX, which is the
 /// population the fan multiplies against the other side's.
@@ -362,6 +410,89 @@ TEST_CASE("fan: self pair sharing a vertex delivers it around the whole fan",
   // the shared vertex 0 sits on all eight faces; the delivery must reach
   // every one of them
   REQUIRE(delivered_faces(ibp, 0).size() == 8);
+}
+
+// FAMILY A' — the shared-vertex statement HELD BY ITS SET. Coplanar wedges
+// of one mesh from a shared hub: the overlapping ones claim the hub, the
+// lone ones only stand in its fan. A claim states the hub at every face of
+// the fan, from both sides, so the records naming the hub on both sides are
+// exactly the ordered pairs with at least one CLAIMING face — every other
+// ordered pair present, and the lone-against-lone pairs absent. That pins
+// the set from both sides: dropping the fan loses the lone faces' records,
+// and stating it per fan face rather than per claim invents the missing
+// pairs. One record per pair, all at slot 0, all the hub's one name.
+TEST_CASE("fan: a coplanar hub states its fan once per claim",
+          "[intersect][fan][self][sentinel]") {
+  const fan_delivery_index_t lone = 2;
+  for (const fan_delivery_index_t overlapping : {2, 3, 4}) {
+    const auto n = overlapping + lone;
+    fan_delivery_fixture f(fan_delivery_hub_wedges(overlapping, lone));
+    fan_delivery_ibp_t ibp;
+    const auto ibp_lattice = tf::test::input_lattice_for(f.form(), 0.0);
+    ibp.build(f.form(), ibp_lattice, tf::intersect_config{});
+
+    std::set<fan_delivery_index_t> ids;
+    auto hub = fan_delivery_hub_pairs(ibp, ids);
+    INFO("overlapping=" << overlapping << " hub records=" << hub.size());
+
+    // the hub is one canonical point however many faces name it
+    REQUIRE(ids.size() == 1);
+
+    std::vector<std::pair<fan_delivery_index_t, fan_delivery_index_t>> want;
+    for (fan_delivery_index_t a = 0; a < n; ++a)
+      for (fan_delivery_index_t b = 0; b < n; ++b)
+        if (a != b && (a < overlapping || b < overlapping))
+          want.push_back({a, b});
+    std::sort(hub.begin(), hub.end());
+    REQUIRE(hub.size() == want.size());
+    REQUIRE(hub == want);
+
+    check_both_orientations(ibp);
+    std::vector<fan_delivery_mesh_t *> meshes{&f.mesh};
+    check_vertex_identity_synchronized(ibp, meshes);
+    check_chord_partners_delivered(ibp);
+
+    // the hub's whole fan is on the face carrier
+    REQUIRE(delivered_faces(ibp, 0).size() == std::size_t(n));
+  }
+}
+
+// The claim's fan is counted by the walk that writes it. The membership
+// holds one entry per corner, so a claiming face that holds the vertex
+// twice stands in its own fan twice and is skipped twice: a count read off
+// the membership's size would leave two records unwritten.
+TEST_CASE("fan: a claiming face holding the vertex twice states its fan whole",
+          "[intersect][fan][self][sentinel]") {
+  // four faces around vertex 0; face 3 names it at two corners
+  fan_delivery_mesh_t mesh = make_fan_delivery_mesh(
+      {{0, 0, 0}, {10, 0, 0}, {0, 10, 0}, {-10, 0, 0}, {0, -10, 0}},
+      {{0, 1, 2}, {0, 2, 3}, {0, 3, 4}, {0, 4, 0}});
+  const auto fm = tf::make_face_membership(mesh.polygons());
+  const auto form = mesh.polygons() | tf::tag(fm);
+  const auto apply_to_form = [&](int, auto &&f) { f(form); };
+  const auto sentinel_of = [](std::int16_t) { return fan_delivery_index_t(100); };
+
+  for (const fan_delivery_index_t claiming : {0, 3}) {
+    tf::buffer<tf::intersect::shared_vertex_claim<fan_delivery_index_t>> claims;
+    claims.push_back({0, claiming, 0});
+    tf::buffer<tf::intersect::tagged_intersection<fan_delivery_index_t>> records;
+    tf::intersect::state_shared_vertex_fans(claims, apply_to_form, sentinel_of,
+                                            records);
+
+    // every other entry of the vertex's membership, both orientations
+    std::size_t others = 0;
+    for (auto face : fm[0])
+      others += face != claiming;
+    REQUIRE(others == std::size_t(claiming == 3 ? 3 : 4));
+    REQUIRE(records.size() == 2 * others);
+    for (const auto &r : records) {
+      REQUIRE(r.tag == 0);
+      REQUIRE(r.tag_other == 0);
+      REQUIRE(r.id == 100);
+      REQUIRE(r.object != r.object_other);
+      REQUIRE((r.object == claiming || r.object_other == claiming));
+    }
+  }
 }
 
 // FAMILY B — a NON-MANIFOLD edge: three faces meet on one edge and a cutter

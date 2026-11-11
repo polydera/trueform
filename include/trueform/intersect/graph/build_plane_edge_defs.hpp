@@ -89,6 +89,8 @@ auto build_plane_edge_defs(const Descriptors &descriptors,
     tf::buffer<edge<Index>> raw;
     tf::buffer<chain_node<Index, Int, tf::intersect::tagged_intersection<Index>>>
         chain;
+    tf::buffer<const tf::intersect::tagged_intersection<Index> *> shared;
+    tf::buffer<const tf::intersect::tagged_intersection<Index> *> ordinary;
     tf::small_vector<loop_key_t, 32> loop_keys;
     tf::small_vector<char, 32> loop_keep;
   };
@@ -138,7 +140,7 @@ auto build_plane_edge_defs(const Descriptors &descriptors,
               extract_plane_edges<Index, Int>(
                   subrange, Index(face_size), this_loop_idx, all_loops,
                   descriptors, apply_to_face_f, get_point_f, local.chain,
-                  local.raw, local.covered);
+                  local.raw, local.covered, local.shared, local.ordinary);
               // the radial carrier orientation of an interior cut: the
               // producing pair is in hand exactly here, and the answer
               // comes off the endpoints' generators — never off a

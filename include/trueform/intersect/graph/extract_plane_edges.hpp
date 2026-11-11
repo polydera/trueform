@@ -14,7 +14,6 @@
 
 #include "../../core/buffer.hpp"
 #include "../../core/point.hpp"
-#include "../../core/small_vector.hpp"
 #include "../../exact/meta.hpp"
 #include "../../topology/topo_type.hpp"
 #include "../records/tagged_intersection.hpp"
@@ -104,8 +103,9 @@ auto emit_collinear_chain(
 
 /// Transversal self-pair group holding shared-vertex records: the
 /// shared vertex pairs with each ordinary record (fold chord, corner
-/// crossing).
-template <typename Index, typename Iterator, typename AllLoops,
+/// crossing). `shared` and `ordinary` are the caller's own lists, each
+/// holding at most one record of the group.
+template <typename Index, typename Record, typename Iterator, typename AllLoops,
           typename Descriptors, typename ApplyToFace>
 auto extract_shared_plane_edges(Iterator group_begin, Iterator group_end,
                                 Index face_size, std::size_t this_loop_idx,
@@ -113,7 +113,9 @@ auto extract_shared_plane_edges(Iterator group_begin, Iterator group_end,
                                 const Descriptors &descriptors,
                                 const ApplyToFace &apply_to_face,
                                 tf::buffer<edge<Index>> &buf,
-                                tf::buffer<std::int16_t> &covered) -> bool {
+                                tf::buffer<std::int16_t> &covered,
+                                tf::buffer<const Record *> &shared,
+                                tf::buffer<const Record *> &ordinary) -> bool {
   bool vv_possible = false;
   for (auto q = group_begin; q != group_end; ++q)
     if (q->target.label == tf::topo_type::vertex &&
@@ -128,8 +130,10 @@ auto extract_shared_plane_edges(Iterator group_begin, Iterator group_end,
     apply_to_face(
         group_begin->tag_other, group_begin->object_other,
         [&](const auto &other_face) {
-          using rec_t = std::decay_t<decltype(*group_begin)>;
-          tf::small_vector<const rec_t *, 8> shared_recs, ordinary_recs;
+          auto &shared_recs = shared;
+          auto &ordinary_recs = ordinary;
+          shared_recs.clear();
+          ordinary_recs.clear();
           auto seen = [](auto &v, Index id) {
             for (auto *r : v)
               if (Index(r->id) == id)
@@ -171,17 +175,19 @@ auto extract_shared_plane_edges(Iterator group_begin, Iterator group_end,
 /// all of its vertex/edge contacts arrive in one group.
 ///
 /// @param chain the collinear chain's scratch, reused across the calls
-///        of one parallel block.
+///        of one parallel block, as `shared` and `ordinary` are.
 template <typename Index, typename Int, typename Subrange, typename AllLoops,
           typename Descriptors, typename ApplyToFace, typename GetPoint>
 auto extract_plane_edges(
     const Subrange &subrange, Index face_size, std::size_t this_loop_idx,
     const AllLoops &all_loops, const Descriptors &descriptors,
     const ApplyToFace &apply_to_face, const GetPoint &get_point,
-    tf::buffer<
-        chain_node<Index, Int, tf::intersect::tagged_intersection<Index>>>
-        &chain,
-    tf::buffer<edge<Index>> &buf, tf::buffer<std::int16_t> &covered) -> void {
+    tf::buffer<chain_node<Index, Int,
+                          tf::intersect::tagged_intersection<Index>>> &chain,
+    tf::buffer<edge<Index>> &buf, tf::buffer<std::int16_t> &covered,
+    tf::buffer<const tf::intersect::tagged_intersection<Index> *> &shared,
+    tf::buffer<const tf::intersect::tagged_intersection<Index> *> &ordinary)
+    -> void {
   auto it = subrange.begin();
   auto end = subrange.end();
   while (it != end) {
@@ -201,9 +207,11 @@ auto extract_plane_edges(
       continue;
     bool routed = false;
     if (group_begin->tag == group_begin->tag_other)
-      routed = extract_shared_plane_edges<Index>(
-          group_begin, it, face_size, this_loop_idx, all_loops, descriptors,
-          apply_to_face, buf, covered);
+      routed =
+          extract_shared_plane_edges<Index,
+                                     tf::intersect::tagged_intersection<Index>>(
+              group_begin, it, face_size, this_loop_idx, all_loops, descriptors,
+              apply_to_face, buf, covered, shared, ordinary);
     if (routed)
       continue;
     if (n == 2)

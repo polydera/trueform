@@ -12,45 +12,34 @@
  */
 #pragma once
 
-#include "../../core/intersects.hpp"
 #include "../classify/face_plane_info.hpp"
 #include "./face_pair_search.hpp"
+#include "./keep_face_pair_block.hpp"
 
 #include <algorithm>
 #include <cstddef>
 
 namespace tf::intersect {
 
-/// THE BLOCK'S KEPT PAIRS, AND THE PLANES THOSE PAIRS READ.
-///
-/// A leaf block states `n0 * n1` candidates and its box filter keeps a
-/// small fraction of them. The filter is a handful of integer comparisons;
-/// a face's supporting plane is a wide-integer cross. So the cheap fact is
-/// stated first and stated once — the pair loops read `pair_kept` instead of
-/// retesting the boxes — and only a face some kept pair reaches is planed. A
-/// face no pair reaches holds no plane and is never asked for one.
-///
-/// `skip_mirror` is the diagonal block's own rule: it visits each unordered
-/// pair once, so the reach is counted the same way.
+/// THE BLOCK'S KEPT PAIRS, AND THE PLANES THOSE PAIRS READ, for a search
+/// that gathers its faces per block. A face's supporting plane is a
+/// wide-integer cross, so only a face some kept pair of the block reaches
+/// is planed; a face the block's own pairs do not reach holds no plane
+/// here.
 template <typename Index, typename Int>
 void prepare_face_pair_block(face_pair_workspace<Index, Int> &ws,
                              bool skip_mirror) {
+  keep_face_pair_block(ws, skip_mirror);
   const auto n0 = ws.n0();
   const auto n1 = ws.n1();
-  ws.pair_kept.allocate(n0 * n1);
   ws.reached0.allocate(n0);
   ws.reached1.allocate(n1);
   std::fill(ws.reached0.begin(), ws.reached0.end(), false);
   std::fill(ws.reached1.begin(), ws.reached1.end(), false);
-  for (std::size_t i = 0; i < n0; ++i)
-    for (std::size_t j = skip_mirror ? i + 1 : 0; j < n1; ++j) {
-      const bool kept = tf::intersects(ws.ibox0[i], ws.ibox1[j]);
-      ws.pair_kept[i * n1 + j] = kept;
-      if (kept) {
-        ws.reached0[i] = true;
-        ws.reached1[j] = true;
-      }
-    }
+  for (const auto &kept : ws.kept_pairs) {
+    ws.reached0[std::size_t(kept[0])] = true;
+    ws.reached1[std::size_t(kept[1])] = true;
+  }
   ws.fp0.allocate(n0);
   for (std::size_t i = 0; i < n0; ++i)
     if (ws.reached0[i])

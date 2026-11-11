@@ -12,6 +12,7 @@
  */
 #pragma once
 #include "../../core/local_value.hpp"
+#include "./face_images.hpp"
 #include "./face_pair_search.hpp"
 #include "./face_self_kernels.hpp"
 
@@ -37,11 +38,11 @@ auto find_self_intersection(const Form &form, const Lattice &lattice) -> bool {
   auto abort = [&found] { return found.load(); };
   search_face_pairs_self(
       form, 0, lattice, ws,
-      [&](workspace_t &w, bool is_self) {
+      [&](workspace_t &w, const face_images<Index, Int> &images, bool is_self) {
         w.intersections.clear();
         w.payloads.clear();
         w.coplanar_pairs.clear();
-        self_process(w, is_self, form, 0, mel, fm);
+        self_process(w, images, is_self, form, 0, mel, fm);
         if (w.intersections.size() != 0)
           found.store(true);
       },

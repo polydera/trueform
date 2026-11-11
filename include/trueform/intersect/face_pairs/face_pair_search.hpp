@@ -16,6 +16,7 @@
 #include "../../core/algorithm/parallel_copy.hpp"
 #include "../../core/algorithm/parallel_transform.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/config/verify.hpp"
 #include "../../core/frame_of.hpp"
 #include "../../core/inflated_aabb.hpp"
 #include "../../core/intersects.hpp"
@@ -32,14 +33,18 @@
 #include "../classify/face_plane_info.hpp"
 #include "../classify/intersection_payload.hpp"
 #include "../records/tagged_intersection.hpp"
+#include "./face_images.hpp"
+#include "./make_face_images.hpp"
+#include "./placed_face_box.hpp"
 
 namespace tf::intersect {
 
-/// Per-thread scratch for the leaf-grouped face search. Converting + planing
-/// each leaf face once here amortizes it over every candidate pair it shares in
-/// the leaf; verts go in a flat arena keyed by per-face offsets (buffer<T>
-/// can't nest), read back as `vertex_range`s. Also accumulates this thread's
-/// output intersections + payloads.
+/// Per-thread scratch for the leaf-grouped face search, and this thread's
+/// output intersections + payloads. A leaf block's faces are named by `ids`
+/// with their exact boxes in `ibox`; the pair search also gathers their
+/// corners and planes here (verts go in a flat arena keyed by per-face
+/// offsets, read back as `vertex_range`s), while the self search reads
+/// them from the form's @ref tf::intersect::face_images.
 template <typename Index, typename Int> struct face_pair_workspace {
   using vertex_t = tf::exact::vertex<Index, Int>;
 
@@ -58,11 +63,12 @@ template <typename Index, typename Int> struct face_pair_workspace {
   tf::buffer<std::size_t> ids0, ids1;
   tf::buffer<bool> shared0, shared1; // self-intersection scratch (within path)
 
-  // The block's candidate pairs the box filter keeps, and the faces those
-  // pairs reach. @ref tf::intersect::prepare_face_pair_block is the one
-  // producer of both: the pair loops read the verdict instead of retesting
-  // it, and only a reached face carries a plane in `fp0` / `fp1`.
-  tf::buffer<bool> pair_kept;
+  // The block's candidate pairs whose boxes meet, as `{i, j}` positions in
+  // row-major order, and the faces those pairs reach.
+  // @ref tf::intersect::keep_face_pair_block is the one producer of the
+  // pairs: every pair loop walks them instead of retesting the boxes. The
+  // reach is the pair search's, which planes only a reached face.
+  tf::buffer<std::array<int, 2>> kept_pairs;
   tf::buffer<bool> reached0, reached1;
 
   // Per-candidate-pair scratch: each face's vertices read against the
@@ -95,25 +101,6 @@ template <typename Index, typename Int> struct face_pair_workspace {
     return tf::make_range(verts1.begin() + voff1[j], voff1[j + 1] - voff1[j]);
   }
 };
-
-/// The exact box of the corners a leaf face just contributed. The
-/// corners are the geometry the kernels read, so this box holds the
-/// face with nothing to spare — the descent pays for the door's motion,
-/// the block filter does not.
-template <typename Index, typename Int>
-auto placed_face_box(const tf::buffer<tf::exact::vertex<Index, Int>> &verts,
-                     std::size_t from) -> tf::aabb<Int, 3> {
-  auto low = verts[from].pt;
-  auto high = low;
-  for (auto at = from + 1; at < verts.size(); ++at)
-    for (std::size_t k = 0; k < 3; ++k) {
-      if (verts[at].pt[k] < low[k])
-        low[k] = verts[at].pt[k];
-      if (verts[at].pt[k] > high[k])
-        high[k] = verts[at].pt[k];
-    }
-  return tf::make_aabb(low, high);
-}
 
 /// Walk the dual BVH at leaf granularity, gathering each leaf face's
 /// placed corners once into the per-thread workspace, then invoke
@@ -158,27 +145,25 @@ void search_face_pairs(const Form0 &form0, const Form1 &form1, int tag0,
           auto poly =
               tf::transformed(form0[id0] | tf::tag(buff0), tf::frame_of(form0));
           auto m = poly.size();
-          const auto from = ws.verts0.size();
           for (decltype(m) k = 0; k < m; ++k)
             ws.verts0.push_back(
                 {lattice.flat_vertex(tag0, Index(poly.indices()[k])),
                  lattice.point(tag0, Index(poly.indices()[k]), poly[k])});
           ws.voff0.push_back(int(ws.verts0.size()));
-          ws.ibox0.push_back(placed_face_box(ws.verts0, from));
           ws.ids0.push_back(std::size_t(id0));
+          ws.ibox0.push_back(placed_face_box(ws.face0(ws.n0() - 1)));
         }
         for (const auto &id1 : r1) {
           auto poly =
               tf::transformed(form1[id1] | tf::tag(buff1), tf::frame_of(form1));
           auto m = poly.size();
-          const auto from = ws.verts1.size();
           for (decltype(m) k = 0; k < m; ++k)
             ws.verts1.push_back(
                 {lattice.flat_vertex(tag1, Index(poly.indices()[k])),
                  lattice.point(tag1, Index(poly.indices()[k]), poly[k])});
           ws.voff1.push_back(int(ws.verts1.size()));
-          ws.ibox1.push_back(placed_face_box(ws.verts1, from));
           ws.ids1.push_back(std::size_t(id1));
+          ws.ibox1.push_back(placed_face_box(ws.face1(ws.n1() - 1)));
         }
         process(ws);
         return false;
@@ -190,6 +175,11 @@ void search_face_pairs(const Form0 &form0, const Form1 &form1, int tag0,
 /// self_search` flags the diagonal leaf with `is_self`, where `process` must
 /// start the inner loop at `i0 + 1` to skip the self-pair and each unordered
 /// pair's mirror.
+///
+/// Every face that has a neighbour is reached here, from every leaf pair
+/// its leaf is in, so the faces' images are formed once for the form before
+/// the walk and `process(ws, images, is_self)` reads them; a leaf pair
+/// gathers only its faces' ids and boxes.
 ///
 /// `abort` is the traversal's own: it is asked before every descent and
 /// again after each leaf, so a caller whose process states its verdict
@@ -212,7 +202,7 @@ void search_face_pairs_self(
     return check_bvs(tf::transformed(bv0, tf::frame_of(form)),
                      tf::transformed(bv1, tf::frame_of(form)));
   };
-  auto buff = tf::spatial::make_local_buffer_for_form(form);
+  const auto images = make_face_images<Index, Int>(form, tag, lattice);
 
   tf::spatial::traversal::self_search(
       form.tree(), bv_f,
@@ -220,32 +210,28 @@ void search_face_pairs_self(
         auto &ws = *ws_lv;
         ws.reset_cache();
         for (const auto &id0 : r0) {
-          auto poly =
-              tf::transformed(form[id0] | tf::tag(buff), tf::frame_of(form));
-          auto m = poly.size();
-          const auto from = ws.verts0.size();
-          for (decltype(m) k = 0; k < m; ++k)
-            ws.verts0.push_back(
-                {lattice.flat_vertex(tag, Index(poly.indices()[k])),
-                 lattice.point(tag, Index(poly.indices()[k]), poly[k])});
-          ws.voff0.push_back(int(ws.verts0.size()));
-          ws.ibox0.push_back(placed_face_box(ws.verts0, from));
           ws.ids0.push_back(std::size_t(id0));
+          ws.ibox0.push_back(images.boxes[std::size_t(id0)]);
         }
+        // Every leaf is the first side of its own diagonal block, so this
+        // reads every face's image against the face once.
+        if constexpr (tf::core::verification)
+          for (const auto &id0 : r0) {
+            const auto face = images.face(std::size_t(id0));
+            const auto &indices = form[id0].indices();
+            tf::core::verify(face.size() == std::size_t(indices.size()),
+                             "a face's image holds its corners");
+            for (std::size_t k = 0; k < face.size(); ++k)
+              tf::core::verify(face[k].id ==
+                                   lattice.flat_vertex(tag, Index(indices[k])),
+                               "a face's image holds its own corners, in "
+                               "face order");
+          }
         for (const auto &id1 : r1) {
-          auto poly =
-              tf::transformed(form[id1] | tf::tag(buff), tf::frame_of(form));
-          auto m = poly.size();
-          const auto from = ws.verts1.size();
-          for (decltype(m) k = 0; k < m; ++k)
-            ws.verts1.push_back(
-                {lattice.flat_vertex(tag, Index(poly.indices()[k])),
-                 lattice.point(tag, Index(poly.indices()[k]), poly[k])});
-          ws.voff1.push_back(int(ws.verts1.size()));
-          ws.ibox1.push_back(placed_face_box(ws.verts1, from));
           ws.ids1.push_back(std::size_t(id1));
+          ws.ibox1.push_back(images.boxes[std::size_t(id1)]);
         }
-        process(ws, is_self);
+        process(ws, images, is_self);
         return abort();
       },
       abort, 6);
