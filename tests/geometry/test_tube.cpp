@@ -76,6 +76,7 @@ TEST_CASE("a square tube is uniform around its closure", "[geometry][tube]") {
     REQUIRE(tube.faces().size() == 2 * 4 * sides);
     CHECK(tf::is_closed(tube.polygons()));
     CHECK(tf::is_manifold(tube.polygons()));
+    CHECK(tf::signed_volume(tube.polygons()) > 0.f);
 
     // The strip between consecutive rings covers one side of the square;
     // by symmetry all four strips carry the same area, the seam's included.

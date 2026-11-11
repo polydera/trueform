@@ -28,9 +28,9 @@ namespace tf {
 /// @ingroup geometry_meshing
 /// @brief Creates a tube mesh around a single curve.
 ///
-/// Generates a triangulated tube using parallel transport frames.
-/// Closed curves (first ~ last point) are detected automatically
-/// and produce a seamless manifold tube.
+/// Generates a triangulated tube using parallel transport frames,
+/// wound outward. Closed curves (first ~ last point) are detected
+/// automatically and produce a seamless manifold tube.
 ///
 /// @tparam Index The index type (default: int).
 /// @param curve The input curve.
@@ -99,8 +99,8 @@ auto make_tube_mesh(const tf::curve<3, CurvePolicy> &curve, RealT radius,
             auto d = static_cast<Index>(next * R + jn);
 
             auto fi = static_cast<Index>((i * R + j) * 2);
-            faces[fi] = tf::make_array_like(std::array<Index, 3>{a, c, d});
-            faces[fi + 1] = tf::make_array_like(std::array<Index, 3>{a, d, b});
+            faces[fi] = tf::make_array_like(std::array<Index, 3>{a, d, c});
+            faces[fi + 1] = tf::make_array_like(std::array<Index, 3>{a, b, d});
           }
         },
         tf::checked);
@@ -113,8 +113,9 @@ auto make_tube_mesh(const tf::curve<3, CurvePolicy> &curve, RealT radius,
 /// @ingroup geometry_meshing
 /// @brief Creates tube meshes around multiple curves.
 ///
-/// Each curve is processed in parallel. Closed curves are detected
-/// automatically. Single allocation for all frame buffers.
+/// Each curve is processed in parallel, its tube wound outward. Closed
+/// curves are detected automatically. Single allocation for all frame
+/// buffers.
 ///
 /// @tparam Index The index type (default: int).
 /// @param curves The input curves.
@@ -239,8 +240,8 @@ auto make_tube_mesh(const tf::curves<CurvesPolicy> &curves, RealT radius,
             auto d = vo + static_cast<Index>(next * R + jn);
 
             auto fi = fo + static_cast<Index>((i * R + j) * 2);
-            faces[fi] = tf::make_array_like(std::array<Index, 3>{a, c_idx, d});
-            faces[fi + 1] = tf::make_array_like(std::array<Index, 3>{a, d, b});
+            faces[fi] = tf::make_array_like(std::array<Index, 3>{a, d, c_idx});
+            faces[fi + 1] = tf::make_array_like(std::array<Index, 3>{a, b, d});
           }
         }
       },
