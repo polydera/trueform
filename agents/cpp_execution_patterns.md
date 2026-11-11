@@ -10,7 +10,12 @@ choosing a container or parallel primitive.
 
 ## 1. Owning buffers and semantic ranges
 
-Trueform separates ownership from interpretation.
+Trueform separates ownership from interpretation. Interpretation does not
+stop at the range: an algorithm is told how to reach what it needs — an
+applier over any connectivity, a point reader, `link(t)` — and owns nothing;
+the owners sit at the entry and every tier below borrows, fills what it is
+handed and works on the scratch it is given
+(`cpp_engineering_philosophy.md` §5).
 
 | Shape | Owning form | Non-owning form |
 |---|---|---|

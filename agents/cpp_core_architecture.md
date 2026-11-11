@@ -507,7 +507,19 @@ the identity of the output block. The primitive is not only a determinism gate;
 ordered aggregation preserves implicit joins between jagged carriers and can
 eliminate later sorting or lookup.
 
-### 7.5 Grouping Utilities
+### 7.5 Appliers and Readers — how an algorithm is told to reach its data
+
+An algorithm takes the access, never the structure (the law:
+`cpp_engineering_philosophy.md` §5). The recurring slots:
+
+| Slot | Shape | Producers seen |
+|---|---|---|
+| `applier(id, f)` | calls `f(neighbor)` for each neighbor of `id` | `make_applier` over face/vertex/manifold edge links and the tet link and manifold facet link (`topology/make_applier.hpp`), masked links, cell/piece incidence, tet neighbours, NumPy/WASM CSR arrays — all into one `label_connected_components` |
+| `apply_to_form(tag, f)` | calls `f(form)` with the tagged form of `tag` | the arrangement's range and pair policies; every tier of the arrangement consumes it without naming a form type |
+| `get_point(tag, id)` / `point_in` | the one position reader | `input_lattice_reader`, the carve's delta reader, the iso cut's `point_of_flat` |
+| `link(t)` / `corners(t)` / `peers_of(t)` | a triangle's neighbours or corners | the tet entrance's surface statement over a tagged, completed or later-pass link |
+
+### 7.6 Grouping Utilities
 
 **`compute_offsets(sorted_data, out_iter, start, compare)`** — scans sorted data, outputs group boundary offsets where `compare(current, next)` fails. Used in sort-then-group workflows.
 
@@ -579,10 +591,21 @@ order with their corners in the stream's vertex language.
   forms range + owned missing structures and rebuilds tagged views via
   `forms()`; `tf::arrangement::arrangement_pair_policy` erases two DIFFERENT
   form types behind `apply_to_form(tag, f)`. The
-  `tf::make_arrangement_graph` factories own tag-completion:
-  constexpr-branched build-only-what-is-missing (mirroring
-  `dispatch::boolean`), so a fully tagged call site constructs with
-  zero structure work.
+  `tf::make_arrangement_graph` factory is three steps, the body last:
+  `tf::arrangement::complete_operands` — constexpr-branched
+  build-only-what-is-missing, each of tree, face membership and manifold
+  edge link on its own trait, so a fully tagged call site completes with
+  zero structure work — returns the policy; the policy's `make_converter`
+  states the house converter over the completed operands' tree root boxes
+  through their frames; and the body,
+  `tf::arrangement::make_arrangement_graph(completed, converter, config)`,
+  completes nothing and builds the graph on the converter it is handed. A
+  caller with a lattice of its own (the tet entrance) completes, states
+  its converter and calls the body. THE QUANTUM LIVES IN THE CONVERTER:
+  `pt_converter_real::input_quantum` is its one producer (the ulp of the
+  box's largest magnitude, on the lattice), an identity converter carries
+  a stated quantum (`0` unstated), and the graph's `quantum()` is the
+  converter's wherever a tier reads it.
 - **`tf::polygon_intersections`**
   (`intersect/polygon_intersections.hpp`) — the
   intersections-between-polygons of the library and the sole producer
@@ -843,7 +866,8 @@ order with their corners in the stream's vertex language.
   directly; identity = `{tag, id}` pairs with created ids past the last tag.
 - **Exact substrate** (`exact/`):
   `tf::exact::resolve_int_type` picks the lattice int from the input
-  real; `tf::exact::vertex_converter` converts/deconverts. No predicate
+  real; `tf::exact::vertex_converter` converts/deconverts, wrapping the
+  `pt_converter` that carries the lattice's quantum. No predicate
   carries a band — the classifiers call the exact free predicates
   (`orient3d_sign`, `orient2d_sign`, `orient3d_plane_sign`) directly.
   Coordinates in the pipeline are lattice ints; float conversion happens
@@ -876,6 +900,17 @@ order with their corners in the stream's vertex language.
   `tf::exact::input_lattice_reader` is the ONE reader of an original's
   position (its moved row when the band moved it, the converter
   otherwise), and every tier reads originals through it.
+- **THE CHART QUESTION** (`arrangement/planes/plane_chart_point.hpp`,
+  `world.chart_point(plane, flat, point)`): an identity is one position for
+  every tier that names it — the closure, the landing law, the welds and a
+  class's position read that one — and only a plane's own chart may read it
+  elsewhere, its projected constraint set and its resolve, both through
+  `prepare_plane_triangulation`, the one read site. A world states it only
+  where its planes chart a shared identity apart; the CSG's
+  `plane_local_arrangement_policy` states nothing and the branch is compiled
+  out; the tet drain's `plane_drain_world` answers it from its per-lane
+  occurrence table, so a side two lanes share is one set of definition rows
+  and a split the wave lands there carries across lanes.
 - **`tf::csg_graph`** (`csg/csg_graph.hpp`) = an arrangement_graph plus
   the classification tier (machinery in `csg/graph/`):
   `tf::csg::graph::triangle_component_labels` (cut CCL over the cells,
@@ -935,3 +970,16 @@ order with their corners in the stream's vertex language.
   points read that one product through `gather_iso_band_triangles`, which
   assembles the band-major stream by counts and one prefix into disjoint
   ranges; the corners live in `[originals | field points | minted]`.
+- **The tet drain** (`tetmesh/cut/`, `tf::tetmesh`) is the arrangement's
+  laws applied inline to a recovering surface: its identities have one
+  authority (`tet_identity_authority`), which names created points by exact
+  lattice position; its side points are one table, `edge_points`, carrying
+  per-row dyadic parameters, welded along each side and charted per lane by
+  the occurrence law; its lanes are split by `plane_arrangement`'s wave over
+  `plane_drain_world`, the drain's created identities entering the wave as
+  base created identities so the closure's weld window joins a mint to a
+  standing one; its entrance is `discover_weld_entrants`' law
+  (`enter_tet_retired_holders`); a drain is refused by its T-junction count
+  (with the line law) and its openness count, never by an assert; the drains
+  end by a well-founded measure (`tet_drain_measure`); and every identity is
+  accounted against the published cells under verification.

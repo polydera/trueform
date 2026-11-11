@@ -19,6 +19,17 @@ deliberately — the semantic view for the user, the flat pass for the machine �
 and never let an abstract noun (a graph, a mesh, a database) become a real
 object in the design.
 
+Everything runs on ranges and lambdas. A form is ranges in a struct;
+semantic policies are tagged on top of it and read through their traits; and
+an algorithm is told how to reach what it needs — an applier, a point
+reader, `link(t)` — never handed a container to own. Data is owned at the
+top, by the entry, the graph or the binding's handle, and every function
+beneath reaches its inputs, fills the outputs it is handed and works on the
+scratch it is given. That is why the library is bootstrapped from its own
+primitives and why the bindings hand the same algorithms NumPy and WASM
+memory: the engine is written once and reused by changing the accessor,
+never by transforming the data (`agents/cpp_engineering_philosophy.md` §5).
+
 Each component is exactly one thing and nothing more; specialization is where
 the speed comes from. The recurring move is: precompute in parallel, compute
 offsets, process in parallel. Random access is built from tickets — an index
@@ -69,7 +80,20 @@ Check your own C++ against this list before presenting it:
   caller passes a `tf::buffer<Index>`, the signature says
   `tf::buffer<Index>`, never `typename T` — a template parameter exists only
   where callers genuinely differ, so every consumer of a type is one grep
-  away;
+  away. The constrained type names what a worker FILLS and every
+  single-producer carrier; what a worker READS, where callers differ,
+  arrives as a range, a tag or a lambda;
+- the function owns nothing: inputs are reached through ranges, tags and
+  lambdas (`applier(id, f)`, `apply_to_form(tag, f)`, `get_point`,
+  `link(t)`), never through an owning container; outputs are filled through
+  the `tf::buffer &` the owner passes in; scratch is the workspace the owner
+  constructs once and passes in. Ownership sits at the top — the entry, the
+  graph, the binding's handle — and the entry completes what is missing in
+  its own scope;
+- a copy made to return an input, a continuation or a move out of an owner
+  to keep an input alive, a concrete container on a worker's input where
+  callers differ, or a branch inside the algorithm on where a fact was
+  made, is a defect: the owner is at the wrong level — raise it;
 - an extraction of a shared mechanism is one-to-one in functionality AND
   performance: the sites are studied first, and the one function reproduces
   what was true at each — the same passes, primitives, grains, allocation
@@ -90,6 +114,8 @@ Check your own C++ against this list before presenting it:
 For any nontrivial core change, read in this order:
 
 1. `agents/working_method.md` — investigation, debugging, proof, and landing.
+   An agent that divides a problem and dispatches its parts reads
+   `agents/orchestration.md` beside it.
 2. `agents/cpp_performance_philosophy.md` — the governing design laws.
 3. `agents/cpp_execution_patterns.md` — the concrete phase shapes and the
    primitives that implement them.
@@ -248,8 +274,7 @@ carries state through its parallel primitive.
   everything says nothing.
 - Bodies are silent except a non-obvious reason, invariant, or ownership rule
   that lives nowhere else. No narration, no emphasis capitals, no banner
-  blocks. A ported algorithm's source citation lives once, in the owning
-  header.
+  blocks.
 - Names, branches, structure, and comments describe only the present mechanism
   and contract. Git history and task records own how code was developed,
   replaced, benchmarked, or debugged.

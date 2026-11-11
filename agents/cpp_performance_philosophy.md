@@ -219,7 +219,10 @@ small changed state on a purpose-built structure scaled to it, the large
 unchanged state on the structure that already exists, reached through a mask
 and an applier. The graph stays implicit; an applier walking
 `manifold_edge_link` under a mask IS the uncut connectivity, at zero build
-cost.
+cost. The applier is not this law's trick but the library's rule: every
+algorithm is told how to reach its data and owns nothing
+(`cpp_engineering_philosophy.md` §5), which is what lets one finder serve
+every connectivity without a structure being built or transformed.
 
 Merge the solutions afterward, never the structures: emit bridge pairs where
 the states meet and collapse the label spaces with a dense equivalence map.

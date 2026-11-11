@@ -335,7 +335,87 @@ default is a fixed type the input cannot supply.
 
 ---
 
-## 5. The `build()` Pattern
+## 5. The Function Owns Nothing — Access by Policy
+
+**Data is owned at the top; the algorithm is told how to reach it, fills
+what it is handed, and works on the scratch it is given.**
+
+Everything in Trueform runs on ranges and lambdas. A form is ranges in a
+struct — `tf::polygons` is a range of points and a range of faces behind a
+dereference policy (`core/base/polygons.hpp`); semantic policies are tagged
+on top of it (`| tf::tag(tree)`, the frame, the membership, the link) and
+read through their traits; and where a fact is reached at runtime or by
+more than one route, the algorithm is handed a lambda that reaches it. The
+bindings are the reason: Python hands the same algorithms NumPy memory and
+TypeScript hands them WASM memory, each built into `tf::` ranges with no
+copy (`python/.../mesh_data.hpp`, `typescript/.../mesh_data.hpp`), so the
+library is written once, from its own primitives, and reused anywhere by
+changing the accessor — never by transforming the data.
+
+One rule, three faces:
+
+- **Inputs are reached, never owned.** Where callers hold a fact
+  differently, a worker takes the form, a `*_like<Policy>` role, a range,
+  or a lambda that reaches the fact — `applier(id, f)`,
+  `apply_to_form(tag, f)`, `get_point(tag, id)`, `link(t)`, `corners(t)` —
+  never an owning class, and it copies nothing to have it. The lambda IS
+  the policy; it need not be a type or an `if constexpr`. A trait-branched
+  type is the policy only where the difference is compile-time and the body
+  must not pay for the branch or the build.
+- **Outputs are filled.** A worker returns only what it produced, into the
+  `tf::buffer &` its owner passes in, at the most constrained concrete type.
+  An input never becomes an output by copy.
+- **Scratch is carried.** A workspace or `local_t` is constructed once by the
+  owner and passed in, cleared and reused per call (§11); a worker that
+  constructs its own scratch allocates on every call and nobody above it can
+  reuse the memory.
+
+Owners sit at the top: the entry, the graph, the binding's handle. The entry
+completes what is missing in its own scope (a tree, a membership, a link, a
+converter) and every tier below it borrows. Where one fact can stand in
+several places, the entry makes one call per place over one body
+(`state(polygons.manifold_edge_link())` in one branch,
+`state(link_built_here)` in the other); the body never asks where the fact
+was made. When a structure changes, the policy is reimplemented and no
+algorithm moves.
+
+The canonical witnesses:
+
+- `tf::label_connected_components(labels, applier)`
+  (`topology/label_connected_components.hpp`) — one finder. Its applier slot
+  has been passed face, vertex and manifold edge links
+  (`topology/make_applier.hpp`), a masked link
+  (`csg/graph/make_surface_component_labels.hpp`), the cell/piece incidence
+  (`csg/graph/label_plane_arrangement_components.hpp`), a plane/group
+  composition (`arrangement/planes/close_plane_carrier_frontier.hpp`), tet
+  neighbours (`tetmesh/carve/label_tet_regions.hpp`), and NumPy and WASM CSR
+  arrays from the bindings. The graph stays implicit; the algorithm is one.
+- `apply_to_form(tag, f)` (`arrangement/policy/arrangement_pair_policy.hpp`,
+  `arrangement_range_policy.hpp`) — the form types erased behind one
+  callback; the arrangement's tiers consume it without naming a form.
+- the one point reader (`exact/input_lattice_reader.hpp`), handed to every
+  tier by `arrangement_graph`; the carve's delta world passes its own.
+- `tf::intersect::graph::extract_loop(..., get_point, ...)`
+  (`intersect/graph/loop.hpp`) — shared by the CSG loop build and the iso
+  cut, each with its own point reader.
+- `tf::arrangement::plane_world<Policy>` — the plane arrangement's one
+  carrier with two policies, the borrowed local arrangement and the
+  arithmetic mesh world, so the entrance is not even compiled for a mesh.
+
+The defect signals, each a review red: a copy made to return an input; a
+continuation, a move out of an owner, or any mechanism to keep an input
+alive (the owner is at the wrong level — raise it, never add the
+mechanism); a concrete container type on a worker's input where callers
+differ; an `if constexpr` or a runtime branch inside the algorithm on where
+a fact was made; scratch constructed inside the function; a second holder
+of a table its owner already holds. The most-constrained-type rule is this
+law's complement, not its contradiction: the concrete type names what a
+worker FILLS and every single-producer carrier; what a worker READS, where
+callers differ, arrives as a range, a tag or a lambda.
+
+---
+
+## 6. The `build()` Pattern
 
 Heavyweight data structures are default-constructed empty, then populated:
 
@@ -362,9 +442,9 @@ only when it is inseparable from the owner's invariant.
 
 ---
 
-## 6. Exact Arithmetic
+## 7. Exact Arithmetic
 
-### 6.1 Int32 Coordinate Space
+### 7.1 Int32 Coordinate Space
 
 Float coordinates are converted to int32 by the largest power-of-two scale
 within 99% of INT_MAX range:
@@ -374,7 +454,7 @@ auto int_point = converter(float_point);
 auto float_point = converter.deconvert(int_point);
 ```
 
-### 6.2 Cascading Precision
+### 7.2 Cascading Precision
 
 `meta<int32>::T1 = int64`, `meta<int32>::T2 = int128`. Intermediate products use wider types to prevent overflow:
 ```cpp
@@ -382,7 +462,7 @@ auto float_point = converter.deconvert(int_point);
 auto vol = orient3d_value<int32>(p0, p1, p2, p3);  // returns int128
 ```
 
-### 6.3 SoS (Simulation of Simplicity)
+### 7.3 SoS (Simulation of Simplicity)
 
 When the determinant is exactly zero, SoS uses globally unique vertex IDs to break ties deterministically:
 ```cpp
@@ -393,9 +473,9 @@ This eliminates all geometric degeneracy in boolean operations and intersections
 
 ---
 
-## 7. Naming and Formatting
+## 8. Naming and Formatting
 
-### 7.1 Names
+### 8.1 Names
 
 - **Functions**: `snake_case` — `make_boundary_edges`, `fit_icp_alignment`
 - **Types**: `snake_case` — `polygons_buffer`, `half_edges`, `aabb_tree`
@@ -407,7 +487,7 @@ This eliminates all geometric degeneracy in boolean operations and intersections
   remain valid.
 - **Trailing return types**: `auto foo(...) -> ReturnType` — used consistently
 
-### 7.2 File and Namespace Ownership
+### 8.2 File and Namespace Ownership
 
 **A first-level module directory holds only the module's user-facing
 interface.** Headers directly under `include/trueform/<module>/` define `tf::`
@@ -444,7 +524,7 @@ problem: split it by operation until each header states one thing.
   may still expose top-level `tf::*`; do not invent namespaces mechanically
   from those paths or generalize the exception to internal module directories.
 
-### 7.3 Header Layout
+### 8.3 Header Layout
 
 Every header opens with the repository copyright/license block, copied verbatim
 from a neighboring header in the same module — never retyped from memory and
@@ -471,7 +551,7 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 } // namespace tf
 ```
 
-### 7.4 Umbrella Headers
+### 8.4 Umbrella Headers
 
 ```cpp
 // geometry.hpp
@@ -480,13 +560,13 @@ auto function_name(const tf::polygons<Policy> &polygons) {
 // ...
 ```
 
-### 7.5 `.clang-format`
+### 8.5 `.clang-format`
 
 `BasedOnStyle: LLVM`
 
 ---
 
-## 8. Memory Discipline
+## 9. Memory Discipline
 
 - **No raw `new`/`delete`** — ever
 - **`tf::buffer<T>`** for types satisfying its uninitialized,
@@ -504,7 +584,7 @@ shape better.
 
 ---
 
-## 9. The Sort Shape — identity without associative structures
+## 10. The Sort Shape — identity without associative structures
 
 The normal replacement for associative lookup, keyed by access pattern
 (see `cpp_execution_patterns.md` §7):
@@ -537,7 +617,7 @@ extrapolation. A changed global fact (a weld, a merge) is a
 SUBSTITUTION over already-computed output plus dropping what collapsed
 — never a recomputation (law §2).
 
-## 10. Parallel-State Discipline
+## 11. Parallel-State Discipline
 
 - **State follows the partition.** Block-local state is constructed once per
   task and reused by the serial inner loop. It may own buffers, scratch
@@ -563,7 +643,7 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
   stage locally and append after the reduce — the aggregator must
   never reallocate what a task may be reading.
 
-## 11. Hot-Loop Mechanics
+## 12. Hot-Loop Mechanics
 
 - `reallocate` + pointer write, never `push_back`, in tight loops.
 - Per-FACE quantities memoized per face, not recomputed per region.
@@ -574,7 +654,7 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 - Fast paths stay branch-light; a per-edge lookup in the common no-hit
   case is measurable.
 
-## 12. Benchmark Discipline
+## 13. Benchmark Discipline
 
 - Run one timed benchmark process at a time. Parallel benchmarks occupy the
   machine; overlapping benchmark processes invalidate timing.
@@ -594,7 +674,7 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
 - Record refuted hypotheses in task memory or benchmark artifacts so they are
   not repeated. Production code and comments remain timeless.
 
-## 13. What NOT to Do
+## 14. What NOT to Do
 
 1. **Don't hide implementation carriers behind convenience aliases.** Write
    concrete carrier and result types so repository search finds their use.
@@ -639,9 +719,19 @@ SUBSTITUTION over already-computed output plus dropping what collapsed
     zero-cost optional-type pattern. Ordinary compile-time dispatch on policies,
     static sizes, and traits may also use `if constexpr` directly.
 
+11. **Don't copy an input to return it, and don't keep one alive with a
+    mechanism.** A worker that would copy a fact it was handed, or needs a
+    continuation or a move out of an owner to outlive its caller, has
+    ownership at the wrong level: raise the owner and reach the fact through
+    a lambda, a range or a tag (§5).
+
+12. **Don't construct scratch inside the function.** The owner constructs
+    the workspace once and passes it in; the function clears and reuses it
+    (§5, §11).
+
 ---
 
-## 14. Portability (MSVC)
+## 15. Portability (MSVC)
 
 The library is developed on clang/AppleClang but must build on MSVC (Windows CI). These are compiler-specific traps that clang accepts silently and only fail on Windows — so they can't be caught by building locally. Treat them as hard rules.
 
@@ -674,4 +764,5 @@ The library is developed on clang/AppleClang but must build on MSVC (Windows CI)
 
 7. **Inside a generic lambda, never read a captured local named like a namespace-scope `tf` template** (`frame`, `points`, `tree`, `buffer`, `range`, ...). MSVC's template-time lookup finds the template (C2955). Name `frame_of` results `pose`.
 
+8. **Never bind a reference to a member of a value a call hands out.** `const auto &a = sites[k].pt;` where `operator[]` returns the site by value: Clang and GCC keep the temporary alive for the reference, MSVC frees it and the reference reads zeros — proven 2026-11 by the deep lattice search walking the whole lattice on Windows while the Mac was instant. Copy the member (`const auto a = sites[k].pt;`); the portability scan's rule 10.7 flags the shape on `sites`, and any new accessor that returns by value is read into values at every site.
 `python/tools/portability_scan.py` checks 1, 3-6 mechanically and is a ratchet against its baseline; run it from the repo root before landing any C++ change. Rule 7 stays review-time.

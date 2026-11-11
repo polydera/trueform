@@ -195,6 +195,20 @@ tf::ensure_positive_orientation(polygons);
 
 → [Modules](https://trueform.polydera.com/cpp/modules) — Primitives, ranges, policies, and the patterns that connect them.
 
+## Tutorials
+
+One task per page, with full code, on polydera.com:
+
+- [Mesh booleans in C++](https://polydera.com/tutorials/fast-mesh-booleans-in-cpp)
+- [Variadic mesh booleans in C++](https://polydera.com/tutorials/fast-variadic-mesh-booleans-in-cpp)
+- [Closest point on a mesh in C++](https://polydera.com/tutorials/fast-closest-point-on-a-mesh-in-cpp)
+- [Mesh collision detection in C++](https://polydera.com/tutorials/fast-mesh-collision-detection-in-cpp)
+- [Geodesic distances in C++](https://polydera.com/tutorials/fast-geodesic-distances-in-cpp)
+- [Constrained Delaunay triangulation in C++](https://polydera.com/tutorials/constrained-delaunay-triangulation-in-cpp)
+- [Isocontours on a triangle mesh in C++](https://polydera.com/tutorials/isocontours-on-a-triangle-mesh-in-cpp)
+
+→ [All tutorials](https://polydera.com/tutorials)
+
 ## Benchmarks
 
 Sample comparisons against MeshLib, VTK, CGAL, libigl, Coal, FCL, and nanoflann:

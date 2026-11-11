@@ -10,6 +10,13 @@ second style guide, execution guide, or command reference.
 2. Follow its **Read first** order exactly.
 3. Read only the task-specific references named there.
 
+## If you are the orchestrator
+
+If you hold the whole problem and dispatch agents to build its parts, rather
+than executing one part yourself, read @agents/orchestration.md after
+@AGENTS.md. It governs how the problem is divided, how tasks are cut and
+gated, and what a report states.
+
 ## Task references
 
 - C++ implementation: @agents/cpp_core_architecture.md and

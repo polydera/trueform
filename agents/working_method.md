@@ -174,7 +174,9 @@ An exact refactor preserves more than output:
 - parallel and serial phase shape;
 - allocation points and allocation count;
 - retained capacity and scratch reuse;
-- ownership, view lifetime, and release timing;
+- ownership, view lifetime, and release timing — and, before any worker's
+  signature is written, who owns each input at the top and what the worker
+  is told (a range, a tag, a lambda), never what it is handed to own;
 - error and refusal behavior.
 
 Any intended change to those properties is a separate reviewed change with its
