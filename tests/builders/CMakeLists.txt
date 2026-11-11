@@ -21,7 +21,13 @@ add_library(trueform_test_builders STATIC
   csg_builders_int32_float.cpp
   csg_builders_int64_double.cpp
   tetmesh_entrance_float.cpp
+  tetmesh_float_default.cpp
+  tetmesh_float_framed.cpp
+  tetmesh_float_link.cpp
+  tetmesh_float_tagged.cpp
+  tetmesh_float_tree.cpp
   tetmesh_float.cpp
+  tetmesh_float_int64.cpp
   tetmesh_double.cpp
   tetmesh_float_double.cpp
 )

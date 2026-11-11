@@ -11,16 +11,16 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../core/algorithm/reduce.hpp"
+#include "../../core/algorithm/block_reduce.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/frame_of.hpp"
 #include "../../core/polygons.hpp"
-#include "../../core/views/mapped_range.hpp"
+#include "../../core/transformed.hpp"
 #include "./tet_corner_need.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <limits>
-#include <utility>
 
 namespace tf::tetmesh {
 
@@ -32,54 +32,73 @@ namespace tf::tetmesh {
 ///   b >= log2(l / r) + log2(2 / t^2)
 ///
 /// with `l` the longer and `2 r` the shorter of the corner's two edges;
-/// `corner_bits` is the most any corner asks. The polygons may be the
-/// input's or the entrance's, whose cuts make corners of their own.
+/// `corner_bits` is the most any corner asks, its corners read where the
+/// frame `polygons` carries places them. The polygons may be the input's or
+/// the entrance's, whose cuts make corners of their own. Both facts are
+/// reported, never chosen by. A corner is evaluated only where the bound
+/// `t^2 >= 2 (1 - cos t)` lets it pass the most its block has found, and the
+/// narrowest angle is read once off the largest cosine, so the values are
+/// the corner-by-corner evaluation's without its transcendentals per corner.
 template <typename Policy>
 auto measure_tet_corner_need(const tf::polygons<Policy> &polygons)
     -> tet_corner_need {
   using limits = std::numeric_limits<tf::coordinate_type<Policy>>;
-  const int ceiling = 4 * limits::max_exponent;
-  const auto corners = tf::reduce(
-      tf::make_mapped_range(
-          polygons,
-          [](const auto &polygon) {
-            std::pair<double, double> worst{0, 180};
-            const std::size_t n = polygon.size();
-            for (std::size_t i = 0; i < n; ++i) {
-              const auto &a = polygon[i];
-              const auto &b = polygon[(i + 1) % n];
-              const auto &c = polygon[(i + n - 1) % n];
-              double uu = 0, vv = 0, uv = 0;
-              for (std::size_t k = 0; k < 3; ++k) {
-                const double u = double(b[k]) - double(a[k]);
-                const double v = double(c[k]) - double(a[k]);
-                uu += u * u;
-                vv += v * v;
-                uv += u * v;
-              }
-              if (!(uu > 0) || !(vv > 0))
-                continue;
-              const double cosine =
-                  std::max(-1.0, std::min(1.0, uv / std::sqrt(uu * vv)));
-              const double t = std::acos(cosine);
-              const double ratio = std::sqrt(std::max(uu, vv) / std::min(uu, vv));
-              const double bits =
-                  t > 0 ? std::log2(2 * ratio) + std::log2(2 / (t * t))
-                        : double(4 * limits::max_exponent);
-              worst.first = std::max(worst.first, bits);
-              worst.second = std::min(worst.second, t * 180 / 3.14159265358979);
+  const double ceiling = double(4 * limits::max_exponent);
+  const auto pose = tf::frame_of(polygons);
+  struct local_t {
+    double bits = 0;
+    double bound = 1;
+    double cosine = -2;
+  };
+  local_t need;
+  tf::blocked_reduce(
+      polygons, need, local_t{},
+      [&pose, ceiling](const auto &range, local_t &local) {
+        for (const auto &polygon : range) {
+          const std::size_t n = polygon.size();
+          for (std::size_t i = 0; i < n; ++i) {
+            const auto a = tf::transformed(polygon[i], pose);
+            const auto b = tf::transformed(polygon[(i + 1) % n], pose);
+            const auto c = tf::transformed(polygon[(i + n - 1) % n], pose);
+            double uu = 0, vv = 0, uv = 0;
+            for (std::size_t k = 0; k < 3; ++k) {
+              const double u = double(b[k]) - double(a[k]);
+              const double v = double(c[k]) - double(a[k]);
+              uu += u * u;
+              vv += v * v;
+              uv += u * v;
             }
-            return worst;
-          }),
-      [](const std::pair<double, double> &x, const std::pair<double, double> &y) {
-        return std::pair<double, double>{std::max(x.first, y.first),
-                                         std::min(x.second, y.second)};
+            if (!(uu > 0) || !(vv > 0))
+              continue;
+            const double cosine =
+                std::max(-1.0, std::min(1.0, uv / std::sqrt(uu * vv)));
+            local.cosine = std::max(local.cosine, cosine);
+            const double ratio = std::sqrt(std::max(uu, vv) / std::min(uu, vv));
+            // 4 ratio / t^2 <= 2 ratio / (1 - cos t): a corner below the
+            // block's best is never evaluated
+            if (cosine < 1 &&
+                2 * ratio / (1 - cosine) <= local.bound * (1 - 1e-9))
+              continue;
+            const double t = std::acos(cosine);
+            const double bits =
+                t > 0 ? std::log2(2 * ratio) + std::log2(2 / (t * t)) : ceiling;
+            if (bits > local.bits) {
+              local.bits = bits;
+              local.bound = std::exp2(bits);
+            }
+          }
+        }
       },
-      std::pair<double, double>{0, 180}, tf::checked);
-  tet_corner_need need;
-  need.corner_bits = int(std::ceil(std::min(corners.first, double(ceiling))));
-  need.min_angle = corners.second;
-  return need;
+      [](const local_t &local, local_t &result) {
+        result.bits = std::max(result.bits, local.bits);
+        result.cosine = std::max(result.cosine, local.cosine);
+      },
+      tf::checked);
+  tet_corner_need corner;
+  corner.corner_bits = int(std::ceil(std::min(need.bits, ceiling)));
+  corner.min_angle =
+      need.cosine < -1 ? 180 : std::acos(need.cosine) * 180 / 3.14159265358979;
+  return corner;
 }
 
 } // namespace tf::tetmesh

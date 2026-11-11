@@ -20,7 +20,7 @@ auto build_tet_entrance(const tf::points_buffer<float, 3> &points,
     -> float_tet_entrance_t {
   const auto polygons = tf::make_polygons(faces, points.points());
   return tf::tetmesh::make_tet_entrance<int, tf::exact::int32, std::int64_t>(
-      polygons);
+      polygons, 0.0);
 }
 
 } // namespace tf::test

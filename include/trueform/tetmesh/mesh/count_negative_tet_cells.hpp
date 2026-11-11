@@ -14,21 +14,20 @@
 #include "../../core/algorithm/reduce.hpp"
 #include "../../core/checked.hpp"
 #include "../../core/views/mapped_range.hpp"
-#include "../carve/tet_carving.hpp"
+#include "../regions/tet_regions.hpp"
 #include <cstddef>
 #include <functional>
 
 namespace tf::tetmesh {
 
-/// The cells `carving` winds negatively: a closed surface wound inward
+/// The cells `regions` winds negatively: a closed surface wound inward
 /// encloses only these.
 template <typename Index>
-auto count_negative_tet_cells(const tet_carving<Index> &carving)
+auto count_negative_tet_cells(const tet_regions<Index> &regions)
     -> std::size_t {
-  return tf::reduce(tf::make_mapped_range(carving.winding,
-                                          [](int winding) {
-                                            return std::size_t(winding < 0);
-                                          }),
+  return tf::reduce(tf::make_mapped_range(
+                        regions.winding,
+                        [](int winding) { return std::size_t(winding < 0); }),
                     std::plus<>{}, std::size_t(0), tf::checked);
 }
 

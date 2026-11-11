@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/algorithm/mask_to_map.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/algorithm/sequenced_generate.hpp"
 #include "../../core/buffer.hpp"
@@ -49,9 +50,8 @@ auto emit_tet_mesh(const Owner &owner, const Keep &keep, tf::buffer<char> &used,
       tf::checked);
   const std::size_t n_sites = tf::topology::cdt::dt3::tet_site_count(owner);
   point_of.allocate(n_sites);
-  Index next = 0;
-  for (std::size_t site = 0; site < n_sites; ++site)
-    point_of[site] = used[site] ? next++ : Index(-1);
+  // the used sites numbered in site order: a prefix scan
+  const Index next = tf::mask_to_map(used, point_of, Index(-1));
   auto &points = mesh.points_buffer();
   points.allocate(std::size_t(next));
   const RealOut unit = std::ldexp(RealOut(1), -frame_bits);

@@ -10,8 +10,10 @@
  *
  * Author: Žiga Sajovic
  */
+#include "worker_ladder.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <tetmesh_builders.hpp>
+#include <trueform/core/constants.hpp>
 #include <trueform/core/faces.hpp>
 #include <trueform/core/polygons_buffer.hpp>
 #include <trueform/exact/int32.hpp>
@@ -22,14 +24,21 @@
 #include <trueform/io/read_obj.hpp>
 #include <trueform/io/read_stl.hpp>
 #include <trueform/reindex/concatenated.hpp>
+#include <trueform/tetmesh/entrance/count_tet_merged_open_edges.hpp>
 #include <trueform/tetmesh/entrance/merge_tet_facets.hpp>
 #include <trueform/tetmesh/entrance/tet_entrance_budget.hpp>
 #include <trueform/tetmesh/entrance/tet_entrance_rung_types.hpp>
+#include <trueform/tetmesh/entrance/tet_facet_workspace.hpp>
 #include <trueform/tetmesh/tet_mesh_status.hpp>
 #include <trueform/topology/cdt/dt3/tet_deep_lattice.hpp>
 #include <trueform/topology/face_membership.hpp>
+#include <trueform/topology/has_flaps.hpp>
+#include <trueform/topology/has_holes.hpp>
 #include <trueform/topology/manifold_edge_link.hpp>
 
+#include <tbb/task_arena.h>
+
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -102,21 +111,19 @@ auto tm_dot(const std::array<double, 3> &u, const std::array<double, 3> &v)
 auto tm_meshes(const tm_mesh &surface, double expected, double tolerance,
                double area_tolerance) -> bool {
   {
-    const auto [tets, children, face_facets, report] =
-        tf::test::build_tet_mesh_double(surface);
+    const auto [tets, report, map] = tf::test::build_tet_mesh_double(surface);
     for (const auto &tet : tets.tetrahedra())
       if (!(tm_volume6(tet[0], tet[1], tet[2], tet[3]) > 0))
         return false;
     if (report.inverted || report.flat)
       return false;
   }
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(surface);
+  const auto [tets, report, map] = tf::test::build_tet_mesh(surface);
   if (report.status != tf::tet_mesh_status::meshed || !tets.size() ||
-      face_facets.size() != surface.faces().size() || !children.size() ||
-      report.census.segments_refused || report.census.faces.refused ||
-      report.input_open_edges || report.entrance_open_edges ||
-      report.entrance_failed_planes)
+      map.face_facets.size() != surface.faces().size() ||
+      !map.facet_triangles.size() || report.refused_segments ||
+      report.refused_faces || report.input_open_edges ||
+      report.recovered_open_edges || report.failed_triangles)
     return false;
   double volume = 0;
   for (const auto &tet : tets.tetrahedra()) {
@@ -132,26 +139,26 @@ auto tm_meshes(const tm_mesh &surface, double expected, double tolerance,
     return tm_cross(input[std::size_t(face[0])], input[std::size_t(face[1])],
                     input[std::size_t(face[2])]);
   };
-  std::vector<std::vector<std::size_t>> faces_of(children.size());
-  std::vector<char> cut(children.size(), 0);
-  for (std::size_t f = 0; f < face_facets.size(); ++f) {
-    if (!face_facets[f].size())
+  std::vector<std::vector<std::size_t>> faces_of(map.facet_triangles.size());
+  std::vector<char> cut(map.facet_triangles.size(), 0);
+  for (std::size_t f = 0; f < map.face_facets.size(); ++f) {
+    if (!map.face_facets[f].size())
       return false;
-    for (auto facet : face_facets[f]) {
+    for (auto facet : map.face_facets[f]) {
       faces_of[std::size_t(facet)].push_back(f);
-      cut[std::size_t(facet)] |= char(face_facets[f].size() > 1);
+      cut[std::size_t(facet)] |= char(map.face_facets[f].size() > 1);
     }
   }
   double surface_area = 0, covered_area = 0;
-  for (std::size_t f = 0; f < face_facets.size(); ++f)
+  for (std::size_t f = 0; f < map.face_facets.size(); ++f)
     surface_area += std::sqrt(tm_dot(normal_of(f), normal_of(f)));
-  for (std::size_t facet = 0; facet < children.size(); ++facet) {
+  for (std::size_t facet = 0; facet < map.facet_triangles.size(); ++facet) {
     if (faces_of[facet].empty())
       return false;
     const auto normal = normal_of(faces_of[facet][0]);
     const double length = std::sqrt(tm_dot(normal, normal));
     double area = 0, expected_area = 0;
-    for (const auto &child : children[facet])
+    for (const auto &child : map.facet_triangles[facet])
       area += tm_dot(tm_cross(points[std::size_t(child[0])],
                               points[std::size_t(child[1])],
                               points[std::size_t(child[2])]),
@@ -189,6 +196,25 @@ auto tm_reversed(tm_mesh surface) -> tm_mesh {
   return surface;
 }
 
+/// The four faces of the tetrahedron on `corners`, each wound outward,
+/// appended to `out` over four points of its own.
+auto tm_add_tet(tm_mesh &out, const std::array<std::array<int, 3>, 4> &corners)
+    -> void {
+  const int base = int(out.points().size());
+  for (const auto &corner : corners)
+    out.points_buffer().push_back(
+        {float(corner[0]), float(corner[1]), float(corner[2])});
+  const bool positive =
+      tm_volume6(corners[0], corners[1], corners[2], corners[3]) > 0;
+  const int faces[4][3] = {{0, 2, 1}, {0, 1, 3}, {1, 2, 3}, {2, 0, 3}};
+  for (const auto &face : faces)
+    out.faces_buffer().push_back(
+        positive
+            ? std::array<int, 3>{base + face[0], base + face[1], base + face[2]}
+            : std::array<int, 3>{base + face[0], base + face[2],
+                                 base + face[1]});
+}
+
 } // namespace
 
 TEST_CASE("make_tet_mesh: the rungs are as wide as their predicates admit",
@@ -224,7 +250,7 @@ TEST_CASE("make_tet_mesh: closed surfaces mesh to their own volume",
   CHECK(tm_holds(tf::make_cylinder_mesh<int>(1.f, 2.f, 40), 1e-5));
 }
 
-TEST_CASE("make_tet_mesh: a shell inside a shell carves by winding",
+TEST_CASE("make_tet_mesh: a shell inside a shell is labeled by winding",
           "[tetmesh]") {
   const auto outer = tf::make_box_mesh<int>(4.f, 4.f, 4.f);
   const auto inner = tf::make_box_mesh<int>(1.f, 1.f, 1.f);
@@ -232,7 +258,7 @@ TEST_CASE("make_tet_mesh: a shell inside a shell carves by winding",
   CHECK(tm_holds(
       tf::concatenated(outer.polygons(), tm_reversed(inner).polygons()), 1e-6));
   // Wound outward, it is wound twice inside and kept once.
-  const auto [tets, children, face_facets, report] = tf::test::build_tet_mesh(
+  const auto [tets, report, map] = tf::test::build_tet_mesh(
       tf::concatenated(outer.polygons(), inner.polygons()));
   CHECK(report.status == tf::tet_mesh_status::meshed);
   double volume = 0;
@@ -241,8 +267,8 @@ TEST_CASE("make_tet_mesh: a shell inside a shell carves by winding",
   CHECK(std::abs(volume - 64) < 1e-4);
 }
 
-TEST_CASE("make_tet_mesh: an open surface is refused as open before any "
-          "volume is built",
+TEST_CASE("make_tet_mesh: an open surface is refused as open on its "
+          "recovered surface",
           "[tetmesh]") {
   auto box = tf::make_box_mesh<int>(1.f, 1.f, 1.f);
   tm_mesh open;
@@ -250,17 +276,135 @@ TEST_CASE("make_tet_mesh: an open surface is refused as open before any "
   for (std::size_t f = 0; f + 1 < box.faces().size(); ++f)
     open.faces_buffer().push_back(
         {box.faces()[f][0], box.faces()[f][1], box.faces()[f][2]});
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(open);
+  CHECK(tf::has_holes(open.polygons()));
+  const auto [tets, report, map] = tf::test::build_tet_mesh(open);
   CHECK(report.status == tf::tet_mesh_status::open);
   CHECK(report.input_open_edges == 3);
-  CHECK(report.entrance_open_edges == 3);
+  CHECK(report.recovered_open_edges == 3);
   CHECK(tets.size() == 0);
+}
+
+TEST_CASE("make_tet_mesh: a facet lying on itself is a stack of its layers",
+          "[tetmesh][stack]") {
+  // A hexagonal pyramid whose flat top is one fan winding one and a half
+  // times about its centre, wound alike, closed by its cone and two walls:
+  // half the top lies under two layers of the one facet, which its cover
+  // counts from the rim and the region winding reads. And a box pierced by a
+  // square tunnel, its top and bottom facets each a ring of one layer about
+  // an inner rim. Both mesh their own volume as given and resolved, with no
+  // drain.
+  tm_mesh strip;
+  strip.points_buffer().push_back({0.f, 0.f, 1.f});
+  strip.points_buffer().push_back({0.f, 0.f, -1.f});
+  for (int i = 0; i < 10; ++i) {
+    const double angle = 2 * tf::pi<double> * (i % 6) / 6;
+    strip.points_buffer().push_back(
+        {float(std::cos(angle)), float(std::sin(angle)), 1.f});
+  }
+  for (int i = 0; i < 9; ++i) {
+    strip.faces_buffer().push_back({0, 2 + i, 3 + i});
+    strip.faces_buffer().push_back({1, 3 + i, 2 + i});
+  }
+  strip.faces_buffer().push_back({1, 2, 0});
+  strip.faces_buffer().push_back({1, 0, 11});
+  tm_mesh tunnel;
+  const float corners[8][2] = {{-1, -1},     {1, -1},        {1, 1},
+                               {-1, 1},      {-.25f, -.25f}, {.25f, -.25f},
+                               {.25f, .25f}, {-.25f, .25f}};
+  for (int z = 0; z < 2; ++z)
+    for (const auto &q : corners)
+      tunnel.points_buffer().push_back({q[0], q[1], z ? 1.f : -1.f});
+  for (int i = 0; i < 4; ++i) {
+    const int j = (i + 1) % 4;
+    tunnel.faces_buffer().push_back({8 + i, 8 + j, 12 + j});
+    tunnel.faces_buffer().push_back({8 + i, 12 + j, 12 + i});
+    tunnel.faces_buffer().push_back({i, 4 + j, j});
+    tunnel.faces_buffer().push_back({i, 4 + i, 4 + j});
+    tunnel.faces_buffer().push_back({i, j, 8 + j});
+    tunnel.faces_buffer().push_back({i, 8 + j, 8 + i});
+    tunnel.faces_buffer().push_back({4 + i, 12 + j, 4 + j});
+    tunnel.faces_buffer().push_back({4 + i, 12 + i, 12 + j});
+  }
+  const double hexagon = 3 * std::sqrt(3.0) / 2;
+  for (const auto &[surface, expected] :
+       std::vector<std::pair<const tm_mesh *, double>>{
+           {&strip, hexagon * 2 / 3}, {&tunnel, 8 - 0.5}}) {
+    const auto given =
+        tf::test::build_tet_mesh_double(*surface, tf::tet_mesh_config{false});
+    const auto resolved = tf::test::build_tet_mesh(*surface);
+    CHECK(std::get<1>(given).status == tf::tet_mesh_status::meshed);
+    CHECK(std::get<1>(resolved).status == tf::tet_mesh_status::meshed);
+    CHECK(std::get<1>(resolved).drains == 0);
+    CHECK(std::get<1>(given).negative_cells == 0);
+    double volume = 0;
+    for (const auto &tet : std::get<0>(given).tetrahedra())
+      volume += tm_volume6(tet[0], tet[1], tet[2], tet[3]) / 6;
+    CHECK(std::abs(volume - expected) < 1e-5);
+  }
+}
+
+TEST_CASE("make_tet_mesh: a seam the build welds or a segment splits meshes "
+          "whole",
+          "[tetmesh]") {
+  // A box as a triangle soup, every corner its own point, and a box whose
+  // top is split at the middle of an edge its front side holds whole: the
+  // entrance's triangles leave every seam open, the build welds the
+  // coincident corners and the front's segment splits at the site standing
+  // on it, so both mesh the unit volume as given and resolved.
+  const auto box = tf::make_box_mesh<int>(1.f, 1.f, 1.f);
+  tm_mesh soup;
+  for (const auto &face : box.faces()) {
+    const int base = int(soup.points().size());
+    for (std::size_t k = 0; k < 3; ++k) {
+      const auto p = box.points()[std::size_t(face[k])];
+      soup.points_buffer().push_back({p[0], p[1], p[2]});
+    }
+    soup.faces_buffer().push_back({base, base + 1, base + 2});
+  }
+  tm_mesh split;
+  for (const auto &p : std::vector<std::array<float, 3>>{{0, 0, 0},
+                                                         {1, 0, 0},
+                                                         {1, 1, 0},
+                                                         {0, 1, 0},
+                                                         {0, 0, 1},
+                                                         {1, 0, 1},
+                                                         {1, 1, 1},
+                                                         {0, 1, 1},
+                                                         {0.5f, 0, 1}})
+    split.points_buffer().push_back({p[0], p[1], p[2]});
+  for (const auto &f : std::vector<std::array<int, 3>>{{0, 2, 1},
+                                                       {0, 3, 2},
+                                                       {4, 8, 7},
+                                                       {8, 5, 6},
+                                                       {8, 6, 7},
+                                                       {0, 1, 5},
+                                                       {0, 5, 4},
+                                                       {3, 7, 6},
+                                                       {3, 6, 2},
+                                                       {0, 4, 7},
+                                                       {0, 7, 3},
+                                                       {1, 2, 6},
+                                                       {1, 6, 5}})
+    split.faces_buffer().push_back({f[0], f[1], f[2]});
+  for (const auto *surface : {&soup, &split}) {
+    CHECK(tf::has_holes(surface->polygons()));
+    const auto given =
+        tf::test::build_tet_mesh_double(*surface, tf::tet_mesh_config{false});
+    const auto resolved = tf::test::build_tet_mesh(*surface);
+    for (const auto *report : {&std::get<1>(given), &std::get<1>(resolved)}) {
+      CHECK(report->status == tf::tet_mesh_status::meshed);
+      CHECK(report->recovered_open_edges == 0);
+    }
+    double volume = 0;
+    for (const auto &tet : std::get<0>(given).tetrahedra())
+      volume += tm_volume6(tet[0], tet[1], tet[2], tet[3]) / 6;
+    CHECK(std::abs(volume - 1) < 1e-4);
+  }
 }
 
 TEST_CASE("make_tet_mesh: a surface wound inward encloses no cell positively",
           "[tetmesh]") {
-  // The box's faces reversed wind its inside negatively: the carve is
+  // The box's faces reversed wind its inside negatively: the region labeling is
   // consistent, the run is meshed, and the mesh is the empty set of cells
   // wound positively, which the report states by the cells wound negatively.
   const auto box = tf::make_box_mesh<int>(1.f, 2.f, 3.f);
@@ -268,23 +412,24 @@ TEST_CASE("make_tet_mesh: a surface wound inward encloses no cell positively",
   inward.points_buffer() = box.points_buffer();
   for (const auto &face : box.faces())
     inward.faces_buffer().push_back({face[0], face[2], face[1]});
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(inward);
+  const auto [tets, report, map] = tf::test::build_tet_mesh(inward);
   CHECK(report.status == tf::tet_mesh_status::meshed);
   CHECK(tets.size() == 0);
   CHECK(report.negative_cells > 0);
-  const auto [outward_tets, outward_children, outward_facets, outward] =
+  const auto [outward_tets, outward, outward_map] =
       tf::test::build_tet_mesh(box);
   CHECK(outward.status == tf::tet_mesh_status::meshed);
   CHECK(outward_tets.size() == report.negative_cells);
   CHECK(outward.negative_cells == 0);
 }
 
-TEST_CASE("make_tet_mesh: a sheet hanging off a solid is open at the entrance",
+TEST_CASE("make_tet_mesh: a sheet hanging off a solid is unwound on its "
+          "recovered surface",
           "[tetmesh]") {
   // A closed box with one extra triangle standing inside it on one of its
-  // edges: two of its edges are held by it alone, so the surface is open,
-  // and the verdict is read before any volume is built.
+  // edges: two of its edges are held by it alone, but the rim they form
+  // hangs off the edge the box and the triangle share, so the surface has no
+  // hole — it is a solid plus a sheet.
   auto box = tf::make_box_mesh<int>(1.f, 1.f, 1.f);
   tm_mesh sheet;
   sheet.points_buffer() = box.points_buffer();
@@ -294,14 +439,16 @@ TEST_CASE("make_tet_mesh: a sheet hanging off a solid is open at the entrance",
   sheet.points_buffer().push_back({0.25f, 0.25f, 0.25f});
   sheet.faces_buffer().push_back(
       {first[0], first[1], int(sheet.points().size()) - 1});
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(sheet);
-  CHECK(report.status == tf::tet_mesh_status::open);
+  CHECK_FALSE(tf::has_holes(sheet.polygons()));
+  CHECK(tf::has_flaps(sheet.polygons()));
+  const auto [tets, report, map] = tf::test::build_tet_mesh(sheet);
+  CHECK(report.status == tf::tet_mesh_status::unwound);
   CHECK(report.input_open_edges > 0);
   CHECK(tets.size() == 0);
 }
 
-TEST_CASE("make_tet_mesh: a face doubled on a solid is unwound at the entrance",
+TEST_CASE("make_tet_mesh: a face doubled on a solid is unwound on its "
+          "recovered surface",
           "[tetmesh]") {
   // A closed box with one face stated twice the same way: every edge is
   // held by two or three triangles and none by one, yet the doubled face's
@@ -313,8 +460,7 @@ TEST_CASE("make_tet_mesh: a face doubled on a solid is unwound at the entrance",
     doubled.faces_buffer().push_back({face[0], face[1], face[2]});
   const auto first = box.faces()[0];
   doubled.faces_buffer().push_back({first[0], first[1], first[2]});
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(doubled);
+  const auto [tets, report, map] = tf::test::build_tet_mesh(doubled);
   CHECK(report.status == tf::tet_mesh_status::unwound);
   CHECK(report.input_open_edges > 0);
   CHECK(tets.size() == 0);
@@ -323,7 +469,8 @@ TEST_CASE("make_tet_mesh: a face doubled on a solid is unwound at the entrance",
 TEST_CASE("make_tet_mesh: faces stacked three deep on one facet mesh",
           "[tetmesh]") {
   // The box's bottom face twice more, one wound against: the arrangement
-  // stacks them on the box's own facets, and the carve sums the stack.
+  // stacks them on the box's own facets, and the region labeling sums the
+  // stack.
   auto box = tf::make_box_mesh<int>(1.f, 1.f, 1.f);
   tm_mesh stacked;
   stacked.points_buffer() = box.points_buffer();
@@ -334,8 +481,7 @@ TEST_CASE("make_tet_mesh: faces stacked three deep on one facet mesh",
   stacked.faces_buffer().push_back({f0[0], f0[2], f0[1]});
   stacked.faces_buffer().push_back({f1[0], f1[1], f1[2]});
   stacked.faces_buffer().push_back({f1[0], f1[2], f1[1]});
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(stacked);
+  const auto [tets, report, map] = tf::test::build_tet_mesh(stacked);
   CHECK(report.status == tf::tet_mesh_status::meshed);
   CHECK(tets.size() > 0);
   CHECK(report.refused_faces == 0);
@@ -356,13 +502,13 @@ TEST_CASE("make_tet_mesh: boxes on coplanar grids mesh whole",
       tm_moved(tf::make_box_mesh<int>(1.f, 1.f, 1.f, 4, 5, 4), 0.5f, 0.f, 0.f);
   const auto wall = tf::concatenated(left.polygons(), right.polygons());
   CHECK(tm_meshes(wall, 2, 1e-6, 1e-4));
-  const auto report = std::get<3>(tf::test::build_tet_mesh(wall));
+  const auto report = std::get<1>(tf::test::build_tet_mesh(wall));
   CHECK(report.rung == 0);
   CHECK(report.frame_bits == 10);
   CHECK(report.deep_sites == 0);
 }
 
-TEST_CASE("make_tet_mesh: nested shells carve by their winding",
+TEST_CASE("make_tet_mesh: nested shells are labeled by their winding",
           "[tetmesh][fixtures]") {
   // A sphere holding a cavity holding an island: the solid between the
   // outer two shells and the island inside the innermost.
@@ -376,14 +522,47 @@ TEST_CASE("make_tet_mesh: nested shells carve by their winding",
 
 TEST_CASE("make_tet_mesh: a self-intersecting surface meshes its union",
           "[tetmesh][fixtures]") {
-  // Two boxes overlapping in one surface: the entrance cuts every face at
-  // the crossings, each face is covered by its pieces, and the cells wound
-  // once or twice make the union.
+  // Two boxes overlapping in one surface: the recovery names the crossings,
+  // a drain cuts the faces along their curves on the standing complex, each
+  // face is covered by its pieces, and the cells wound once or twice make the
+  // union.
   const auto first = tf::make_box_mesh<int>(2.f, 2.f, 2.f);
   const auto second =
       tm_moved(tf::make_box_mesh<int>(2.f, 2.f, 2.f), 0.5f, 0.75f, 1.25f);
   CHECK(tm_meshes(tf::concatenated(first.polygons(), second.polygons()),
                   16 - 1.5 * 1.25 * 0.75, 1e-6, 1e-6));
+}
+
+TEST_CASE("make_tet_mesh: crossings within the quantum of each other give the "
+          "lawful product of that quantum",
+          "[tetmesh][cut]") {
+  // Two tetrahedra meeting inside a box of half extent 2^28. The box sets the
+  // entrance's converter scale to one, so the lattice IS the integers written
+  // here and the whole meeting stands inside one quantum. The quantum is a
+  // grid, so whatever it makes of the meeting is the result in that quantum:
+  // a valid solid, or a refusal the report names — never an open surface.
+  const auto box =
+      tf::make_box_mesh<int>(float(1 << 29), float(1 << 29), float(1 << 29));
+  tm_mesh scene;
+  scene.points_buffer() = box.points_buffer();
+  for (const auto &face : box.faces())
+    scene.faces_buffer().push_back({face[0], face[1], face[2]});
+  tm_add_tet(scene, {{{3, -5, -8}, {-5, -4, 7}, {-7, 6, 0}, {6, 0, 4}}});
+  tm_add_tet(scene, {{{-6, 4, -2}, {-4, 6, 6}, {2, -4, -4}, {7, -2, 4}}});
+  const auto lawful = [](const auto &tets, const auto &report) {
+    if (report.status == tf::tet_mesh_status::meshed)
+      return tets.size() > 0 && report.flat == 0 && report.inverted == 0 &&
+             report.recovered_open_edges == 0;
+    return report.status == tf::tet_mesh_status::refused &&
+           report.refused_segments + report.refused_faces +
+                   report.failed_triangles + report.pairs_unresolved >
+               0;
+  };
+  const auto [tets, report, map] = tf::test::build_tet_mesh(scene);
+  CHECK(lawful(tets, report));
+  const auto [deep_tets, deep, deep_map] =
+      tf::test::build_tet_mesh_on_int64(scene);
+  CHECK(lawful(deep_tets, deep));
 }
 
 TEST_CASE("make_tet_mesh: the dragon meshes whole through the entrance",
@@ -394,7 +573,7 @@ TEST_CASE("make_tet_mesh: the dragon meshes whole through the entrance",
   const auto dragon = tf::read_stl(TF_TETMESH_DRAGON);
   REQUIRE(dragon.faces().size() == 58298);
   CHECK(tm_meshes(dragon, tm_enclosed(dragon), 1e-6, 1e-2));
-  const auto report = std::get<3>(tf::test::build_tet_mesh(dragon));
+  const auto report = std::get<1>(tf::test::build_tet_mesh(dragon));
   CHECK(report.rung == 0);
   CHECK(report.deep_sites == 0);
 }
@@ -406,7 +585,7 @@ TEST_CASE("make_tet_mesh: a float export counts the slivers it inverts",
   // every cell is positive.
   const auto sphere = tf::make_sphere_mesh<int>(1.f, 40, 60);
   CHECK(tm_meshes(sphere, tm_enclosed(sphere), 1e-5, 1e-4));
-  const auto report = std::get<3>(tf::test::build_tet_mesh(sphere));
+  const auto report = std::get<1>(tf::test::build_tet_mesh(sphere));
   CHECK(report.status == tf::tet_mesh_status::meshed);
   CHECK(report.rung == 0);
   CHECK(report.flat == 0);
@@ -455,8 +634,7 @@ TEST_CASE("make_tet_mesh: a face its frame names no new point in meshes below "
         {double(point[0]), double(point[1]), double(point[2])});
   for (const auto &triangle : triangles)
     surface.faces_buffer().push_back({triangle[0], triangle[1], triangle[2]});
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(surface);
+  const auto [tets, report, map] = tf::test::build_tet_mesh(surface);
   CHECK(report.status == tf::tet_mesh_status::meshed);
   CHECK(report.rung == 1);
   CHECK(report.frame_bits == 10);
@@ -508,8 +686,7 @@ TEST_CASE("make_tet_mesh: a face reads its plane after its points move the "
         {double(point[0]), double(point[1]), double(point[2])});
   for (const auto &triangle : triangles)
     surface.faces_buffer().push_back({triangle[0], triangle[1], triangle[2]});
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(surface);
+  const auto [tets, report, map] = tf::test::build_tet_mesh(surface);
   CHECK(report.status == tf::tet_mesh_status::meshed);
   CHECK(report.rung == 1);
   CHECK(report.deep_sites == 0);
@@ -531,7 +708,7 @@ TEST_CASE("make_tet_mesh: the Stanford bunny meshes whole",
     SKIP("Stanford_Bunny.stl is not in TF_TEST_DATA_DIR");
   const auto bunny = tf::read_stl(TF_TEST_DATA_DIR "/Stanford_Bunny.stl");
   CHECK(tm_meshes(bunny, tm_enclosed(bunny), 1e-6, 1e-1));
-  const auto report = std::get<3>(tf::test::build_tet_mesh(bunny));
+  const auto report = std::get<1>(tf::test::build_tet_mesh(bunny));
   CHECK(report.rung == 0);
   CHECK(report.frame_bits == 10);
   CHECK(report.deep_sites == 0);
@@ -546,8 +723,7 @@ TEST_CASE("make_tet_mesh: a pit layer in double meshes on 64-bit sites",
     SKIP("pit_layer1/layer1.obj is not in TF_TEST_DATA_DIR");
   const auto layer =
       tf::read_obj<3, int, double>(TF_TEST_DATA_DIR "/pit_layer1/layer1.obj");
-  const auto [tets, children, face_facets, report] =
-      tf::test::build_tet_mesh(layer);
+  const auto [tets, report, map] = tf::test::build_tet_mesh(layer);
   CHECK(report.status == tf::tet_mesh_status::meshed);
   CHECK(report.rung == 1);
   CHECK(report.frame_bits == 10);
@@ -565,7 +741,7 @@ TEST_CASE("make_tet_mesh: a needle's long edges are a facet's interior",
   if (!probe)
     SKIP("thingi_100344.obj is not in TF_TEST_DATA_DIR");
   const auto needle = tf::read_obj<3>(TF_TEST_DATA_DIR "/thingi_100344.obj");
-  const auto report = std::get<3>(tf::test::build_tet_mesh(needle));
+  const auto report = std::get<1>(tf::test::build_tet_mesh(needle));
   CHECK(report.status == tf::tet_mesh_status::meshed);
   CHECK(report.refused_budget == 0);
 }
@@ -581,7 +757,7 @@ TEST_CASE("make_tet_mesh: an edge past a narrow gap meshes in bounded time",
     SKIP("thingi_225958.obj is not in TF_TEST_DATA_DIR");
   const auto gap = tf::read_obj<3>(TF_TEST_DATA_DIR "/thingi_225958.obj");
   const auto start = std::chrono::steady_clock::now();
-  const auto report = std::get<3>(tf::test::build_tet_mesh(gap));
+  const auto report = std::get<1>(tf::test::build_tet_mesh(gap));
   const auto seconds =
       std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
           .count();
@@ -612,9 +788,13 @@ TEST_CASE("make_tet_mesh: a face split on one edge alone stays closed",
   membership.build(tf::make_faces(triangles), points.size());
   tf::manifold_edge_link<int, 3> link;
   link.build(tf::make_faces(triangles), membership);
+  tf::tetmesh::tet_facet_workspace<int, tf::exact::int64> work;
+  const auto peers = [&link](std::size_t t) { return link[t]; };
   tf::tetmesh::merge_tet_facets<tf::exact::int64, int>(
-      points, triangles, membership, link, kept, origin, facet_of, thrown,
-      open_edges);
+      points, triangles, membership, peers, work, kept, origin, facet_of,
+      thrown);
+  open_edges = tf::tetmesh::count_tet_merged_open_edges(
+      triangles, membership, peers, kept, thrown, work.steps);
   CHECK(open_edges.unbalanced == 0);
   CHECK(open_edges.boundary == 0);
   CHECK(thrown[1] == 2);
@@ -628,4 +808,89 @@ TEST_CASE("make_tet_mesh: a face split on one edge alone stays closed",
     }
   for (const auto &edge : balance)
     CHECK(edge.second == 0);
+}
+
+TEST_CASE("make_tet_mesh: a clean solid leaves its restoration to the region "
+          "labeling",
+          "[tetmesh][restore]") {
+  // Phase S recovers a box's edges without rewriting the complex, so its
+  // damage stands far below tet_execution_tuning::phase_restore_density and
+  // the one restoration after the region labeling reads the cells the region
+  // labeling keeps.
+  const auto box = tf::make_box_mesh<int>(1.0f, 1.0f, 1.0f);
+  const auto result = tf::test::build_tet_mesh(box);
+  const auto &report = std::get<1>(result);
+  REQUIRE(report.status == tf::tet_mesh_status::meshed);
+  CHECK(report.census.restored_before_faces == false);
+  CHECK(std::get<0>(result).tetras().size() > 0);
+}
+
+TEST_CASE("make_tet_mesh: the placement a solid takes is one at every worker "
+          "count",
+          "[tetmesh][restore]") {
+  // The density the placement is elected by is an integer count over a fixed
+  // set, so it reads the same number at any width and the product it elects
+  // is the same bytes.
+  const auto sphere = tf::make_sphere_mesh<int>(1.0f, 12, 16);
+  const std::size_t workers = tf::test::machine_workers();
+  bool early = false;
+  std::vector<std::array<int, 4>> first;
+  for (const std::size_t width : tf::test::worker_ladder({1, 4, workers})) {
+    tbb::task_arena arena(static_cast<int>(width));
+    const auto result =
+        arena.execute([&] { return tf::test::build_tet_mesh(sphere); });
+    const auto &report = std::get<1>(result);
+    REQUIRE(report.status == tf::tet_mesh_status::meshed);
+    std::vector<std::array<int, 4>> cells;
+    for (const auto &tet : std::get<0>(result).tetras())
+      cells.push_back({tet[0], tet[1], tet[2], tet[3]});
+    if (first.empty()) {
+      first = cells;
+      early = report.census.restored_before_faces;
+      continue;
+    }
+    CHECK(report.census.restored_before_faces == early);
+    CHECK(cells == first);
+  }
+}
+
+TEST_CASE("make_tet_mesh: the cells a solid publishes stand in their rank",
+          "[tetmesh][restore]") {
+  // The restoration's flips write past the rows the region labeling read, and
+  // the complex is published canonically after it, so the cells follow their
+  // sorted corners and each is read from its smallest — the order the
+  // tetrahedralizer states, whatever rows the flips stood in.
+  const auto sphere = tf::make_sphere_mesh<int>(1.0f, 10, 14);
+  const auto result = tf::test::build_tet_mesh(sphere);
+  REQUIRE(std::get<1>(result).status == tf::tet_mesh_status::meshed);
+  std::array<int, 4> previous{-1, -1, -1, -1};
+  std::size_t read = 0;
+  for (const auto &tet : std::get<0>(result).tetras()) {
+    std::array<int, 4> key{tet[0], tet[1], tet[2], tet[3]};
+    CHECK(key[0] == *std::min_element(key.begin(), key.end()));
+    std::sort(key.begin(), key.end());
+    if (read)
+      CHECK_FALSE(key < previous);
+    previous = key;
+    ++read;
+  }
+  CHECK(read > 0);
+}
+
+TEST_CASE("make_tet_mesh: a densely rewritten solid restores before its faces",
+          "[tetmesh][fixtures][local][.]") {
+  // Local data, Thingi10K 1001930. Its segment recovery rewrites the complex
+  // 2.29 times over, above tet_execution_tuning::phase_restore_density, so
+  // phase S restores its own rows before phase F reads them; one restoration
+  // after the region labeling costs it 35% more. The smallest scene that
+  // reaches the bound is a real mesh: a solid a phase recovers cleanly stands
+  // near zero, and no synthetic scene of five to eight sites rewrites the
+  // complex twice over.
+  std::ifstream probe(TF_TEST_DATA_DIR "/thingi_1001930.obj");
+  if (!probe)
+    SKIP("thingi_1001930.obj is not in TF_TEST_DATA_DIR");
+  const auto dense = tf::read_obj<3>(TF_TEST_DATA_DIR "/thingi_1001930.obj");
+  const auto report = std::get<1>(tf::test::build_tet_mesh(dense));
+  CHECK(report.status == tf::tet_mesh_status::meshed);
+  CHECK(report.census.restored_before_faces == true);
 }

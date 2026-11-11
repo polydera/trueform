@@ -18,7 +18,7 @@
 
 namespace tf::tetmesh {
 
-/// Label every cell of the published complex `owner`, hull cells included,
+/// Label every cell of the compacted complex `owner`, hull cells included,
 /// by the region it lies in: cells meeting on a facet the protected lane
 /// does not hold share one. Returns the number of regions.
 template <typename Owner>

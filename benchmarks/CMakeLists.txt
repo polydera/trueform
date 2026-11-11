@@ -62,6 +62,25 @@ foreach(_delaunay_target ${DELAUNAY_BENCHMARK_TARGETS})
 endforeach()
 
 # ==============================================================================
+# Tet mesh targets
+#
+# Registered beside the Delaunay targets, for the same reason. The models are
+# the caller's, named on the command line.
+# ==============================================================================
+set(TETMESH_BENCHMARK_TARGETS
+    bench_tet_mesh
+)
+
+foreach(_tetmesh_target ${TETMESH_BENCHMARK_TARGETS})
+    add_executable(${_tetmesh_target} tetmesh/${_tetmesh_target}.cpp)
+    target_include_directories(${_tetmesh_target} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+    target_link_libraries(${_tetmesh_target} PRIVATE TBB::tbb)
+    target_compile_options(${_tetmesh_target} PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>)
+endforeach()
+
+# ==============================================================================
 # External Libraries
 # ==============================================================================
 include(FetchContent)

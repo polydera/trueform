@@ -21,7 +21,7 @@
 #include "../../topology/cdt/dt3/tet_orient3d_sites.hpp"
 #include "../../topology/cdt/dt3/tet_shared_owners.hpp"
 #include "./label_tet_regions.hpp"
-#include "./tet_carving.hpp"
+#include "./tet_regions.hpp"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -30,17 +30,17 @@
 
 namespace tf::tetmesh {
 
-/// Carve the published complex `owner` by the winding of its constraint
-/// triangles `faces`, site slots each, the faces each protected facet
-/// covers read off the owner lane. A facet's cell on
-/// the negative side of a covering face is inside it, so crossing the
-/// facet from that cell to the other lowers the winding by one per face
-/// of the facet's stack, coincident faces of opposite winding cancelling. The regions the
+/// Label the regions of the compacted complex `owner` by the winding of its
+/// constraint triangles `faces`, site slots each, the faces each protected
+/// facet covers read off the owner lane. A facet's cell on the negative side of
+/// a covering face is inside it, so crossing the facet from that cell to the
+/// other lowers the winding by one per layer of each face of the facet's
+/// stack, coincident faces of opposite winding cancelling. The regions the
 /// unprotected facets join take one winding each, read from the unbounded
 /// region by a walk over the crossings.
 template <typename Owner, typename Faces>
-auto carve_tet_complex(const Owner &owner, const Faces &faces,
-                       tet_carving<typename Owner::index_type> &carving)
+auto wind_tet_regions(const Owner &owner, const Faces &faces,
+                      tet_regions<typename Owner::index_type> &regions)
     -> void {
   using Index = typename Owner::index_type;
   struct crossing {
@@ -48,8 +48,8 @@ auto carve_tet_complex(const Owner &owner, const Faces &faces,
     Index to;
     int step;
   };
-  auto &regions = carving.regions;
-  const std::size_t n_regions = label_tet_regions(owner, regions);
+  auto &labels = regions.regions;
+  const std::size_t n_regions = label_tet_regions(owner, labels);
   const std::size_t n_finite = owner._n_finite;
   tf::buffer<crossing> crossings;
   tf::sequenced_generate(
@@ -77,11 +77,17 @@ auto carve_tet_complex(const Owner &owner, const Faces &faces,
             const auto stack = tf::topology::cdt::dt3::tet_shared_owners(
                 owner, tf::topology::cdt::dt3::tet_facet_key(corners, slot));
             for (auto at = stack.first; at != stack.second; ++at)
-              step += side_of(at->second);
+              step += int(at->layers) * side_of(at->face);
           } else {
             step = side_of(who);
           }
-          const Index a = regions[cell], b = regions[beyond];
+          // the walk reads which crossings there are, not how many, so a
+          // block states a crossing once while its cells keep naming it
+          const Index a = labels[cell], b = labels[beyond];
+          const std::size_t n = out.size();
+          if (n >= 2 && out[n - 2].from == a && out[n - 2].to == b &&
+              out[n - 2].step == step)
+            continue;
           out.push_back({a, b, step});
           out.push_back({b, a, -step});
         }
@@ -96,11 +102,11 @@ auto carve_tet_complex(const Owner &owner, const Faces &faces,
   tf::buffer<char> seen;
   seen.allocate(n_regions);
   std::fill(seen.begin(), seen.end(), char(0));
-  carving.consistent = true;
+  regions.consistent = true;
   tf::buffer<Index> queue;
   const Index outside =
-      regions[n_finite < std::size_t(owner._corners.size()) ? n_finite
-                                                            : std::size_t(0)];
+      labels[n_finite < std::size_t(owner._corners.size()) ? n_finite
+                                                           : std::size_t(0)];
   winding[std::size_t(outside)] = 0;
   seen[std::size_t(outside)] = 1;
   queue.push_back(outside);
@@ -112,8 +118,8 @@ auto carve_tet_complex(const Owner &owner, const Faces &faces,
     for (auto at = range.first; at != range.second; ++at) {
       const int next = winding[std::size_t(region)] + at->step;
       if (seen[std::size_t(at->to)]) {
-        carving.consistent =
-            carving.consistent && winding[std::size_t(at->to)] == next;
+        regions.consistent =
+            regions.consistent && winding[std::size_t(at->to)] == next;
         continue;
       }
       seen[std::size_t(at->to)] = 1;
@@ -122,12 +128,12 @@ auto carve_tet_complex(const Owner &owner, const Faces &faces,
     }
   }
   for (std::size_t r = 0; r < n_regions; ++r)
-    carving.consistent = carving.consistent && seen[r];
-  carving.winding.allocate(n_finite);
+    regions.consistent = regions.consistent && seen[r];
+  regions.winding.allocate(n_finite);
   tf::parallel_for_each(
       tf::make_sequence_range(n_finite),
-      [&carving, &winding, &regions](std::size_t cell) {
-        carving.winding[cell] = winding[std::size_t(regions[cell])];
+      [&regions, &winding, &labels](std::size_t cell) {
+        regions.winding[cell] = winding[std::size_t(labels[cell])];
       },
       tf::checked);
 }

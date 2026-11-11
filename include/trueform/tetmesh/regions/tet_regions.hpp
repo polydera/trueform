@@ -20,7 +20,7 @@ namespace tf::tetmesh {
 /// unbounded region reading zero. `consistent` is false when two crossings
 /// into one region disagree, which an open or inconsistently wound surface
 /// states; the numbers are then not stated.
-template <typename Index> struct tet_carving {
+template <typename Index> struct tet_regions {
   tf::buffer<int> winding;
   tf::buffer<Index> regions;
   bool consistent = false;

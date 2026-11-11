@@ -11,131 +11,156 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/aabb_from.hpp"
+#include "../../core/algorithm/parallel_fill.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
+#include "../../core/blocked_buffer.hpp"
+#include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/frame_of.hpp"
+#include "../../core/points.hpp"
 #include "../../core/points_buffer.hpp"
 #include "../../core/polygons.hpp"
+#include "../../core/transformed.hpp"
+#include "../../core/views/indirect_range.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "../../exact/input_lattice.hpp"
+#include "../../exact/vertex_converter.hpp"
 #include "../../topology/make_face_membership.hpp"
 #include "../../topology/make_manifold_edge_link.hpp"
 #include "../../topology/policy/face_membership.hpp"
-#include "./arrange_tet_entrance.hpp"
+#include "../../topology/policy/manifold_edge_link.hpp"
+#include "./count_tet_merged_open_edges.hpp"
 #include "./make_tet_entrance_converter.hpp"
-#include "./tet_entrance_budget.hpp"
 #include "./merge_tet_facets.hpp"
+#include "./state_tet_entrance_surface.hpp"
+#include "./state_tet_reach_cells.hpp"
+#include "./tet_entrance_budget.hpp"
 #include "./tet_entrance_surface.hpp"
-#include <algorithm>
+#include "./tet_entrance_workspace.hpp"
+#include "./tet_facet_workspace.hpp"
 #include <array>
 #include <cstddef>
-#include <limits>
-#include <tuple>
 
 namespace tf::tetmesh {
 
-/// Bring `polygons` onto the `Int` lattice once. The points convert at the
-/// input's own precision, rounded once; the
-/// self-arrangement of the converted polygons names every crossing by its
-/// canonical identity and cuts the faces there, rounding each created point
-/// once onto the same lattice, and is arranged again until a pass rounds
-/// nothing (@ref arrange_tet_entrance), so the triangles it states are
-/// compatible constraints; they are merged into facets by
-/// @ref merge_tet_facets through the membership and edge link the
-/// arrangement was handed, which throws out the degenerate ones it meets,
-/// and ordered facet by facet. A pass that leaves a carrier without its
-/// triangles ends the surface there, stating the carriers and faces and no
-/// points or triangles. The lattice is the one @ref tet_entrance_budget
-/// states for the `Int` lattice stored in `Coord`.
+/// Bring `polygons` onto the `Int` lattice once: the points, placed by the
+/// frame `polygons` carries, convert at the input's own precision, rounded
+/// once, onto the lattice @ref tet_entrance_budget states for the `Int` lattice
+/// stored in `Coord`, fitted (@ref make_tet_entrance_converter) to the placed
+/// box of the points the faces name, and the surface is stated on them
+/// (@ref state_tet_entrance_surface): the input's triangles as given, their
+/// points numbered by first appearance through the faces, the points in one
+/// cell of the reach grid one point (@ref state_tet_reach_cells), the
+/// membership built for that numbering and a carried link, whose peers are
+/// faces, read as it stands where no point joined another. Under a
+/// `tolerance` in the input's coordinates the door's pooling places the
+/// points (@ref tf::exact::input_lattice::build_pooled, on that converter,
+/// over the form and its face membership, which is all the pooling reads):
+/// near-coplanar faces pool onto one plane, and the band it ran at is the
+/// one every drain states its contacts under; at zero nothing of the door
+/// executes. Crossings are the recovery's to find and the drains' to resolve
+/// (@ref cut_tet_pairs).
 template <typename Index, typename Int, typename Coord, typename Policy>
-auto make_tet_entrance_surface(const tf::polygons<Policy> &polygons) {
+auto make_tet_entrance_surface(const tf::polygons<Policy> &polygons,
+                               double tolerance) {
   using RealT = tf::coordinate_type<Policy>;
   tet_entrance_surface<Index, RealT, Int> surface;
+  tet_entrance_workspace<Index, Int> work;
+  const auto state_surface = [&surface,
+                              &work](const auto &rows, const auto &sources,
+                                     const auto &membership, const auto &link) {
+    const auto peers = [&link](std::size_t t) { return link[t]; };
+    std::array<std::size_t, 3> thrown{};
+    Index n_facets = 0;
+    {
+      // the merge's tables end here, before the surface's are built
+      tet_facet_workspace<Index, Int> merge;
+      n_facets = merge_tet_facets<Int, Index>(
+          surface.points.points(), rows, membership, peers, merge,
+          work.triangles, work.origin, work.facet_of, thrown);
+      surface.open_edges = count_tet_merged_open_edges(
+          rows, membership, peers, work.triangles, thrown, merge.steps);
+    }
+    state_tet_entrance_surface(surface, n_facets, thrown, sources, peers, work,
+                               surface.link);
+  };
   const auto points = polygons.points();
+  const auto pose = tf::frame_of(polygons);
   surface.input_bits = tet_entrance_budget<Int, Coord>::lattice_bits;
-  surface.converter =
-      make_tet_entrance_converter<Int>(points, surface.input_bits);
-  tf::points_buffer<Int, 3> lattice;
-  lattice.allocate(points.size());
-  tf::parallel_for_each(
-      tf::make_sequence_range(points.size()),
-      [&lattice, &points, &surface](std::size_t i) {
-        lattice[i] = surface.converter(points[i]);
-      },
-      tf::checked);
-  const auto arranged = arrange_tet_entrance(
-      tf::make_polygons(polygons.faces(), lattice.points()));
-  const auto &mesh = std::get<0>(arranged);
-  const auto &faces = std::get<1>(arranged);
-  surface.passes = std::get<2>(arranged);
-  surface.failed_planes = std::get<3>(arranged)[0];
-  surface.failed_faces = std::get<3>(arranged)[1];
-  if (surface.failed_faces)
-    return surface;
-  const auto cut = mesh.points();
-  surface.points.allocate(cut.size());
-  tf::parallel_for_each(
-      tf::make_sequence_range(cut.size()),
-      [&surface, &cut](std::size_t i) {
-        for (std::size_t k = 0; k < 3; ++k)
-          surface.points[i][k] = cut[i][k];
-      },
-      tf::checked);
-  tf::buffer<std::array<Index, 3>> triangles;
-  tf::buffer<Index> origin;
-  tf::buffer<Index> facet_of;
-  std::array<std::size_t, 3> thrown{};
-  const Index n_facets = merge_tet_facets<Int, Index>(
-      cut, mesh.faces(), std::get<4>(arranged), std::get<5>(arranged),
-      triangles, origin, facet_of, thrown, surface.open_edges);
-  surface.dropped_degenerate = thrown[0] + thrown[1];
-  surface.stitched_triangles = thrown[2];
-  auto &offsets = surface.facets;
-  offsets.allocate(std::size_t(n_facets) + 1);
-  std::fill(offsets.begin(), offsets.end(), Index(0));
-  for (auto facet : facet_of)
-    ++offsets[std::size_t(facet) + 1];
-  for (std::size_t f = 0; f < std::size_t(n_facets); ++f)
-    offsets[f + 1] += offsets[f];
-  tf::buffer<Index> slot;
-  slot.allocate(triangles.size());
-  {
-    tf::buffer<Index> next;
-    next.allocate(std::size_t(n_facets));
-    std::copy(offsets.begin(), offsets.end() - 1, next.begin());
-    for (std::size_t t = 0; t < triangles.size(); ++t)
-      slot[t] = next[std::size_t(facet_of[t])]++;
-  }
-  surface.triangles.allocate(triangles.size());
-  surface.parents.allocate(triangles.size());
-  tf::parallel_for_each(
-      tf::make_sequence_range(triangles.size()),
-      [&surface, &triangles, &origin, &faces, &slot](std::size_t t) {
-        const auto at = std::size_t(slot[t]);
-        for (std::size_t k = 0; k < 3; ++k)
-          surface.triangles[at][k] = triangles[t][k];
-        surface.parents[at] = Index(faces[std::size_t(origin[t])]);
-      },
-      tf::checked);
-  if (surface.dropped_degenerate || surface.stitched_triangles) {
-    const auto membership = tf::make_face_membership<Index>(
-        tf::make_polygons(surface.triangles, surface.points.points()));
-    surface.link = tf::make_manifold_edge_link<Index>(
-        tf::make_polygons(surface.triangles, surface.points.points()) |
-        tf::tag(membership));
-  } else {
-    const auto &arranged_link = std::get<5>(arranged);
-    surface.link.data_buffer().allocate(triangles.size() * 3);
+  const auto faces = polygons.faces();
+  // first appearance is a scan over the corners, the one serial pass of the
+  // numbering: a parallel first corner per point costs an atomic minimum per
+  // corner and a second pass
+  tf::buffer<Index> point_of;
+  point_of.allocate(points.size());
+  tf::parallel_fill(point_of, Index(-1));
+  tf::buffer<Index> ids;
+  ids.reserve(points.size());
+  tf::blocked_buffer<Index, 3> numbered;
+  numbered.allocate(faces.size());
+  for (std::size_t f = 0; f < faces.size(); ++f)
+    for (std::size_t k = 0; k < 3; ++k) {
+      auto &at = point_of[std::size_t(faces[f][k])];
+      if (at < 0) {
+        at = Index(ids.size());
+        ids.push_back(Index(faces[f][k]));
+      }
+      numbered[f][k] = at;
+    }
+  surface.converter = make_tet_entrance_converter<Int>(
+      tf::transformed(
+          tf::aabb_from(tf::make_points(tf::make_indirect_range(ids, points))),
+          pose),
+      surface.input_bits);
+  surface.points.allocate(ids.size());
+  const auto place = [&surface, &ids](const auto &position) {
     tf::parallel_for_each(
-        tf::make_sequence_range(triangles.size()),
-        [&surface, &arranged_link, &slot](std::size_t t) {
-          const auto peers = arranged_link[t];
-          auto placed = surface.link[std::size_t(slot[t])];
-          for (std::size_t k = 0; k < 3; ++k) {
-            const Index p = peers[k].face_peer;
-            placed[k] = {p >= 0 ? slot[std::size_t(p)] : p};
-          }
+        tf::make_sequence_range(ids.size()),
+        [&surface, &ids, &position](std::size_t i) {
+          surface.points[i] = position(ids[i]);
         },
         tf::checked);
-  }
+  };
+  if (tolerance > 0.0) {
+    const auto pool = [&](const auto &form) {
+      const auto apply_to_form = [&form](Index, const auto &f) { f(form); };
+      tf::exact::input_lattice<Index, RealT, Int> door;
+      door.build_pooled(
+          tf::exact::vertex_converter<Int, RealT, 3>{surface.converter},
+          apply_to_form, Index(1), tolerance);
+      surface.band = door.tolerance_int();
+      const auto read = door.reader(apply_to_form);
+      place([&read](Index id) { return read(0, id); });
+    };
+    if constexpr (tf::has_face_membership_policy<Policy>)
+      pool(polygons);
+    else {
+      const auto membership = tf::make_face_membership<Index>(polygons);
+      pool(polygons | tf::tag(membership));
+    }
+  } else
+    place([&surface, &points, &pose](Index id) {
+      return surface.converter(tf::transformed(points[std::size_t(id)], pose));
+    });
+  const std::size_t joined = state_tet_reach_cells(
+      surface.points, numbered, Int(surface.converter.quantum()), work);
+  const auto renumbered = tf::make_polygons(numbered, surface.points.points());
+  const auto membership = tf::make_face_membership<Index>(renumbered);
+  const auto sources = tf::make_sequence_range(faces.size());
+  const auto state = [&](const auto &link) {
+    state_surface(numbered, sources, membership, link);
+  };
+  const auto made = [&] {
+    state(tf::make_manifold_edge_link<Index>(renumbered | tf::tag(membership)));
+  };
+  if constexpr (tf::has_manifold_edge_link_policy<Policy>) {
+    if (joined)
+      made();
+    else
+      state(polygons.manifold_edge_link());
+  } else
+    made();
   return surface;
 }
 

@@ -16,6 +16,8 @@
  *  Constrained Delaunay tetrahedralization of closed surfaces.
  */
 
-#include "./tetmesh/make_tet_mesh.hpp"   // IWYU pragma: export
-#include "./tetmesh/tet_mesh_report.hpp" // IWYU pragma: export
-#include "./tetmesh/tet_mesh_status.hpp" // IWYU pragma: export
+#include "./tetmesh/make_tet_mesh.hpp"             // IWYU pragma: export
+#include "./tetmesh/tet_mesh_config.hpp"           // IWYU pragma: export
+#include "./tetmesh/tet_mesh_index_map.hpp"        // IWYU pragma: export
+#include "./tetmesh/tet_mesh_report.hpp"           // IWYU pragma: export
+#include "./tetmesh/tet_mesh_status.hpp"           // IWYU pragma: export

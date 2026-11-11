@@ -12,10 +12,12 @@
  */
 #pragma once
 #include "../../core/algorithm/generate_offset_blocks.hpp"
+#include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
 #include "../../core/offset_block_buffer.hpp"
 #include "../../core/views/sequence_range.hpp"
+#include "./tet_face_map_workspace.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <tbb/parallel_sort.h>
@@ -25,29 +27,48 @@ namespace tf::tetmesh {
 
 /// Block `f` of `face_facets` holds, ascending, the facets the input face
 /// `f` lies in: the facets of the entrance triangles `parents` assigns it,
-/// `facets` the offsets of each facet's run of triangles. A face no
-/// crossing cut lies in one facet.
+/// `facets` the offsets of each facet's run of triangles, the facets' own
+/// order where they are published densely. A face no
+/// crossing cut lies in one facet. The records are sorted on the tables of
+/// `work`.
 template <typename Index>
 auto state_tet_face_facets(std::size_t n_faces, const tf::buffer<Index> &facets,
                            const tf::buffer<Index> &parents,
+                           tet_face_map_workspace<Index> &work,
                            tf::offset_block_buffer<Index, Index> &face_facets)
     -> void {
-  tf::buffer<std::pair<Index, Index>> records;
+  using record_t = tet_face_facet<Index>;
+  auto &records = work.face_facets;
   records.allocate(parents.size());
-  for (std::size_t f = 0; f + 1 < facets.size(); ++f)
-    for (auto t = std::size_t(facets[f]); t < std::size_t(facets[f + 1]); ++t)
-      records[t] = {parents[t], Index(f)};
-  tbb::parallel_sort(records.begin(), records.end());
-  records.erase_till_end(std::unique(records.begin(), records.end()));
+  tf::parallel_for_each(
+      tf::make_sequence_range(facets.size() ? facets.size() - 1 : 0),
+      [&records, &facets, &parents](std::size_t f) {
+        for (auto t = std::size_t(facets[f]); t < std::size_t(facets[f + 1]);
+             ++t)
+          records[t] = {parents[t], Index(f)};
+      },
+      tf::checked);
+  tbb::parallel_sort(
+      records.begin(), records.end(), [](const record_t &x, const record_t &y) {
+        return x.face < y.face || (x.face == y.face && x.facet < y.facet);
+      });
+  // in place after the sort, one pass of compares and moves, which an
+  // ordered parallel copy of the distinct records does not beat
+  records.erase_till_end(std::unique(
+      records.begin(), records.end(), [](const record_t &x, const record_t &y) {
+        return x.face == y.face && x.facet == y.facet;
+      }));
   face_facets.data_buffer().clear();
   tf::generate_offset_blocks(
       tf::make_sequence_range(n_faces), face_facets.offsets_buffer(),
       face_facets.data_buffer(),
       [&records](std::size_t f, auto &out) {
-        auto at = std::lower_bound(records.begin(), records.end(),
-                                   std::make_pair(Index(f), Index(0)));
-        for (; at != records.end() && at->first == Index(f); ++at)
-          out.push_back(at->second);
+        auto at = std::lower_bound(records.begin(), records.end(), Index(f),
+                                   [](const record_t &record, Index face) {
+                                     return record.face < face;
+                                   });
+        for (; at != records.end() && at->face == Index(f); ++at)
+          out.push_back(at->facet);
       },
       tf::checked);
 }
