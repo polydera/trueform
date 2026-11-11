@@ -87,6 +87,20 @@ rem_faces, rem_points = tf.isotropic_remeshed(dec_mesh, mel)
 
 → [Full documentation](https://trueform.polydera.com/py/modules) covers mesh analysis, topology, isocontours, curvature, and more.
 
+## Tutorials
+
+One task per page, with full code, on polydera.com:
+
+- [Mesh booleans in Python](https://polydera.com/tutorials/fast-mesh-booleans-in-python)
+- [Closest point on a mesh in Python](https://polydera.com/tutorials/fast-closest-point-on-a-mesh-in-python)
+- [Mesh collision detection in Python](https://polydera.com/tutorials/fast-mesh-collision-detection-in-python)
+- [Geodesic distances in Python](https://polydera.com/tutorials/fast-geodesic-distances-in-python)
+- [Constrained Delaunay triangulation in Python](https://polydera.com/tutorials/constrained-delaunay-triangulation-in-python)
+- [Isocontours on a triangle mesh in Python](https://polydera.com/tutorials/isocontours-on-a-triangle-mesh-in-python)
+- [STL and OBJ reading in Python](https://polydera.com/tutorials/fast-stl-and-obj-reading-in-python)
+
+→ [All tutorials](https://polydera.com/tutorials)
+
 ## Examples
 
 - **[Guided Examples](https://trueform.polydera.com/py/examples)** — Step-by-step walkthroughs for spatial queries, topology, and booleans

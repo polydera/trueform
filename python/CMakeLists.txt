@@ -40,6 +40,7 @@ set(BINDING_TOP_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/reindex.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/remesh.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/spatial.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/tetmesh.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/topology.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/volume.cpp
 )
@@ -57,6 +58,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/src/iso/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/reindex/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/remesh/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/spatial/sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/tetmesh/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/topology/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/util/sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/volume/sources.cmake)
@@ -75,6 +77,7 @@ set(BINDING_SOURCES
   ${MODULE_REINDEX_SOURCES}
   ${MODULE_REMESH_SOURCES}
   ${MODULE_SPATIAL_SOURCES}
+  ${MODULE_TETMESH_SOURCES}
   ${MODULE_TOPOLOGY_SOURCES}
   ${MODULE_UTIL_SOURCES}
   ${MODULE_VOLUME_SOURCES}

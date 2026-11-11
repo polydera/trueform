@@ -12,6 +12,7 @@ set(BINDING_TOP_HEADERS
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/reindex.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/remesh.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/spatial.hpp
+  ${CMAKE_CURRENT_LIST_DIR}/trueform/python/tetmesh.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/topology.hpp
   ${CMAKE_CURRENT_LIST_DIR}/trueform/python/volume.hpp
 )
@@ -28,6 +29,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/iso/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/reindex/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/remesh/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/spatial/headers.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/tetmesh/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/topology/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/util/headers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/trueform/python/volume/headers.cmake)
@@ -46,6 +48,7 @@ set(BINDING_HEADERS
   ${HEADERS_REINDEX}
   ${HEADERS_REMESH}
   ${HEADERS_SPATIAL}
+  ${HEADERS_TETMESH}
   ${HEADERS_TOPOLOGY}
   ${HEADERS_UTIL}
   ${HEADERS_VOLUME}

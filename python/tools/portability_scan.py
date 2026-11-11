@@ -30,11 +30,23 @@ Checks:
         capturing it, MSVC refuses the implicit capture (C3493). List it
   intrinsics: __int128 / __uint128 / __builtin_* outside tf::exact
         and vendored external code
+  10.7  a reference bound to a member of a site a decision view hands
+        out -- `const auto &a = sites[k].pt;` -- where the aligned
+        decision's operator[] returns BY VALUE: Clang and GCC keep the
+        temporary alive for the reference, MSVC frees it and the
+        reference reads zeros (proven 2026-11 by the deep lattice
+        search walking the whole lattice on Windows). Copy the member.
+  draws: a std distribution (std::*_distribution) or std::shuffle in
+        tests/ -- the engines are standardized, the distributions and
+        the shuffle are implementation-defined, so a seeded test draws
+        another input on MSVC's STL. Draw through
+        tests/common/uniform_draw.hpp
 
-Review-time rule the scan cannot check textually: inside a GENERIC
-lambda, do not read a captured local named like a namespace-scope tf
-template (frame, points, tree, buffer, range...) -- MSVC's template-time
-lookup finds the template (C2955). Name frame_of results 'pose'.
+  7.1   inside a GENERIC lambda (a parameter declared 'auto'), a read of
+        a local or parameter of the enclosing function whose name is a
+        namespace-scope tf template under include/trueform/ (frame,
+        points, tree, buffer, range, faces...) -- MSVC's template-time
+        lookup finds the template (C2955). Name frame_of results 'pose'.
 
 10.2 (structured-binding default captures) needs real scope analysis to
 avoid drowning in same-scope false positives; until then it stays a
@@ -50,6 +62,8 @@ import glob
 import os
 import re
 import sys
+
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 
 bad = []
 
@@ -109,6 +123,25 @@ for f in sources:
                 bad.append(f"{f}:{i + 1} 10.1: local constexpr '{name}' "
                            "referenced in lambda")
                 break
+
+STD_DRAW = re.compile(r"\bstd::(?:\w+_distribution|shuffle)\b")
+for f in sources:
+    if not f.startswith("tests/"):
+        continue
+    for i, ln in enumerate(open(f, encoding="utf-8"), 1):
+        m = STD_DRAW.search(ln.split("//")[0])
+        if m:
+            bad.append(f"{f}:{i} draws: '{m.group(0)}' is implementation-"
+                       "defined -- draw through tests/common/uniform_draw.hpp")
+
+SITE_MEMBER_REF = re.compile(r"\bauto\s*&&?\s*\w+\s*=\s*sites\[.*?\]\.\w+\s*;")
+for f in sources:
+    for i, ln in enumerate(open(f, encoding="utf-8"), 1):
+        m = SITE_MEMBER_REF.search(ln.split("//")[0])
+        if m:
+            bad.append(f"{f}:{i} 10.7: '{m.group(0).strip()}' binds a reference "
+                       "to a member of a site a decision hands out by value "
+                       "-- MSVC frees the temporary; copy the member")
 
 TEST_NAME_MACRO = re.compile(
     r"\b(?:TEST_CASE|TEMPLATE_TEST_CASE|TEMPLATE_TEST_CASE_SIG|SECTION|"
@@ -211,15 +244,103 @@ for f in sources:
                            "implicit capture (C3493); list it")
                 break
 
+# 7.1: the names of the namespace-scope tf templates (column 0, as the
+# house format does not indent namespaces)
+TF_TEMPLATE = re.compile(
+    r"^template\s*<[^;{}]*?>\s*(?:struct|class|using)\s+(\w+)", re.M)
+tf_templates = set()
+for f in glob.glob("include/trueform/**/*.hpp", recursive=True):
+    if "/external/" not in f:
+        tf_templates.update(TF_TEMPLATE.findall(open(f, encoding="utf-8").read()))
+DECLARED = re.compile(r"\bauto\s*&{0,2}\s*(\w+)\s*(?:=|\{)")
+GENERIC_LAMBDA = re.compile(
+    r"(?<![\w\)\]&])(\[\s*[&=][^\]\n]*\])\s*\(([^)]*)\)[^{;]*\{")
+SCOPE_ROOT = re.compile(r"^\s*(?:template\b.*)?(?:struct|class|namespace|union)\b")
+CONTROL_HEAD = re.compile(r"^\s*(?:\}\s*)?(?:if|for|while|switch|else|do|try|catch)\b")
+for f in sources:
+    if not f.startswith("include/"):
+        continue
+    text = "\n".join(STRING_LITERAL.sub('""', ln.split("//")[0])
+                     for ln in open(f, encoding="utf-8").read().split("\n"))
+    seen = set()
+    for lm in GENERIC_LAMBDA.finditer(text):
+        if not re.search(r"\bauto\b", lm.group(2)):
+            continue
+        depth, j = 1, lm.end()
+        while depth and j < len(text):
+            depth += (text[j] == "{") - (text[j] == "}")
+            j += 1
+        body = text[lm.end():j]
+        params, captures = lm.group(2), lm.group(1)
+        # the enclosing function's text before the lambda: walk back
+        # through the scopes still open at the lambda, up to the first
+        # struct/namespace opener
+        before, k, d, enclosing = text[:lm.start()], lm.start(), 0, []
+        pos = k
+        while pos > 0:
+            pos -= 1
+            c = before[pos]
+            if c == "}":
+                d += 1
+            elif c == "{":
+                if d:
+                    d -= 1
+                    continue
+                head = before[before.rfind("\n", 0, pos) + 1:pos + 1]
+                if SCOPE_ROOT.match(head):
+                    break
+                enclosing.append((pos, k))
+                k = pos
+        if not enclosing:
+            continue
+        # open-scope texts: declarations at depth 0 of each open scope,
+        # plus the function head's parameters
+        locals_ = set()
+        open_at = [e[0] for e in enclosing]
+        top = open_at[-1]
+        head_start = before.rfind(";", 0, top) + 1
+        head_start = max(head_start, before.rfind("}", 0, top) + 1)
+        scope_text = before[head_start:lm.start()]
+        # a scope closed before the lambda declares nothing the lambda sees
+        frames = [[]]
+        for c in scope_text:
+            if c == "{":
+                frames.append([])
+            elif c == "}":
+                if len(frames) > 1:
+                    frames.pop()
+            else:
+                frames[-1].append(c)
+        flat = "".join("".join(fr) + "\n" for fr in frames)
+        locals_ = tf_templates.intersection(DECLARED.findall(flat))
+        for name in locals_:
+            if (re.search(r"[\w>&*]\s+&{0,2}" + name + r"\s*(?:=|;|\{|,|\)|:)", body)
+                    or re.search(r"\b" + name + r"\b", captures)
+                    or re.search(r"\b" + name + r"\b", params)):
+                continue
+            rd = re.search(r"(?<![\.\w>:])" + name + r"\b(?!\s*::)", body)
+            if rd:
+                line = text.count("\n", 0, lm.end() + rd.start()) + 1
+                if (line, name) not in seen:
+                    seen.add((line, name))
+                    bad.append(f"{f}:{line} 7.1: local '{name}' read in a "
+                               "generic lambda is also a tf template -- "
+                               "MSVC template-time lookup finds the "
+                               "template (C2955); rename the local")
+
 baseline_path = os.path.join(os.path.dirname(__file__),
                              "portability_baseline.txt")
 if "--update-baseline" in sys.argv:
-    open(baseline_path, "w").write("\n".join(sorted(bad)) + "\n")
+    notes = []
+    if os.path.exists(baseline_path):
+        notes = [ln.rstrip() for ln in open(baseline_path) if ln.startswith("#")]
+    open(baseline_path, "w").write("\n".join(notes + sorted(bad)) + "\n")
     print(f"baseline updated: {len(bad)} entries")
     sys.exit(0)
 baseline = set()
 if os.path.exists(baseline_path):
-    baseline = {ln.strip() for ln in open(baseline_path) if ln.strip()}
+    baseline = {ln.strip() for ln in open(baseline_path)
+                if ln.strip() and not ln.startswith("#")}
 new = [b for b in bad if b not in baseline]
 for b in new:
     print("VIOLATION:", b)

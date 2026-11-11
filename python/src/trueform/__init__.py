@@ -25,6 +25,7 @@ from ._spatial.closest_point import closest_metric_point_pair, closest_metric_po
 from ._intersect import intersection_curves, self_intersection_curves, has_self_intersections
 from ._iso import isocontours, isobands
 from ._fill import HoleFill, HoleFillStatus, HoleChartStatus, HoleRefineStatus, HoleFairStatus, fill_holes, filled_mesh
+from ._tetmesh import TetMeshStatus, TetMeshReport, TetMeshIndexMap, tet_mesh
 from ._arrangement import mesh_arrangements, polygon_arrangements
 from ._csg import CsgGraph, Expr, op, outer_shell, boolean_union, boolean_intersection, boolean_difference
 from ._clean import cleaned
@@ -72,6 +73,10 @@ __all__ = [
     'HoleFairStatus',
     'fill_holes',
     'filled_mesh',
+    'TetMeshStatus',
+    'TetMeshReport',
+    'TetMeshIndexMap',
+    'tet_mesh',
     'intersection_curves',
     'self_intersection_curves',
     'has_self_intersections',

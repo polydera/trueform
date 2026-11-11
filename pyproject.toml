@@ -49,7 +49,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://trueform.polydera.com"
+Homepage = "https://polydera.com/trueform"
 Documentation = "https://trueform.polydera.com"
 Repository = "https://github.com/polydera/trueform"
 Issues = "https://github.com/polydera/trueform/issues"

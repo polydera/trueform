@@ -1,3 +1,4 @@
+# 7.1: these compiled on MSVC at 0.10.9 (84e4a1e4a); rule 7.1 over-approximates the real trigger and is kept to flag NEW shapes for a Windows check or a rename.
 examples/src/alignment.cpp:123 10.5: default-capture generic lambda decomposes 'tup' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 examples/src/alignment.cpp:306 10.5: default-capture generic lambda decomposes 'tup' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/clean/index_map/segments.hpp:76 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
@@ -36,7 +37,7 @@ include/trueform/spatial/tree/build_aabb_nodes.hpp:137 10.1: local constexpr 'n_
 include/trueform/spatial/tree/build_aabb_nodes.hpp:451 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/spatial/tree/build_aabb_nodes.hpp:459 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/spatial/tree/build_aabb_nodes.hpp:483 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
-include/trueform/topology/components/finder.hpp:36 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
+include/trueform/topology/components/finder.hpp:37 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/topology/domains/canonicalize_nm_edges.hpp:120 10.5: default-capture generic lambda decomposes 't' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/topology/domains/emit_boundary_merges.hpp:46 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 include/trueform/topology/domains/filter_face_blocks.hpp:44 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
@@ -54,3 +55,19 @@ vtk/src/functions/neighbor_search_batch.cpp:34 10.5: default-capture generic lam
 vtk/src/functions/neighbor_search_batch.cpp:52 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:74 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
 vtk/src/functions/neighbor_search_batch.cpp:94 10.5: default-capture generic lambda decomposes 'pair' -- MSVC loses the enclosing scope after the binding; list what the body reads in the capture list
+include/trueform/arrangement/planes/discover_plane_refinement.hpp:201 7.1: local 'frame' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/arrangement/reseat/state_reseat_touched.hpp:72 7.1: local 'faces' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/arrangement/reseat/make_reseat_delta_forms.hpp:95 7.1: local 'faces' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/topology/make_neighborhoods.hpp:89 7.1: local 'frame' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/topology/domains/compute_volume_contributions_per_fragment.hpp:132 7.1: local 'frame' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/csg/graph/winding_side.hpp:125 7.1: local 'frame' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/csg/graph/winding_side.hpp:185 7.1: local 'frame' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/iso/cut/cut_iso_faces.hpp:111 7.1: local 'faces' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/intersect/intersections_within_segments.hpp:98 7.1: local 'edges' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/intersect/graph/plane_uncut_entrants.hpp:77 7.1: local 'vertex' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/intersect/graph/build_plane_orientations.hpp:51 7.1: local 'frame' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/intersect/graph/seat_entrant_planes.hpp:110 7.1: local 'frame' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/exact/door/find_rim_targets.hpp:122 7.1: local 'point' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/exact/door/find_rim_targets.hpp:126 7.1: local 'faces' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/geometry/compute_principal_curvatures.hpp:223 7.1: local 'points' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local
+include/trueform/geometry/laplacian/assemble_laplacian_system.hpp:158 7.1: local 'faces' read in a generic lambda is also a tf template -- MSVC template-time lookup finds the template (C2955); rename the local

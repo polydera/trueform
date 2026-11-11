@@ -11,7 +11,6 @@
 * Author: Žiga Sajovic
 */
 
-#include <nanobind/nanobind.h>
 #include "trueform/python/arrangement.hpp"
 #include "trueform/python/clean.hpp"
 #include "trueform/python/core.hpp"
@@ -24,8 +23,10 @@
 #include "trueform/python/reindex.hpp"
 #include "trueform/python/remesh.hpp"
 #include "trueform/python/spatial.hpp"
+#include "trueform/python/tetmesh.hpp"
 #include "trueform/python/topology.hpp"
 #include "trueform/python/volume.hpp"
+#include <nanobind/nanobind.h>
 
 namespace nb = nanobind;
 
@@ -49,6 +50,7 @@ NB_MODULE(_trueform, m) {
   tf::py::register_reindex(m);
   tf::py::register_remesh(m);
   tf::py::register_spatial_module(m);
+  tf::py::register_tetmesh(m);
   tf::py::register_topology(m);
   tf::py::register_volume(m);
 }
