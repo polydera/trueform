@@ -16,18 +16,21 @@
 #include "./tet_claim_workspace.hpp"
 #include <atomic>
 #include <cstddef>
-#include <cstdint>
 
 namespace tf::topology::cdt::dt3 {
 
+/// Release the cells an attempt holds but those whose word carries a bit of
+/// `kept`: a completed star keeps its cavity's, the dead staying in the
+/// stream's pool and the reused published with the other rows, so no row is
+/// released twice.
 template <typename Index>
-inline auto release_tet_cells(tet_claim_workspace<Index> &work,
-                              std::size_t worker,
-                              const tf::buffer<Index> &cells) -> void {
+inline auto
+release_tet_cells(tet_claim_workspace<Index> &work, std::size_t worker,
+                  const tf::buffer<Index> &cells, tet_claim_word kept) -> void {
   for (auto cell : cells) {
     auto &word = work.ownership[std::size_t(cell)];
     const auto held = word.load(std::memory_order_relaxed);
-    if ((held & tet_worker_mask) == worker && !(held & tet_pooled))
+    if ((held & tet_worker_mask) == worker && !(held & kept))
       word.store(tet_unowned, std::memory_order_release);
   }
 }

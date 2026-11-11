@@ -26,5 +26,8 @@
 #include "./policy/face_link.hpp"                  // IWYU pragma: export
 #include "./policy/face_membership.hpp"            // IWYU pragma: export
 #include "./policy/manifold_edge_link.hpp"         // IWYU pragma: export
+#include "./policy/manifold_facet_link.hpp"        // IWYU pragma: export
 #include "./policy/non_manifold_edge_fans.hpp"     // IWYU pragma: export
+#include "./policy/tet_link.hpp"                   // IWYU pragma: export
+#include "./policy/tet_membership.hpp"             // IWYU pragma: export
 #include "./policy/vertex_link.hpp"                // IWYU pragma: export

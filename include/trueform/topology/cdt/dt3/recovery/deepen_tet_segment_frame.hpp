@@ -31,22 +31,10 @@ auto deepen_tet_segment_frame(tet_segment_recovery<Index, Coord> &recovery,
   ++recovery.bits[std::size_t(segment)];
   twice(recovery.rings[2 * std::size_t(segment)]);
   twice(recovery.rings[2 * std::size_t(segment) + 1]);
-  for (Index k = recovery.first[std::size_t(segment)];;) {
-    auto &row = rows[std::size_t(k)];
-    twice(row.n0);
-    twice(row.n1);
-    if (k == recovery.last[std::size_t(segment)])
-      return;
-    const Index from = row.b;
-    for (Index t = recovery.row_heads[std::size_t(from)];;) {
-      const Index next = recovery.row_tickets[std::size_t(t)].first;
-      const auto &candidate = rows[std::size_t(next)];
-      if (candidate.segment == segment && candidate.a == from) {
-        k = next;
-        break;
-      }
-      t = recovery.row_tickets[std::size_t(t)].second;
-    }
+  for (Index k = recovery.first[std::size_t(segment)]; k != Index(-1);
+       k = rows[std::size_t(k)].next) {
+    twice(rows[std::size_t(k)].n0);
+    twice(rows[std::size_t(k)].n1);
   }
 }
 

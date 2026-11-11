@@ -11,18 +11,17 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "./tet_facet_key.hpp"
-#include <cstddef>
+#include <array>
 
 namespace tf::topology::cdt::dt3 {
 
-/// State that a cavity wrapped the protected facet of `cell` opposite
-/// `slot`.
-template <typename Owner>
-auto record_tet_wrap(Owner &owner, typename Owner::index_type cell,
-                     std::size_t slot) -> void {
-  owner._wraps.push_back(
-      tet_facet_key(owner._corners[std::size_t(cell)], slot));
-}
+/// A facet, corner slots ascending, beside a face that owns it, and the
+/// `layers` of that face the facet covers: the face's own triangles lying on
+/// one another over it count once each.
+template <typename Index> struct tet_facet_owner {
+  std::array<Index, 3> key;
+  Index face;
+  Index layers = 1;
+};
 
 } // namespace tf::topology::cdt::dt3

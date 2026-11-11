@@ -11,72 +11,89 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../../../core/algorithm/parallel_for_each.hpp"
+#include "../../../../core/algorithm/generate_offset_blocks.hpp"
+#include "../../../../core/algorithm/parallel_iota.hpp"
 #include "../../../../core/buffer.hpp"
+#include "../../../../core/checked.hpp"
 #include "../../../../core/offset_block_buffer.hpp"
-#include "../../../../core/views/sequence_range.hpp"
 #include "../tet_finite_cell.hpp"
+#include "./enter_tet_site_star.hpp"
+#include "./gather_tet_star.hpp"
+#include "./open_tet_star_stamps.hpp"
+#include "./scatter_tet_records_by_key.hpp"
+#include "./tet_site_cell_scratch.hpp"
 #include <algorithm>
+#include <array>
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
-/// The rows one block of @ref state_tet_site_cells counts and scatters.
-inline constexpr std::size_t tet_site_cell_block_rows = std::size_t(1) << 16;
+/// The rows per asked site below which @ref state_tet_site_cells counts: a
+/// star gathered costs about 1 us, a row counted about 4 ns (t1004824,
+/// t1007406, one worker), so the two shapes meet near 256 rows per site.
+inline constexpr std::size_t tet_site_star_rows = 256;
 
-/// State the cells of every site of `dt`: block `s` of `site_cells` is the
-/// finite live cells holding site `s`, ascending. Counts and one prefix over
-/// the rows, taken in blocks of rows so every block scatters into its own
-/// disjoint ranges.
+/// State the cells of the sites `sites` names, in any order and any number
+/// of times: `sites` becomes ascending sites, each once, holding every site
+/// it named, and block `i` of `site_cells` is the finite live cells of `dt`
+/// holding `sites[i]`, ascending. One table, two work shapes by its density:
+/// sparse sites against the rows are sorted and gather their stars from the
+/// cell `dt` keeps for each across the facets holding it
+/// (@ref gather_tet_star), costing the stars; dense sites become every site,
+/// whose cells are grouped by site in row order
+/// (@ref scatter_tet_records_by_key), costing the rows plus the sites.
+/// `scratch` is the caller's.
 template <typename DT, typename Index>
-auto state_tet_site_cells(const DT &dt,
-                          tf::offset_block_buffer<Index, Index> &site_cells)
-    -> void {
-  const auto cells = dt.tets();
-  const std::size_t n_rows = dt.n_tets(), n_sites = dt.n_sites();
-  const std::size_t n_blocks =
-      (n_rows + tet_site_cell_block_rows - 1) / tet_site_cell_block_rows;
-  tf::buffer<Index> counts;
-  counts.allocate_and_initialize(n_blocks * n_sites, Index(0));
-  tf::parallel_for_each(
-      tf::make_sequence_range(n_blocks),
-      [&dt, &cells, &counts, n_rows, n_sites](std::size_t b) {
-        auto count = counts.begin() + std::ptrdiff_t(b * n_sites);
-        const std::size_t end = std::min(n_rows, (b + 1) * tet_site_cell_block_rows);
-        for (std::size_t row = b * tet_site_cell_block_rows; row < end; ++row) {
-          if (!tet_finite_cell(dt, Index(row)))
-            continue;
-          for (auto corner : cells[row])
-            ++count[std::size_t(corner)];
-        }
-      });
-  auto &offsets = site_cells.offsets_buffer();
-  offsets.allocate(n_sites + 1);
-  offsets[0] = 0;
-  for (std::size_t s = 0; s < n_sites; ++s) {
-    Index running = offsets[s];
-    for (std::size_t b = 0; b < n_blocks; ++b) {
-      auto &count = counts[b * n_sites + s];
-      const Index start = running;
-      running += count;
-      count = start;
-    }
-    offsets[s + 1] = running;
+auto state_tet_site_cells(const DT &dt, tf::buffer<Index> &sites,
+                          tf::offset_block_buffer<Index, Index> &site_cells,
+                          tet_site_cell_scratch<Index> &scratch) -> void {
+  const std::size_t n_rows = dt.n_tets();
+  site_cells.data_buffer().clear();
+  if (sites.size() * tet_site_star_rows < n_rows) {
+    std::sort(sites.begin(), sites.end());
+    sites.erase_till_end(std::unique(sites.begin(), sites.end()));
+    auto &stamps = scratch.stamps;
+    open_tet_star_stamps(dt, stamps);
+    const auto entry = dt.entry();
+    tf::generate_offset_blocks(
+        sites, site_cells,
+        [&dt, &stamps, entry](Index site, auto &star) {
+          const std::size_t from = star.size();
+          bool ticketed = false;
+          gather_tet_star(dt, site,
+                          enter_tet_site_star(dt, site, entry, ticketed),
+                          stamps, star);
+          std::sort(star.begin() + std::ptrdiff_t(from), star.end());
+        },
+        tf::checked);
+    return;
   }
-  auto &data = site_cells.data_buffer();
-  data.allocate(std::size_t(offsets[n_sites]));
-  tf::parallel_for_each(
-      tf::make_sequence_range(n_blocks),
-      [&dt, &cells, &counts, &data, n_rows, n_sites](std::size_t b) {
-        auto cursor = counts.begin() + std::ptrdiff_t(b * n_sites);
-        const std::size_t end = std::min(n_rows, (b + 1) * tet_site_cell_block_rows);
-        for (std::size_t row = b * tet_site_cell_block_rows; row < end; ++row) {
-          if (!tet_finite_cell(dt, Index(row)))
-            continue;
-          for (auto corner : cells[row])
-            data[std::size_t(cursor[std::size_t(corner)]++)] = Index(row);
-        }
-      });
+  const auto cells = dt.tets();
+  const std::size_t n_sites = dt.n_sites();
+  sites.allocate(n_sites);
+  tf::parallel_iota(sites, Index(0));
+  using pair_t = std::array<Index, 2>;
+  scatter_tet_records_by_key(
+      n_rows, n_sites,
+      [&dt, &cells](std::size_t row, const auto &emit) {
+        if (!tet_finite_cell(dt, Index(row)))
+          return;
+        for (auto corner : cells[row])
+          emit(pair_t{Index(corner), Index(row)});
+      },
+      [](const pair_t &pair) { return pair[0]; },
+      [](const pair_t &pair) { return pair[1]; }, site_cells.offsets_buffer(),
+      scratch.staged, scratch.counts, site_cells.data_buffer());
+}
+
+/// The cells of `site`, one of the ascending `sites` @ref
+/// state_tet_site_cells stated `site_cells` for.
+template <typename Index>
+auto tet_site_cells_of(const tf::buffer<Index> &sites,
+                       const tf::offset_block_buffer<Index, Index> &site_cells,
+                       Index site) {
+  return site_cells[std::size_t(
+      std::lower_bound(sites.begin(), sites.end(), site) - sites.begin())];
 }
 
 } // namespace tf::topology::cdt::dt3

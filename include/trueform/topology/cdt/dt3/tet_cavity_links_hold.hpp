@@ -20,31 +20,29 @@
 namespace tf::topology::cdt::dt3 {
 
 /// Whether the closed boundary holds the edge `{a, b}`: through the marked
-/// table (`mark_tet_cavity_edges`), or the sorted records past an overflow.
+/// table (`mark_tet_cavity_edges`), or the run of its lower corner past an
+/// overflow.
 template <typename Index>
 auto tet_cavity_links_hold(const tet_cavity_links<Index> &links, Index a,
                            Index b) -> bool {
   const Index lo = a < b ? a : b, hi = a < b ? b : a;
   if (links.overflowed) {
-    const std::array<Index, 3> key{lo, hi, Index(-1)};
-    const auto it = std::lower_bound(
-        links.records.begin(), links.records.end(), key,
-        [](const auto &x, const auto &y) {
-          return x[0] < y[0] || (x[0] == y[0] && x[1] < y[1]);
-        });
-    return it != links.records.end() && (*it)[0] == lo && (*it)[1] == hi;
+    auto record = std::lower_bound(
+        links.records.begin(), links.records.end(), lo,
+        [](const std::array<Index, 3> &x, Index y) { return x[0] < y; });
+    for (; record != links.records.end() && (*record)[0] == lo; ++record)
+      if ((*record)[1] == hi)
+        return true;
+    return false;
   }
   constexpr std::size_t max_local = tet_cavity_links<Index>::max_local;
-  const std::uint32_t generation = links.generation << 8;
-  const std::uint32_t sa = links.local_of_site[tet_cavity_stamp_slot(a)],
-                      sb = links.local_of_site[tet_cavity_stamp_slot(b)];
-  if ((sa & ~std::uint32_t(255)) != generation ||
-      (sb & ~std::uint32_t(255)) != generation)
+  const std::size_t la = links.local_of_site[tet_cavity_stamp_slot(a)],
+                    lb = links.local_of_site[tet_cavity_stamp_slot(b)];
+  if (la >= links.n_local || links.site_of_local[la] != a ||
+      lb >= links.n_local || links.site_of_local[lb] != b)
     return false;
-  const std::uint32_t la = sa & 255u, lb = sb & 255u;
-  const std::uint32_t llo = la < lb ? la : lb, lhi = la < lb ? lb : la;
-  return links.table[std::size_t(llo) * max_local + std::size_t(lhi)] ==
-         tet_cavity_links<Index>::marked;
+  const std::size_t llo = la < lb ? la : lb, lhi = la < lb ? lb : la;
+  return links.table[llo * max_local + lhi] == tet_cavity_links<Index>::marked;
 }
 
 } // namespace tf::topology::cdt::dt3

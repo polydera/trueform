@@ -10,6 +10,8 @@
  *
  * Author: Žiga Sajovic
  */
+#include "uniform_draw.hpp"
+#include "worker_ladder.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/core/none.hpp>
 #include <trueform/core/points.hpp>
@@ -25,39 +27,30 @@
 #include <trueform/topology/cdt/delaunay_execution_policy.hpp>
 #include <trueform/topology/cdt/dt3/append_tetrahedralization_sites.hpp>
 #include <trueform/topology/cdt/dt3/assign_tet_compaction.hpp>
-#include <trueform/topology/cdt/dt3/bootstrap_tet_claims.hpp>
 #include <trueform/topology/cdt/dt3/build_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/check_tetrahedralization_validity.hpp>
 #include <trueform/topology/cdt/dt3/clear_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/clear_tetrahedralization_cells.hpp>
+#include <trueform/topology/cdt/dt3/close_tet_cavity_links.hpp>
 #include <trueform/topology/cdt/dt3/compact_tetrahedralization.hpp>
-#include <trueform/topology/cdt/dt3/discover_claimed_tet_cavity.hpp>
-#include <trueform/topology/cdt/dt3/finish_tet_claims.hpp>
-#include <trueform/topology/cdt/dt3/insert_tet_claim_band.hpp>
 #include <trueform/topology/cdt/dt3/insert_tetrahedralization_site.hpp>
 #include <trueform/topology/cdt/dt3/load_tetrahedralization_sites.hpp>
-#include <trueform/topology/cdt/dt3/locate_claimed_tet.hpp>
-#include <trueform/topology/cdt/dt3/order_tetrahedralization_sites.hpp>
-#include <trueform/topology/cdt/dt3/prepare_appended_tet_sites.hpp>
-#include <trueform/topology/cdt/dt3/tet_owner_view.hpp>
-#include <trueform/topology/cdt/dt3/tet_site_level.hpp>
-#include <trueform/topology/cdt/dt3/tet_site_morton_key.hpp>
 #include <trueform/topology/cdt/dt3/measure_tet_site_domain.hpp>
-#include <trueform/topology/cdt/dt3/prepare_tet_claim_pool.hpp>
-#include <trueform/topology/cdt/dt3/prepare_tet_claim_sites.hpp>
+#include <trueform/topology/cdt/dt3/open_tet_cavity_links.hpp>
+#include <trueform/topology/cdt/dt3/order_tetrahedralization_sites.hpp>
 #include <trueform/topology/cdt/dt3/prepare_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/protect_tet_facets.hpp>
-#include <trueform/topology/cdt/dt3/release_tet_cells.hpp>
 #include <trueform/topology/cdt/dt3/seed_tetrahedralization.hpp>
-#include <trueform/topology/cdt/dt3/open_tet_cavity_links.hpp>
 #include <trueform/topology/cdt/dt3/state_tet_cavity_facet.hpp>
 #include <trueform/topology/cdt/dt3/tet_cavity_links.hpp>
-#include <trueform/topology/cdt/dt3/tet_claim_scratch.hpp>
 #include <trueform/topology/cdt/dt3/tet_claim_workspace.hpp>
 #include <trueform/topology/cdt/dt3/tet_conflicts.hpp>
 #include <trueform/topology/cdt/dt3/tet_execution_tuning.hpp>
 #include <trueform/topology/cdt/dt3/tet_facets.hpp>
 #include <trueform/topology/cdt/dt3/tet_insertion.hpp>
+#include <trueform/topology/cdt/dt3/tet_protected_count.hpp>
+#include <trueform/topology/cdt/dt3/tet_site_level.hpp>
+#include <trueform/topology/cdt/dt3/tet_site_morton_key.hpp>
 #include <trueform/topology/cdt/dt3/tet_site_position.hpp>
 #include <trueform/topology/cdt/dt3/tetrahedralization_owner.hpp>
 #include <trueform/topology/cdt/dt3/weld_tetrahedralization_sites.hpp>
@@ -93,12 +86,11 @@ template <typename Coord>
 auto dt3_random_coordinates(std::uint32_t seed, std::size_t sites, Coord span)
     -> std::vector<Coord> {
   std::mt19937 rng(seed);
-  std::uniform_int_distribution<long long> axis(-(long long)(span),
-                                                (long long)(span));
+  const auto reach = (long long)(span);
   std::vector<Coord> flat;
   flat.reserve(sites * 3);
   for (std::size_t i = 0; i < sites * 3; ++i)
-    flat.push_back(Coord(axis(rng)));
+    flat.push_back(Coord(tf::test::uniform_int(rng, -reach, reach)));
   return flat;
 }
 
@@ -341,7 +333,7 @@ TEST_CASE("delaunay tets: random lattice sites build a valid complex",
 }
 
 TEST_CASE("delaunay tets: the cells are the brute-force Delaunay set",
-          "[topology][delaunay3]") {
+          "[.fuzz][topology][delaunay3]") {
   int compared = 0;
   for (std::uint32_t seed = 0; seed < 12; ++seed) {
     dt3_builder<> dt;
@@ -640,7 +632,7 @@ TEST_CASE("delaunay tets: the cells are the same on any insertion schedule",
     dt3_owner shuffled;
     REQUIRE(
         dt3_build_in_schedule(shuffled, points, [&rng](tf::buffer<int> &order) {
-          std::shuffle(order.begin(), order.end(), rng);
+          tf::test::shuffle(order.begin(), order.end(), rng);
         }));
     CHECK(dt3_owner_cells(shuffled) == reference);
   }
@@ -705,103 +697,122 @@ TEST_CASE("delaunay tets: the order is the levels descending, each in the "
 
 namespace {
 
-template <typename Owner, typename Points>
-auto dt3_forced_parallel_build(Owner &owner, const Points &points,
-                               std::size_t reserve_per_site = 16) -> bool {
-  namespace dt3 = tf::topology::cdt::dt3;
-  using Index = typename Owner::index_type;
-  if (!dt3::prepare_tet_claim_sites(owner, points))
-    return false;
-  REQUIRE(dt3::bootstrap_tet_claims(owner, 0));
-  dt3::tet_claim_workspace<Index> work{};
-  const auto live = owner._corners.size();
-  const auto available = std::size_t(Owner::max_tets) - live;
-  const auto extra =
-      reserve_per_site && tf::topology::cdt::dt3::tet_site_count(owner) >
-                              available / reserve_per_site
-          ? available
-          : tf::topology::cdt::dt3::tet_site_count(owner) * reserve_per_site;
-  dt3::prepare_tet_claim_pool(owner, work, 8, live + extra);
-  dt3::insert_tet_claim_band(owner, work, 0, owner._order.size());
-  return dt3::finish_tet_claims(owner, work);
-}
-
+/// The default policy's complex at every rung of the worker ladder against
+/// the serial policy's: wherever the arena admits the claims, they insert
+/// every site the serial prefix left and change nothing the build publishes.
 template <typename Int, typename Coord>
 auto dt3_check_parallel_coordinates(const std::vector<Coord> &flat) -> void {
-  using Owner =
-      tf::topology::cdt::dt3::tetrahedralization_owner<int, Coord, Int>;
+  using Tuning = tf::topology::cdt::dt3::tet_execution_tuning;
+  REQUIRE(flat.size() / 3 >= Tuning::parallel_sites);
   tf::delaunay_tetrahedralizer<
       int, Coord, Int, tf::topology::cdt::serial_delaunay_execution_policy>
       serial;
   const auto points = dt3_lattice_points(flat);
   REQUIRE(serial.build(points));
   const auto expected = dt3_canonical_cells(serial);
-  Owner owner;
-  for (int workers : {1, 2, 4, 8, 16}) {
+  tf::delaunay_tetrahedralizer<int, Coord, Int> parallel;
+  for (const std::size_t workers : tf::test::worker_ladder({1, 2, 4, 8, 16})) {
     CAPTURE(workers, flat.size());
-    tbb::task_arena arena(workers);
-    REQUIRE(arena.execute(
-        [&] { return dt3_forced_parallel_build(owner, points); }));
-    REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
-    const tf::topology::cdt::dt3::tet_owner_view<Owner> view(owner);
-    CHECK(dt3_canonical_cells(view) == expected);
-    CHECK(dt3_spheres_are_empty<Int>(view));
-    CHECK(owner._stats.parallel_insertions ==
-          tf::topology::cdt::dt3::tet_site_count(owner) - 4);
-    CHECK(owner._stats.parallel_bands > 0);
+    tbb::task_arena arena(static_cast<int>(workers));
+    REQUIRE(arena.execute([&] { return parallel.build(points); }));
+    CHECK(parallel.is_valid());
+    CHECK(dt3_canonical_cells(parallel) == expected);
+    const auto &stats = parallel.stats();
+    CHECK((stats.parallel_insertions > 0) ==
+          (workers >= Tuning::minimum_workers));
+    if (workers >= Tuning::minimum_workers)
+      CHECK(stats.insertions - stats.parallel_insertions <=
+            Tuning::serial_prefix);
+    CHECK(std::equal(serial.index_map().f().begin(),
+                     serial.index_map().f().end(),
+                     parallel.index_map().f().begin()));
   }
 }
 
 } // namespace
 
 TEST_CASE("delaunay tets: parallel claims preserve exact complexes",
-          "[topology][delaunay3][parallel]") {
+          "[.fuzz][topology][delaunay3][parallel]") {
+  const std::size_t sites =
+      tf::topology::cdt::dt3::tet_execution_tuning::parallel_sites;
   for (std::uint32_t seed = 0; seed < 8; ++seed) {
     CAPTURE(seed);
     dt3_check_parallel_coordinates<dt3_i32>(
-        dt3_random_coordinates<dt3_i32>(seed, 40 + seed * 17, 200));
+        dt3_random_coordinates<dt3_i32>(seed, sites + seed * 17, 200));
   }
   dt3_check_parallel_coordinates<dt3_i64>(
-      dt3_random_coordinates<dt3_i64>(42, 100, 1000000000LL));
-  auto scaled = dt3_random_coordinates<dt3_scaled_coord>(43, 100, 1000000000LL);
+      dt3_random_coordinates<dt3_i64>(42, sites, 1000000000LL));
+  auto scaled =
+      dt3_random_coordinates<dt3_scaled_coord>(43, sites, 1000000000LL);
   for (auto &coordinate : scaled)
     coordinate *= 64;
   dt3_check_parallel_coordinates<dt3_i32>(scaled);
 
   std::vector<dt3_i32> grid;
-  for (int x = 0; x < 5; ++x)
-    for (int y = 0; y < 5; ++y)
-      for (int z = 0; z < 5; ++z)
+  for (int x = 0; x < 13; ++x)
+    for (int y = 0; y < 13; ++y)
+      for (int z = 0; z < 13; ++z)
         for (int repeat = 0; repeat < 2; ++repeat)
           grid.insert(grid.end(), {x * 4, y * 4, z * 4});
   dt3_check_parallel_coordinates<dt3_i32>(grid);
 
   std::vector<dt3_i32> faces;
-  for (int i = 0; i < 10; ++i)
-    for (int j = 0; j < 10; ++j)
+  for (int i = 0; i < 38; ++i)
+    for (int j = 0; j < 38; ++j)
       faces.insert(faces.end(),
                    {i * 8, j * 8, 0, i * 8, 0, j * 8, 0, i * 8, j * 8});
   dt3_check_parallel_coordinates<dt3_i32>(faces);
+  if (tf::test::machine_workers() <
+      tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers)
+    SKIP("the claims need minimum_workers");
 }
 
-TEST_CASE("delaunay tets: exhausted pools recover every uninserted site",
+TEST_CASE("delaunay tets: exhausted pools grow at the barrier",
           "[topology][delaunay3][parallel]") {
-  const auto flat = dt3_random_coordinates<dt3_i32>(273, 400, 10000);
-  const auto points = dt3_lattice_points(flat);
-  dt3_builder<> serial;
-  REQUIRE(serial.build(points));
-  for (std::size_t reserve :
-       {std::size_t(0), std::size_t(1), std::size_t(16)}) {
-    CAPTURE(reserve);
-    dt3_owner owner;
-    tbb::task_arena arena(8);
-    REQUIRE(arena.execute(
-        [&] { return dt3_forced_parallel_build(owner, points, reserve); }));
-    CHECK(owner._stats.insertions ==
-          tf::topology::cdt::dt3::tet_site_count(owner) - 4);
-    CHECK(dt3_owner_cells(owner) == dt3_canonical_cells(serial));
-    REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
+  using Tuning = tf::topology::cdt::dt3::tet_execution_tuning;
+  using Serial = tf::delaunay_tetrahedralizer<
+      int, dt3_i32, dt3_i32,
+      tf::topology::cdt::serial_delaunay_execution_policy>;
+  // Sites on the moment curve hold far more cells each than the density
+  // measured before a band: the streams run dry, and the barriers grow
+  // their pools until the bands insert every site past the serial prefix.
+  // Repeated, they reach the parallel cutoff and weld.
+  std::vector<dt3_i32> curve;
+  for (int repeat = 0; repeat < 14; ++repeat)
+    for (int t = 0; t < 300; ++t)
+      curve.insert(curve.end(), {t, t * t, t * t * t});
+  // The same curve inside a cloud: the curve's streams run dry while the
+  // cloud's finish and lend them their rows at the barrier.
+  auto cloud =
+      dt3_random_coordinates<dt3_i32>(273, Tuning::parallel_sites, 10000000);
+  for (int t = 0; t < 300; ++t)
+    cloud.insert(cloud.end(), {t, t * t, t * t * t});
+  for (const bool lent : {false, true}) {
+    const auto points = dt3_lattice_points(lent ? cloud : curve);
+    Serial serial;
+    REQUIRE(serial.build(points));
+    const auto expected = dt3_canonical_cells(serial);
+    for (const std::size_t workers : tf::test::worker_ladder({1, 4, 8, 16})) {
+      CAPTURE(lent, workers);
+      tbb::task_arena arena(static_cast<int>(workers));
+      dt3_builder<> parallel;
+      REQUIRE(arena.execute([&] { return parallel.build(points); }));
+      CHECK(parallel.is_valid());
+      CHECK(dt3_canonical_cells(parallel) == expected);
+      const auto &stats = parallel.stats();
+      CHECK(stats.insertions == parallel.n_sites() - 4);
+      if (workers < Tuning::minimum_workers) {
+        CHECK(stats.parallel_bands == 0);
+        continue;
+      }
+      CHECK(stats.parallel_bands > 0);
+      CHECK(stats.pool_restarts > 0);
+      CHECK(stats.insertions - stats.parallel_insertions <=
+            Tuning::serial_prefix);
+    }
   }
+  if (tf::test::machine_workers() < Tuning::minimum_workers)
+    SKIP("the claims need minimum_workers");
 }
 
 TEST_CASE("delaunay tets: public parallel policy reuses and clears its state",
@@ -815,13 +826,15 @@ TEST_CASE("delaunay tets: public parallel policy reuses and clears its state",
   REQUIRE(serial.build(points));
   const auto expected = dt3_canonical_cells(serial);
   dt3_builder<> parallel;
-  for (int workers : {1, 2, 4, 8, 16}) {
+  for (const std::size_t workers : tf::test::worker_ladder({1, 2, 4, 8, 16})) {
     CAPTURE(workers);
-    tbb::task_arena arena(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
     REQUIRE(arena.execute([&] { return parallel.build(points); }));
     CHECK(parallel.is_valid());
     CHECK(dt3_canonical_cells(parallel) == expected);
-    CHECK((parallel.stats().parallel_bands > 0) == (workers >= 4));
+    CHECK((parallel.stats().parallel_insertions > 0) ==
+          (workers >=
+           tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers));
     CHECK(std::equal(serial.index_map().f().begin(),
                      serial.index_map().f().end(),
                      parallel.index_map().f().begin()));
@@ -842,35 +855,51 @@ TEST_CASE("delaunay tets: public parallel policy reuses and clears its state",
 
 TEST_CASE("delaunay tets: concurrent capacity refusal publishes no cells",
           "[topology][delaunay3][parallel]") {
-  using SmallOwner =
-      tf::topology::cdt::dt3::tetrahedralization_owner<std::int8_t, dt3_i32,
-                                                       dt3_i32>;
-  const auto flat = dt3_random_coordinates<dt3_i32>(121, 60, 10000);
-  SmallOwner owner;
-  tbb::task_arena arena(8);
-  CHECK(!arena.execute([&] {
-    return dt3_forced_parallel_build(owner, dt3_lattice_points(flat));
-  }));
-  CHECK(owner._corners.size() == 0);
-  CHECK(owner._refusal == tf::tetrahedralization_refusal::index_capacity);
+  // A 16-bit index names every input slot but not the cells they make, so
+  // the claims run dry against the cell space and the tail refuses.
+  using Tuning = tf::topology::cdt::dt3::tet_execution_tuning;
+  const auto flat =
+      dt3_random_coordinates<dt3_i32>(121, Tuning::parallel_sites, 10000);
+  const auto points = dt3_lattice_points(flat);
+  tf::delaunay_tetrahedralizer<std::int16_t, dt3_i32> narrow;
+  for (const std::size_t workers : tf::test::worker_ladder({1, 4, 8, 16})) {
+    CAPTURE(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
+    CHECK(!arena.execute([&] { return narrow.build(points); }));
+    CHECK((narrow.stats().parallel_insertions > 0) ==
+          (workers >= Tuning::minimum_workers));
+    CHECK(narrow.n_tets() == 0);
+    CHECK(narrow.refusal() == tf::tetrahedralization_refusal::index_capacity);
+    CHECK(!narrow.is_valid());
+  }
+  if (tf::test::machine_workers() < Tuning::minimum_workers)
+    SKIP("the claims need minimum_workers");
 }
 
 TEST_CASE("delaunay tets: concurrent rows support wide index tickets",
           "[topology][delaunay3][parallel]") {
-  const auto flat = dt3_random_coordinates<dt3_i32>(37, 512, 10000);
+  using Tuning = tf::topology::cdt::dt3::tet_execution_tuning;
+  const auto flat =
+      dt3_random_coordinates<dt3_i32>(37, Tuning::parallel_sites, 10000);
   const auto points = dt3_lattice_points(flat);
-  dt3_builder<> reference;
+  tf::delaunay_tetrahedralizer<
+      int, dt3_i32, dt3_i32,
+      tf::topology::cdt::serial_delaunay_execution_policy>
+      reference;
   REQUIRE(reference.build(points));
-  tf::topology::cdt::dt3::tetrahedralization_owner<std::int64_t, dt3_i32,
-                                                   dt3_i32>
-      owner;
-  tbb::task_arena arena(8);
-  REQUIRE(
-      arena.execute([&] { return dt3_forced_parallel_build(owner, points); }));
-  REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
-  CHECK(dt3_canonical_cells(
-            tf::topology::cdt::dt3::tet_owner_view<decltype(owner)>(owner)) ==
-        dt3_canonical_cells(reference));
+  const auto expected = dt3_canonical_cells(reference);
+  tf::delaunay_tetrahedralizer<std::int64_t, dt3_i32> wide;
+  for (const std::size_t workers : tf::test::worker_ladder({1, 4, 8, 16})) {
+    CAPTURE(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
+    REQUIRE(arena.execute([&] { return wide.build(points); }));
+    CHECK((wide.stats().parallel_insertions > 0) ==
+          (workers >= Tuning::minimum_workers));
+    REQUIRE(wide.is_valid());
+    CHECK(dt3_canonical_cells(wide) == expected);
+  }
+  if (tf::test::machine_workers() < Tuning::minimum_workers)
+    SKIP("the claims need minimum_workers");
 }
 
 namespace {
@@ -889,7 +918,7 @@ auto dt3_rim_with_interior_points(int height) -> std::vector<dt3_i32> {
     append(1, turn * i / 32);
   append(0, 0);
   for (int ring = 0; ring < 3; ++ring) {
-    const int count = 16 << ring;
+    const int count = 256 << ring;
     for (int i = 0; i < count; ++i)
       append((ring + 1) * .3, turn * (i + .25) / count);
   }
@@ -923,60 +952,59 @@ auto dt3_contains_rim_edges(const dt3_owner &owner, int count) -> bool {
 
 TEST_CASE("delaunay tets: curved rims accept successive interior point batches",
           "[topology][delaunay3][parallel][rim-interior]") {
-  namespace dt3 = tf::topology::cdt::dt3;
+  using Tuning = tf::topology::cdt::dt3::tet_execution_tuning;
+  using Serial = tf::delaunay_tetrahedralizer<
+      int, dt3_i32, dt3_i32,
+      tf::topology::cdt::serial_delaunay_execution_policy>;
+  // The centre and each ring is a batch, every one past the append's
+  // parallel cutoff.
+  const std::array<std::size_t, 3> lasts{289, 801, 1825};
   for (int height : {10, 10000}) {
     for (bool distributed : {false, true}) {
       auto flat = dt3_rim_with_interior_points(height);
+      REQUIRE(flat.size() / 3 == lasts.back());
       if (distributed) {
         std::vector<std::array<dt3_i32, 3>> interior;
         for (std::size_t i = 32; i < flat.size() / 3; ++i)
           interior.push_back({flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]});
         std::mt19937 random(731);
-        std::shuffle(interior.begin(), interior.end(), random);
+        tf::test::shuffle(interior.begin(), interior.end(), random);
         for (std::size_t i = 0; i < interior.size(); ++i)
           for (std::size_t k = 0; k < 3; ++k)
             flat[3 * (i + 32) + k] = interior[i][k];
       }
-      for (int workers : {1, 2, 4, 8, 16}) {
+      std::vector<std::vector<std::array<int, 4>>> expected;
+      for (const std::size_t last : lasts) {
+        Serial reference;
+        REQUIRE(reference.build(
+            tf::make_points<3>(tf::make_range(flat.data(), last * 3))));
+        expected.push_back(dt3_named_cells(reference));
+      }
+      for (const std::size_t workers :
+           tf::test::worker_ladder({1, 2, 4, 8, 16})) {
         CAPTURE(height, distributed, workers);
-        dt3_owner owner;
-        const auto rim =
-            tf::make_points<3>(tf::make_range(flat.data(), 32 * 3));
-        REQUIRE(dt3::build_tetrahedralization(owner, rim));
-        REQUIRE(dt3_contains_rim_edges(owner, 32));
+        tbb::task_arena arena(static_cast<int>(workers));
+        dt3_builder<> dt;
+        REQUIRE(
+            dt.build(tf::make_points<3>(tf::make_range(flat.data(), 32 * 3))));
+        REQUIRE(dt3_contains_rim_edges(dt.owner(), 32));
         std::size_t first = 32;
-        tbb::task_arena arena(workers);
-        for (std::size_t last :
-             {std::size_t(49), std::size_t(81), std::size_t(145)}) {
+        for (std::size_t b = 0; b < lasts.size(); ++b) {
+          const std::size_t last = lasts[b];
           CAPTURE(first, last);
-          dt3::tet_claim_workspace<int> work{};
-          std::vector<dt3_owner::site_type> batch;
+          std::vector<dt3_builder<>::site_type> batch;
           for (auto i = first; i < last; ++i)
             batch.push_back(
                 {int(i), {flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]}});
-          REQUIRE(dt3::prepare_appended_tet_sites<false>(owner, batch));
-          std::reverse(owner._order.begin(), owner._order.end());
-          dt3::prepare_tet_claim_pool(owner, work, 2 * std::size_t(workers),
-                                      owner._corners.size() +
-                                          16 * (last - first));
-          const auto inserted = owner._stats.parallel_insertions;
-          REQUIRE(arena.execute([&] {
-            dt3::insert_tet_claim_band(owner, work, 0, owner._order.size());
-            return dt3::finish_tet_claims(owner, work);
-          }));
-          dt3::compact_tetrahedralization(owner);
-          REQUIRE(owner._stats.parallel_insertions - inserted == last - first);
-          REQUIRE(dt3::check_tetrahedralization_validity(owner));
-          CHECK(dt3_contains_rim_edges(owner, 32));
-          const tf::topology::cdt::dt3::tet_owner_view<dt3_owner> view(owner);
-          CHECK(dt3_spheres_are_empty<dt3_i32>(view));
-          tf::delaunay_tetrahedralizer<
-              int, dt3_i32, dt3_i32,
-              tf::topology::cdt::serial_delaunay_execution_policy>
-              reference;
-          REQUIRE(reference.build(
-              tf::make_points<3>(tf::make_range(flat.data(), last * 3))));
-          CHECK(dt3_named_cells(view) == dt3_named_cells(reference));
+          REQUIRE(batch.size() >= Tuning::parallel_append_sites);
+          const auto inserted = dt.stats().parallel_insertions;
+          REQUIRE(arena.execute(
+              [&] { return dt.append_sites(tf::make_range(batch)); }));
+          CHECK((dt.stats().parallel_insertions > inserted) ==
+                (workers >= Tuning::minimum_workers));
+          REQUIRE(dt.is_valid());
+          CHECK(dt3_contains_rim_edges(dt.owner(), 32));
+          CHECK(dt3_named_cells(dt) == expected[b]);
           first = last;
         }
       }
@@ -984,49 +1012,19 @@ TEST_CASE("delaunay tets: curved rims accept successive interior point batches",
   }
 }
 
-TEST_CASE(
-    "delaunay tets: blocked cavities release claims without topology writes",
-    "[topology][delaunay3][parallel]") {
-  namespace dt3 = tf::topology::cdt::dt3;
-  const auto flat = dt3_random_coordinates<dt3_i32>(712, 100, 10000);
-  dt3_owner owner;
-  REQUIRE(dt3::prepare_tet_claim_sites(owner, dt3_lattice_points(flat)));
-  REQUIRE(dt3::bootstrap_tet_claims(owner, 0));
-  dt3::tet_claim_workspace<int> work{};
-  dt3::prepare_tet_claim_pool(owner, work, 2, owner._corners.size());
-  dt3::tet_claim_scratch<int> scratch{};
-  const auto site = owner._order[0];
-  const auto seed = dt3::locate_claimed_tet(owner, work, 0, site, 0, scratch);
-  REQUIRE(seed >= 0);
-  const auto blocker = owner._neighbors[std::size_t(seed)][0];
-  int interfering = -1;
-  REQUIRE(dt3::acquire_tet_cell(work, 1, blocker, interfering));
-  const auto corners = owner._corners;
-  const auto neighbors = owner._neighbors;
-  REQUIRE_FALSE(
-      dt3::discover_claimed_tet_cavity(owner, work, 0, site, seed, scratch));
-  dt3::release_tet_cells(work, 0, scratch.held);
-  for (std::size_t i = 0; i < work.ownership.size(); ++i) {
-    CHECK(work.ownership[i].load() ==
-          (i == std::size_t(blocker) ? 1U : dt3::tet_unowned));
-    for (std::size_t k = 0; k < 4; ++k) {
-      CHECK(owner._corners[i][k] == corners[i][k]);
-      CHECK(owner._neighbors[i][k] == neighbors[i][k]);
-    }
-  }
-}
-
 TEST_CASE("delaunay tets: edge pairing holds on a 64-bit index",
-          "[topology][delaunay3][parallel]") {
+          "[topology][delaunay3]") {
   // The links stamp each site in a dense table sized by the site count,
   // so an index wider than the count changes nothing but the type; the
-  // pairing reads equal edges whatever their corners' order.
+  // pairing reads equal edges whatever their corners' order, and the bytes
+  // an earlier boundary left on the same sites are not read as this one's.
   namespace dt3 = tf::topology::cdt::dt3;
   using Index = std::int64_t;
   dt3::tet_cavity_links<Index> links;
-  links.generation = (std::uint32_t(1) << 24) - 1;
   dt3::open_tet_cavity_links(links, 16);
-  REQUIRE(links.generation == 1);
+  dt3::state_tet_cavity_facet(links, {Index(10), Index(9), Index(8)});
+  dt3::state_tet_cavity_facet(links, {Index(7), Index(2), Index(1)});
+  dt3::open_tet_cavity_links(links, 16);
   dt3::state_tet_cavity_facet(links, {Index(1), Index(2), Index(7)});
   dt3::state_tet_cavity_facet(links, {Index(11), Index(12), Index(8)});
   dt3::state_tet_cavity_facet(links, {Index(2), Index(1), Index(9)});
@@ -1038,6 +1036,65 @@ TEST_CASE("delaunay tets: edge pairing holds on a 64-bit index",
   CHECK(links.across[11] == 5);
   for (std::size_t k : {0, 1, 3, 4, 6, 7, 9, 10})
     CHECK(links.across[k] == -1);
+}
+
+namespace {
+
+// A closed boundary of `ring + 2` vertices: two cones over one ring, the
+// ring's sites first and the apexes after them.
+auto dt3_double_cone(int ring) -> std::vector<std::array<int, 3>> {
+  std::vector<std::array<int, 3>> facets;
+  for (int i = 0; i < ring; ++i) {
+    facets.push_back({ring, i, (i + 1) % ring});
+    facets.push_back({ring + 1, (i + 1) % ring, i});
+  }
+  return facets;
+}
+
+// Per facet-edge `3 * i + e`, the facet-edge across the edge opposite
+// corner `e`, by brute force over the boundary.
+auto dt3_brute_force_across(const std::vector<std::array<int, 3>> &facets)
+    -> std::vector<int> {
+  const auto edge = [&facets](std::size_t x) {
+    const auto &facet = facets[x / 3];
+    const int a = facet[(x % 3 + 1) % 3], b = facet[(x % 3 + 2) % 3];
+    return std::array<int, 2>{std::min(a, b), std::max(a, b)};
+  };
+  std::vector<int> across(3 * facets.size(), -1);
+  for (std::size_t x = 0; x < across.size(); ++x)
+    for (std::size_t y = 0; y < across.size(); ++y)
+      if (x != y && edge(x) == edge(y))
+        across[x] = int(y);
+  return across;
+}
+
+} // namespace
+
+TEST_CASE("delaunay tets: edge pairing holds past the local table",
+          "[topology][delaunay3]") {
+  // A boundary of more vertices than the table names locals for leaves it
+  // and pairs from its sorted records; one within it pairs in the table.
+  // Successive boundaries over the same links, in either order, pair as if
+  // each were the first.
+  namespace dt3 = tf::topology::cdt::dt3;
+  constexpr int big = int(dt3::tet_cavity_links<int>::max_local) + 44;
+  for (const auto &rings :
+       {std::array<int, 3>{100, big, 100}, std::array<int, 3>{big, 100, big}}) {
+    dt3::tet_cavity_links<int> links;
+    for (const int ring : rings) {
+      CAPTURE(ring);
+      const auto facets = dt3_double_cone(ring);
+      dt3::open_tet_cavity_links(links, std::size_t(big + 2));
+      for (const auto &facet : facets)
+        dt3::state_tet_cavity_facet(links, facet);
+      CHECK(links.overflowed ==
+            (std::size_t(ring + 2) > dt3::tet_cavity_links<int>::max_local));
+      dt3::close_tet_cavity_links(links);
+      REQUIRE(links.n_facets == facets.size());
+      const auto expected = dt3_brute_force_across(facets);
+      CHECK(std::equal(expected.begin(), expected.end(), links.across.begin()));
+    }
+  }
 }
 
 TEST_CASE("delaunay tets: input slots refuse before narrowing",
@@ -1079,8 +1136,8 @@ TEST_CASE("delaunay tets compose with tetrahedra geometry views",
 }
 
 TEST_CASE("delaunay tets: admitted append preserves slots and input aliases",
-          "[topology][delaunay3][append]") {
-  for (int workers : {1, 4, 16}) {
+          "[topology][delaunay3][append][parallel]") {
+  for (const std::size_t workers : tf::test::worker_ladder({1, 4, 16})) {
     CAPTURE(workers);
     dt3_builder<> dt;
     std::vector<dt3_builder<>::site_type> sites;
@@ -1095,7 +1152,7 @@ TEST_CASE("delaunay tets: admitted append preserves slots and input aliases",
                                   dt.index_map().f().end());
     std::vector<dt3_builder<>::site_type> old_sites(dt.sites().begin(),
                                                     dt.sites().end());
-    tbb::task_arena arena(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
     std::size_t first = 32;
     for (std::size_t last : {std::size_t(288), std::size_t(625)}) {
       REQUIRE(arena.execute([&] {
@@ -1122,7 +1179,8 @@ TEST_CASE("delaunay tets: admitted append preserves slots and input aliases",
         CHECK(dt3_spheres_are_empty<dt3_i32>(dt));
       first = last;
     }
-    if (workers >= 4)
+    if (workers >=
+        tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers)
       CHECK(dt.stats().parallel_insertions > 0);
     const auto before = dt3_named_cells(dt);
     REQUIRE(dt.append_sites(tf::make_range(sites.data(), std::size_t(0))));
@@ -1169,27 +1227,32 @@ TEST_CASE(
   using Serial = tf::delaunay_tetrahedralizer<
       int, dt3_i32, dt3_i32,
       tf::topology::cdt::serial_delaunay_execution_policy>;
-  for (int count : {4095, 4096, 4097}) {
+  using Tuning = tf::topology::cdt::dt3::tet_execution_tuning;
+  for (std::size_t count : {Tuning::parallel_sites - 1, Tuning::parallel_sites,
+                            Tuning::parallel_sites + 1}) {
     CAPTURE(count);
     const auto flat = dt3_random_coordinates<dt3_i32>(731, count, 100000);
     const auto points = dt3_lattice_points(flat);
     Serial serial;
     REQUIRE(serial.build(points));
     const auto expected = dt3_canonical_cells(serial);
-    for (int workers : {1, 4, 16}) {
+    for (const std::size_t workers : tf::test::worker_ladder({1, 4, 16})) {
       CAPTURE(workers);
-      tbb::task_arena arena(workers);
+      tbb::task_arena arena(static_cast<int>(workers));
       dt3_builder<> parallel;
       REQUIRE(arena.execute([&] { return parallel.build(points); }));
       CHECK(parallel.is_valid());
       CHECK(dt3_canonical_cells(parallel) == expected);
-      CHECK((parallel.stats().parallel_bands > 0) ==
-            (count >= 4096 && workers >= 4));
+      CHECK((parallel.stats().parallel_insertions > 0) ==
+            (count >= Tuning::parallel_sites &&
+             workers >= Tuning::minimum_workers));
       CHECK(std::equal(serial.index_map().f().begin(),
                        serial.index_map().f().end(),
                        parallel.index_map().f().begin()));
     }
   }
+  if (tf::test::machine_workers() < Tuning::minimum_workers)
+    SKIP("the claims need minimum_workers");
 }
 
 namespace {
@@ -1211,7 +1274,7 @@ auto dt3_published_stream(const Builder &dt) -> std::vector<int> {
 } // namespace
 
 TEST_CASE("delaunay tets: the published stream is one at any worker count",
-          "[topology][delaunay3][parallel][determinism]") {
+          "[.fuzz][topology][delaunay3][parallel][determinism]") {
   using Serial = tf::delaunay_tetrahedralizer<
       int, dt3_i32, dt3_i32,
       tf::topology::cdt::serial_delaunay_execution_policy>;
@@ -1228,12 +1291,14 @@ TEST_CASE("delaunay tets: the published stream is one at any worker count",
     Serial serial;
     REQUIRE(serial.build(points));
     const auto expected = dt3_published_stream(serial);
-    for (int workers : {1, 2, 4, 16}) {
+    for (const std::size_t workers : tf::test::worker_ladder({1, 2, 4, 16})) {
       CAPTURE(flat.size(), workers);
-      tbb::task_arena arena(workers);
+      tbb::task_arena arena(static_cast<int>(workers));
       dt3_builder<> parallel;
       REQUIRE(arena.execute([&] { return parallel.build(points); }));
-      CHECK((parallel.stats().parallel_bands > 0) == (workers >= 4));
+      CHECK((parallel.stats().parallel_insertions > 0) ==
+            (workers >=
+             tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers));
       CHECK(dt3_published_stream(parallel) == expected);
     }
   }
@@ -1249,16 +1314,21 @@ TEST_CASE("delaunay tets: the published stream is one at any worker count",
   REQUIRE(serial.build(initial));
   REQUIRE(serial.append_sites(appended));
   const auto expected = dt3_published_stream(serial);
-  for (int workers : {1, 2, 4, 16}) {
+  for (const std::size_t workers : tf::test::worker_ladder({1, 2, 4, 16})) {
     CAPTURE(workers);
-    tbb::task_arena arena(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
     dt3_builder<> parallel;
     REQUIRE(arena.execute([&] {
       return parallel.build(initial) && parallel.append_sites(appended);
     }));
-    CHECK((parallel.stats().parallel_insertions > 0) == (workers >= 4));
+    CHECK((parallel.stats().parallel_insertions > 0) ==
+          (workers >=
+           tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers));
     CHECK(dt3_published_stream(parallel) == expected);
   }
+  if (tf::test::machine_workers() <
+      tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers)
+    SKIP("the claims need minimum_workers");
 }
 
 namespace {
@@ -1460,7 +1530,7 @@ TEST_CASE("delaunay tets: a protected facet the cavity never reaches changes "
   dt3_owner barred;
   dt3_barrier_build(barred, found.flat);
   dt3::protect_tet_facets(barred, std::vector<std::array<int, 3>>{absent});
-  REQUIRE(barred._n_protected == 1);
+  REQUIRE(dt3::tet_protected_count(barred) == 1);
   REQUIRE(dt3::append_tetrahedralization_sites<false>(
       barred, tf::make_range(sites), serial));
   dt3::compact_tetrahedralization<false, true>(barred);
@@ -1486,14 +1556,14 @@ TEST_CASE("delaunay tets: a protected lane appends serially and keeps its "
   }
   REQUIRE(sites.size() >= dt3::tet_execution_tuning::parallel_append_sites);
   std::vector<int> expected;
-  for (int workers : {1, 4, 8}) {
+  for (const std::size_t workers : tf::test::worker_ladder({1, 4, 8})) {
     CAPTURE(workers);
     dt3_owner owner;
     dt3_barrier_build(owner, found.flat);
     dt3::protect_tet_facets(owner,
                             std::vector<std::array<int, 3>>{found.facet});
     dt3::tet_claim_workspace<int> work{};
-    tbb::task_arena arena(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
     REQUIRE(arena.execute([&] {
       return dt3::append_tetrahedralization_sites<true>(
           owner, tf::make_range(sites), work);

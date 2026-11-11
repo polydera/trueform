@@ -11,52 +11,47 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../tet_entry_cell.hpp"
 #include "../tet_facets.hpp"
 #include "../tet_finite_cell.hpp"
 #include "../tet_orient3d_sites.hpp"
 #include "../tet_position.hpp"
+#include "../tet_protected_count.hpp"
+#include "../walk_straight_tet.hpp"
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
 /// A finite cell of the complex whose closed volume holds the position `p`,
-/// walking from the cell `from` across a facet `p` lies strictly beyond;
-/// `k_none` when `p` lies beyond the hull. A walk from a row it may not enter,
-/// or one that outlasts the cell count, reads the finite cells in row order
-/// instead.
+/// walking from the cell `from`, a row it may not enter replaced by the
+/// owner's entry cell; `k_none` when `p` lies beyond the hull. On a Delaunay
+/// complex the walk steps across a facet `p` lies strictly beyond; otherwise
+/// it follows the segment to `p` (@ref walk_straight_tet), which ends in any
+/// triangulation.
 template <typename DT>
 auto walk_to_tet_point(const DT &dt,
                        const tet_position<typename DT::coord_type> &p,
                        typename DT::index_type from) ->
     typename DT::index_type {
-  using Index = typename DT::index_type;
   const auto &owner = dt.owner();
+  auto cell = tet_finite_cell(dt, from) ? from : tet_entry_cell(dt);
+  if (!(tet_protected_count(owner) == 0 && owner._delaunay)) {
+    cell = walk_straight_tet(owner, p, cell);
+    return tet_finite_cell(dt, cell) ? cell : DT::k_none;
+  }
   const auto cells = dt.tets();
   const auto neighbors = dt.neighbors();
-  const auto beyond = [&owner, &cells, &p](std::size_t cell, std::size_t j) {
-    const auto face = tet_facet(cells[cell], j);
+  const auto beyond = [&owner, &cells, &p](std::size_t at, std::size_t j) {
+    const auto face = tet_facet(cells[at], j);
     return tet_orient3d_toward(owner, face[0], face[1], face[2], p) > 0;
   };
-  Index cell = tet_finite_cell(dt, from) ? from : tet_entry_cell(dt);
-  for (std::size_t step = 0; tet_finite_cell(dt, cell) && step <= cells.size();
-       ++step) {
+  while (cell != DT::k_none && tet_finite_cell(dt, cell)) {
     std::size_t j = 0;
     while (j < 4 && !beyond(std::size_t(cell), j))
       ++j;
     if (j == 4)
       return cell;
     cell = neighbors[std::size_t(cell)][j];
-    if (cell == DT::k_none)
-      return DT::k_none;
-  }
-  for (std::size_t c = 0; c < cells.size(); ++c) {
-    if (!tet_finite_cell(dt, Index(c)))
-      continue;
-    std::size_t j = 0;
-    while (j < 4 && !beyond(c, j))
-      ++j;
-    if (j == 4)
-      return Index(c);
   }
   return DT::k_none;
 }

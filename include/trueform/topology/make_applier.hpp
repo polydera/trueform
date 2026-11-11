@@ -15,6 +15,8 @@
 #include "../core/range.hpp"
 #include "./face_link_like.hpp"
 #include "./manifold_edge_link_like.hpp"
+#include "./manifold_facet_link_like.hpp"
+#include "./tet_link_like.hpp"
 #include "./vertex_link_like.hpp"
 
 namespace tf {
@@ -68,6 +70,42 @@ auto make_applier(const tf::manifold_edge_link_like<Policy> &link) {
     for (const auto &he : link[id])
       if (he.is_simple())
         f(he.face_peer);
+  };
+}
+
+/// @ingroup topology_components
+/// @brief Create an applier from a tet link structure.
+///
+/// Returns a function that iterates over the tets sharing a facet,
+/// suitable for use with @ref tf::label_connected_components().
+///
+/// @tparam Policy The tet link policy type.
+/// @param link The tet link structure.
+/// @return An applier function.
+template <typename Policy>
+auto make_applier(const tf::tet_link_like<Policy> &link) {
+  return [link = tf::make_range(link)](auto id, const auto &f) {
+    for (auto n_id : link[id])
+      f(n_id);
+  };
+}
+
+/// @ingroup topology_components
+/// @brief Create an applier from a manifold facet link structure.
+///
+/// Returns a function that iterates over simple (manifold) facet neighbors,
+/// suitable for use with @ref tf::label_connected_components().
+/// Non-manifold and boundary facets are skipped.
+///
+/// @tparam Policy The manifold facet link policy type.
+/// @param link The manifold facet link structure.
+/// @return An applier function.
+template <typename Policy>
+auto make_applier(const tf::manifold_facet_link_like<Policy> &link) {
+  return [link = tf::make_range(link)](auto id, const auto &f) {
+    for (const auto &peer : link[id])
+      if (peer.is_simple())
+        f(peer.tet_peer);
   };
 }
 } // namespace tf

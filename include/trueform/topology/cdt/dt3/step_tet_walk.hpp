@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/inline.hpp"
 #include "./tet_facets.hpp"
 #include "./tet_orient3d_sites.hpp"
 #include <cstddef>
@@ -22,10 +23,10 @@ namespace tf::topology::cdt::dt3 {
 /// facets included, or in a hull cell that sees it. The facet shared with
 /// `from`, the cell the walk arrived from, already has it on its inner side.
 template <typename Owner>
-auto step_tet_walk(const Owner &owner, typename Owner::index_type tet,
-                   typename Owner::index_type from,
-                   typename Owner::index_type site) ->
-    typename Owner::index_type {
+TF_FORCE_INLINE auto
+step_tet_walk(const Owner &owner, typename Owner::index_type tet,
+              typename Owner::index_type from, typename Owner::index_type site)
+    -> typename Owner::index_type {
   const auto corners = owner._corners[std::size_t(tet)];
   const auto neighbors = owner._neighbors[std::size_t(tet)];
   if (corners[3] == Owner::infinite)

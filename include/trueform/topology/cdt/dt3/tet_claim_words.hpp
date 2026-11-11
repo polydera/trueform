@@ -15,8 +15,10 @@
 #include "../../../core/checked.hpp"
 #include "../../../core/memory.hpp"
 #include "../../../core/range.hpp"
+#include "../../../core/views/drop.hpp"
 #include "../../../core/views/sequence_range.hpp"
 #include "./tet_claim_word.hpp"
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <memory>
@@ -24,7 +26,9 @@
 
 namespace tf::topology::cdt::dt3 {
 
-/// One claim word per cell row. `tf::allocate` returns raw storage, not live
+/// One claim word per carrier: a cell row the build's streams claim, or a
+/// site or segment the smallest facet naming it claims
+/// (@ref make_tet_first_facet_patches). `tf::allocate` returns raw storage, not live
 /// atomics, so every word is placement-constructed when the storage is
 /// sized, and a copy constructs its words from the source's values.
 class tet_claim_words {
@@ -52,10 +56,26 @@ public:
   }
 
   auto allocate_and_initialize(std::size_t n, tet_claim_word value) -> void {
-    reserve(n);
+    reset(n);
     _size = n;
     tf::parallel_for_each(
         words(),
+        [value](std::atomic<tet_claim_word> &word) {
+          ::new (static_cast<void *>(&word)) std::atomic<tet_claim_word>(value);
+        },
+        tf::checked);
+  }
+
+  /// Size the lane to `n`, keeping the first words and constructing the
+  /// appended ones as `value`; capacity grows geometrically, so a lane grown
+  /// round by round moves each word a bounded number of times.
+  auto reallocate_and_initialize(std::size_t n, tet_claim_word value) -> void {
+    const std::size_t kept = std::min(_size, n);
+    if (n > _capacity)
+      reserve(std::max(n, 2 * _capacity));
+    _size = n;
+    tf::parallel_for_each(
+        tf::drop(words(), kept),
         [value](std::atomic<tet_claim_word> &word) {
           ::new (static_cast<void *>(&word)) std::atomic<tet_claim_word>(value);
         },
@@ -70,6 +90,25 @@ public:
     return _words[i];
   }
 
+  /// Grow the capacity to `n`, keeping the words.
+  auto reserve(std::size_t n) -> void {
+    if (n <= _capacity)
+      return;
+    std::unique_ptr<std::atomic<tet_claim_word>[], words_deleter> words(
+        tf::allocate<std::atomic<tet_claim_word>>(n));
+    auto *from = _words.get();
+    auto *to = words.get();
+    tf::parallel_for_each(
+        tf::make_sequence_range(_size),
+        [from, to](std::size_t i) {
+          ::new (static_cast<void *>(&to[i])) std::atomic<tet_claim_word>(
+              from[i].load(std::memory_order_relaxed));
+        },
+        tf::checked);
+    _words = std::move(words);
+    _capacity = n;
+  }
+
   auto size() const -> std::size_t { return _size; }
 
   auto clear() -> void { _size = 0; }
@@ -79,7 +118,7 @@ private:
     return tf::make_range(_words.get(), _size);
   }
 
-  auto reserve(std::size_t n) -> void {
+  auto reset(std::size_t n) -> void {
     if (n <= _capacity)
       return;
     _words.reset(tf::allocate<std::atomic<tet_claim_word>>(n));
@@ -87,7 +126,7 @@ private:
   }
 
   auto copy_from(const tet_claim_words &other) -> void {
-    reserve(other._size);
+    reset(other._size);
     _size = other._size;
     tf::parallel_for_each(
         tf::make_sequence_range(_size),

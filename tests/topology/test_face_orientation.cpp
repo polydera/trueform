@@ -12,6 +12,7 @@
 
 #include "topology_generators.hpp"
 #include "type_traits.hpp"
+#include "uniform_draw.hpp"
 #include <algorithm>
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -240,13 +241,12 @@ TEMPLATE_TEST_CASE("orient_faces_consistently_random_flip_patterns",
     using real_t = typename TestType::real_type;
 
     std::mt19937 rng(20260902u);
-    std::bernoulli_distribution flip(0.5);
 
     for (int trial = 0; trial < 50; ++trial) {
         auto mesh = tf::make_box_mesh<index_t>(real_t(2), real_t(2), real_t(2));
         for (std::size_t f = 0; f < mesh.faces().size(); ++f)
-            if (flip(rng))
-                reverse_face(mesh, f);
+          if (tf::test::uniform_coin(rng, 0.5))
+            reverse_face(mesh, f);
 
         const auto vertex_sets = face_vertex_sets(mesh);
         REQUIRE(tf::orient_faces_consistently(mesh.polygons()));
@@ -258,8 +258,8 @@ TEMPLATE_TEST_CASE("orient_faces_consistently_random_flip_patterns",
         tf::make_sphere_mesh<index_t>(real_t(1), index_t(16), index_t(24));
     REQUIRE(sphere.faces().size() == 720);
     for (std::size_t f = 0; f < sphere.faces().size(); ++f)
-        if (flip(rng))
-            reverse_face(sphere, f);
+      if (tf::test::uniform_coin(rng, 0.5))
+        reverse_face(sphere, f);
 
     const auto sphere_vertex_sets = face_vertex_sets(sphere);
     REQUIRE(count_doubly_directed_edges(sphere) > 0);
@@ -371,10 +371,9 @@ TEMPLATE_TEST_CASE("orient_faces_consistently_repairs_orientable_components",
                               real_t(1), index_t(6), index_t(8)));
 
     std::mt19937 rng(20260902u);
-    std::bernoulli_distribution flip(0.5);
     for (std::size_t f = moebius_faces; f < mesh.faces().size(); ++f)
-        if (flip(rng))
-            reverse_face(mesh, f);
+      if (tf::test::uniform_coin(rng, 0.5))
+        reverse_face(mesh, f);
 
     const auto before = face_windings(mesh);
     const auto vertex_sets = face_vertex_sets(mesh);

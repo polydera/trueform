@@ -15,9 +15,10 @@
 
 namespace tf::topology::cdt::dt3 {
 
+/// Drop what one run of insertions holds. The claim words stand beside the
+/// rows across runs, every word released; a build drops them with its cells.
 template <typename Index>
 auto clear_tet_claim_workspace(tet_claim_workspace<Index> &work) -> void {
-  work.ownership.clear();
   work.free_next.clear();
   work.tail.clear();
   work.streams.clear();

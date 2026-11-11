@@ -11,9 +11,9 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/config/verify.hpp"
 #include "./constrained_delaunay_face_edges.hpp"
 #include <array>
-#include <cassert>
 #include <cstddef>
 
 namespace tf::topology::cdt {
@@ -23,9 +23,13 @@ auto for_each_constrained_delaunay_face(const Owner &owner, F &&function)
     -> void {
   using Index = typename Owner::index_type;
   const auto &labels = owner._region_labels;
-  assert(labels.size() == std::size_t(owner._faces.size()));
-  assert(owner._first_edge_of_triangle.size() ==
-         std::size_t(owner._faces.size()));
+  if constexpr (tf::core::verification)
+    tf::core::verify(labels.size() == std::size_t(owner._faces.size()),
+                     "a region label stands per face");
+  if constexpr (tf::core::verification)
+    tf::core::verify(owner._first_edge_of_triangle.size() ==
+                         std::size_t(owner._faces.size()),
+                     "a first edge stands per face");
   const auto neighbor = [&](Index edge) {
     return owner._triangle_of_edge[std::size_t(Owner::opposite(edge))];
   };

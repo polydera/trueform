@@ -19,7 +19,10 @@ namespace tf::topology::cdt::dt3 {
 enum class tet_face_status : std::uint8_t {
   pending,   ///< Still due; never published.
   recovered, ///< The lane facets it owns tile it.
-  refused    ///< A rim segment refused, a segment pierces it, a point had no place, or an edge piercing it could be neither flipped nor cut away.
+  refused,   ///< A rim segment refused, a segment pierces it, a point had no
+             ///< place, or an edge piercing it could be neither flipped nor cut
+             ///< away.
+  retired    ///< Replaced by the faces a cut of it states; it holds no facet.
 };
 
 } // namespace tf::topology::cdt::dt3

@@ -12,21 +12,18 @@
  */
 #pragma once
 #include "./meet_tet_subsegment.hpp"
-#include <algorithm>
-#include <array>
+#include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
-/// Read row `k` of the complex `dt` against the cells `star` around its
+/// Read the row `row` of the complex `dt` against the cells `star` around its
 /// first end, reached at the cell `hint`, which the row keeps as its next
-/// hint: present when its second end is a corner of the star and no
-/// redirect, `redirected` sorted, reads it encroached; a missing row reads
-/// what it meets along the cells it pierces (@ref meet_tet_subsegment).
+/// hint: present when its second end is a corner of the star; a missing row
+/// reads what it meets along the cells it pierces (@ref meet_tet_subsegment).
 template <typename DT, typename Star, typename Row, typename Index,
-          typename Redirected, typename Query>
-auto read_tet_subsegment(const DT &dt, const Star &star, Row &row, Index k,
-                         Index hint, const Redirected &redirected, Query &query)
-    -> void {
+          typename Query>
+auto read_tet_subsegment(const DT &dt, const Star &star, Row &row, Index hint,
+                         Query &query) -> void {
   const auto cells = dt.tets();
   query.on = Index(-1);
   query.encroacher = Index(-1);
@@ -35,15 +32,11 @@ auto read_tet_subsegment(const DT &dt, const Star &star, Row &row, Index k,
   row.hint = hint;
   query.present = false;
   query.encroached = false;
-  for (auto cell : star)
-    for (auto corner : cells[std::size_t(cell)])
+  for (auto at = star.begin(); at != star.end() && !query.present; ++at)
+    for (auto corner : cells[std::size_t(*at)])
       query.present = query.present || corner == row.b;
-  if (query.present) {
-    query.encroached = std::binary_search(redirected.begin(), redirected.end(),
-                                          std::array<Index, 2>{k, row.b});
-    query.present = !query.encroached;
+  if (query.present)
     return;
-  }
   meet_tet_subsegment(dt, star, row, query);
 }
 

@@ -14,6 +14,7 @@
 #include "../../core/algorithm/make_equivalence_class_map.hpp"
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/config/parallel_workers.hpp"
 #include "../../core/hash_set.hpp"
 #include "../../core/local_buffer.hpp"
 #include "../../core/memory.hpp"
@@ -83,8 +84,7 @@ private:
   template <typename Range, typename F>
   auto run_propagation(const Range &mask, const F &applier) -> label_t {
     std::atomic<label_t> current_label{0};
-    auto n_tasks =
-        std::max(Index(1), Index(tbb::this_task_arena::max_concurrency() - 1));
+    auto n_tasks = std::max(Index(1), Index(tf::core::parallel_workers() - 1));
     if (n_tasks != 1)
       n_tasks *= 5;
     auto size = Index(mask.size());

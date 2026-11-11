@@ -13,6 +13,7 @@
 #pragma once
 #include "../../core/algorithm/parallel_for_each.hpp"
 #include "../../core/buffer.hpp"
+#include "../../core/config/parallel_workers.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "./atomic_half_edge_arena.hpp"
 #include "./build_divide_and_conquer.hpp"
@@ -22,7 +23,6 @@
 #include "./sort_parallel_fallback_leaves.hpp"
 #include <algorithm>
 #include <cstddef>
-#include <tbb/task_arena.h>
 #include <utility>
 
 namespace tf::topology::cdt {
@@ -37,8 +37,8 @@ auto build_divide_and_conquer_parallel(
     Orient orient, Incircle incircle, std::size_t darts_per_site,
     tf::buffer<delaunay_partition_node<Index>> &nodes,
     tf::buffer<std::size_t> &leaves) -> delaunay_build_result<Index> {
-  const std::size_t concurrency = std::max(
-      std::size_t(1), std::size_t(tbb::this_task_arena::max_concurrency()));
+  const std::size_t concurrency =
+      std::max(std::size_t(1), tf::core::parallel_workers());
   if (points.size() < delaunay_execution_tuning::parallel_topology_sites ||
       concurrency < 2) {
     sort_parallel_fallback_leaves(points, keys);

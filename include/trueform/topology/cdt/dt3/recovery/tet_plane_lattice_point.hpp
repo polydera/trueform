@@ -48,11 +48,11 @@ auto tet_plane_lattice_point(
   using v2 = std::array<T2, 3>;
   using p2 = std::array<T2, 2>;
   const auto &plane = facet[0];
-  const auto &a = sites[std::size_t(plane[0])].pt;
-  const auto &b = sites[std::size_t(plane[1])].pt;
-  const auto &c = sites[std::size_t(plane[2])].pt;
-  const auto &pd = sites[std::size_t(d)].pt;
-  const auto &pe = sites[std::size_t(e)].pt;
+  const auto a = sites[std::size_t(plane[0])].pt;
+  const auto b = sites[std::size_t(plane[1])].pt;
+  const auto c = sites[std::size_t(plane[2])].pt;
+  const auto pd = sites[std::size_t(d)].pt;
+  const auto pe = sites[std::size_t(e)].pt;
   const auto abs2 = [](const T2 &x) { return x < T2(0) ? -x : x; };
   const auto gcd2 = [&abs2](T2 x, T2 y) {
     x = abs2(x);
@@ -182,14 +182,19 @@ auto tet_plane_lattice_point(
   };
   const p2 s1 = project(u1), s2 = project(u2);
   const T2 det = cross2(s1, s2);
-  T3 low = tau, high = tau;
+  // the lines the facet spans; a crossing outside them starts the scan at
+  // the nearest, since every line between holds no point of the facet
+  T3 low{}, high{};
+  bool spanned = false;
   for (const auto &triangle : facet)
     for (std::size_t k = 0; k < 3; ++k) {
       const T3 j(cross2(s1, from(origin, corner(std::size_t(triangle[k])))) /
                  det);
-      low = j < low ? j : low;
-      high = j > high ? j : high;
+      low = spanned && low < j ? low : j;
+      high = spanned && high > j ? high : j;
+      spanned = true;
     }
+  const T3 start = tau < low ? low : tau > high ? high : tau;
   const T3 along = dot3(num, u1);
   const T3 skew = T3(den) * dot(u1, u2);
   const T3 length = T3(den) * dot(u1, u1);
@@ -248,8 +253,8 @@ auto tet_plane_lattice_point(
     }
     return found && state(best, j);
   };
-  for (T3 k(0); tau + k <= high || tau - k >= low; k = k + T3(1)) {
-    const T3 next = tau + k * step, back = tau - k * step;
+  for (T3 k(0); start + k <= high || start - k >= low; k = k + T3(1)) {
+    const T3 next = start + k * step, back = start - k * step;
     if (next >= low && next <= high && line(next))
       return true;
     if (k != T3(0) && back >= low && back <= high && line(back))

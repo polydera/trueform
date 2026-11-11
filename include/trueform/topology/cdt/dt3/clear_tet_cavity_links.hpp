@@ -25,7 +25,6 @@ auto clear_tet_cavity_links(tet_cavity_links<Index> &links) -> void {
   links.records.clear();
   links.local_of_site.clear();
   std::fill(links.table.begin(), links.table.end(), Index(-1));
-  links.generation = 0;
   links.n_local = 0;
   links.overflowed = false;
   links.pending = false;

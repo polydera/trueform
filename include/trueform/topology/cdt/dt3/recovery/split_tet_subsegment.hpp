@@ -25,9 +25,11 @@ auto split_tet_subsegment(tet_segment_recovery<Index, Coord> &recovery, Index k,
     -> void {
   auto &row = recovery.subsegments[std::size_t(k)];
   recovery.subsegments[std::size_t(next)] = {
-      row.segment, site, row.b, numerator, row.n1, row.hint, row.halvings + 1};
+      row.segment, site,   row.b,    row.next,
+      numerator,   row.n1, row.hint, row.halvings + 1};
   recovery.proposed[std::size_t(next)] = Index(-1);
   row.b = site;
+  row.next = next;
   row.n1 = numerator;
   ++row.halvings;
   auto &last = recovery.last[std::size_t(row.segment)];

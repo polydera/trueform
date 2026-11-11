@@ -12,12 +12,12 @@
  */
 #pragma once
 #include "../../core/algorithm/parallel_for_each.hpp"
+#include "../../core/config/parallel_workers.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "./delaunay_execution_tuning.hpp"
 #include "./is_owned_constrained_delaunay_face.hpp"
 #include <algorithm>
 #include <cstddef>
-#include <tbb/task_arena.h>
 
 namespace tf::topology::cdt {
 
@@ -27,7 +27,7 @@ auto materialize_constrained_delaunay_faces_parallel(Owner &owner,
     -> bool {
   using Index = typename Owner::index_type;
   if (n_darts < delaunay_execution_tuning::parallel_face_darts ||
-      tbb::this_task_arena::max_concurrency() < 2)
+      tf::core::parallel_workers() < 2)
     return false;
 
   const std::size_t chunk_count =

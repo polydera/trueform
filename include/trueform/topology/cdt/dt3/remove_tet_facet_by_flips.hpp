@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/verify.hpp"
 #include "./flip_tet_facet.hpp"
 #include "./remove_tet_edge_by_flips.hpp"
 #include "./tet_edge_ref.hpp"
@@ -18,7 +19,6 @@
 #include "./tet_flip_constraints.hpp"
 #include "./tet_flip_scratch.hpp"
 #include "./tet_orient3d_sites.hpp"
-#include <cassert>
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
@@ -37,6 +37,8 @@ auto remove_tet_facet_by_flips(
                                typename Owner::int_type> &fc,
     const IsSegment &is_segment) -> bool {
   using Index = typename Owner::index_type;
+  if (scratch.round.stopped)
+    return false;
   if (tet_facet_is_protected(owner, face.cell, tet_edge_oppo(face)))
     return false;
   const auto below = [&owner](Index w, Index x, Index y, Index z) {
@@ -45,7 +47,9 @@ auto remove_tet_facet_by_flips(
   const auto c = tet_edge_corners(owner, face);
   const Index pa = c[0], pb = c[1], pc = c[2], pd = c[3];
   const Index pe = tet_edge_corners(owner, tet_edge_across(owner, face))[3];
-  assert(pd != Owner::infinite && pe != Owner::infinite);
+  if constexpr (tf::core::verification)
+    tf::core::verify(pd != Owner::infinite && pe != Owner::infinite,
+                     "a facet removed by flips has two finite apexes");
   tet_edge_ref<Index> flipedge = face;
   bool reducible = false;
   if (below(pa, pb, pd, pe) > 0) {
@@ -58,8 +62,11 @@ auto remove_tet_facet_by_flips(
       flipedge = tet_edge_turn(face);
   }
   if (reducible) {
-    const auto rows = flip_tet_facet(owner, face.cell, tet_edge_oppo(face));
-    tet_ring_fresh(scratch, rows);
+    const auto rows =
+        flip_tet_facet(owner, face.cell, tet_edge_oppo(face), scratch.round);
+    if (scratch.round.stopped)
+      return false;
+    tet_ring_fresh(owner, scratch, rows);
     return true;
   }
   return remove_tet_edge_by_flips(owner, scratch, flipedge, fc, is_segment) ==

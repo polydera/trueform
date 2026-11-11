@@ -13,6 +13,7 @@
 #pragma once
 #include <algorithm>
 #include <array>
+#include <type_traits>
 #include <utility>
 
 namespace tf::topology::cdt::dt3 {
@@ -29,9 +30,9 @@ auto tet_shared_owners(const Owner &owner,
       [](const auto &x, const auto &y) {
         if constexpr (std::is_same_v<std::decay_t<decltype(x)>,
                                      std::array<typename Owner::index_type, 3>>)
-          return x < y.first;
+          return x < y.key;
         else
-          return x.first < y;
+          return x.key < y;
       });
 }
 

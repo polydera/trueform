@@ -13,6 +13,7 @@
 #pragma once
 #include "../../../../exact/meta.hpp"
 #include "../../../../exact/vertex.hpp"
+#include "../../../../core/config/verify.hpp"
 #include "./tet_orient2d_sign.hpp"
 #include <cstddef>
 
@@ -34,8 +35,11 @@ auto tet_site_on_segment(const tf::exact::pt3<Coord> &a,
                                tf::exact::pt2<Coord>{p[i], p[j]}))
       return false;
   }
+  if constexpr (tf::core::verification)
+    tf::core::verify(a[0] != b[0] || a[1] != b[1] || a[2] != b[2],
+                     "a segment's ends are distinct sites");
   std::size_t axis = 0;
-  while (a[axis] == b[axis])
+  while (axis < 2 && a[axis] == b[axis])
     ++axis;
   const T1 span = T1(b[axis]) - a[axis], along = T1(p[axis]) - a[axis];
   return span > T1(0) ? T1(0) < along && along < span

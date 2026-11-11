@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/verify.hpp"
 #include "../../../core/small_vector.hpp"
 #include "./state_tet_facet_protection.hpp"
 #include "./tet_edge_ref.hpp"
@@ -18,10 +19,11 @@
 #include "./tet_facet_key.hpp"
 #include "./tet_facets.hpp"
 #include "./tet_orient3d_sites.hpp"
+#include "./admitted_tet_edge.hpp"
+#include "./tet_round_state.hpp"
 #include "./write_tet.hpp"
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 
@@ -46,9 +48,14 @@ template <typename Owner>
 auto flip_tet_quad(Owner &owner,
                    const std::array<tet_edge_ref<typename Owner::index_type>, 4>
                        &ring,
-                   std::size_t at)
+                   std::size_t at,
+                   tet_round_state<typename Owner::index_type> &round)
     -> std::array<typename Owner::index_type, 4> {
   using Index = typename Owner::index_type;
+  for (const auto &at4 : ring)
+    if (!admit_tet_flip_closure(owner, round, at4.cell))
+      return {Owner::none, Owner::none, Owner::none, Owner::none};
+  owner._canonical = false;
   using key_t = std::array<Index, 3>;
   struct carried {
     key_t key;
@@ -72,20 +79,24 @@ auto flip_tet_quad(Owner &owner,
         std::swap(m[2], m[3]);
       const Index inside = c == Owner::infinite ? f : c;
       const int o = tet_orient3d_sites(owner, m[0], m[1], m[2], inside);
-      assert(o != 0);
+      if constexpr (tf::core::verification)
+        tf::core::verify(o != 0, "a flip makes no flat cell");
       if (o > 0)
         std::swap(m[0], m[1]);
       continue;
     }
     const int o = tet_orient3d_sites(owner, m[0], m[1], m[2], m[3]);
-    assert(o != 0);
+    if constexpr (tf::core::verification)
+      tf::core::verify(o != 0, "a flip makes no flat cell");
     if (o < 0)
       std::swap(m[2], m[3]);
   }
   const auto back_slot = [&owner](Index from, Index to) {
     std::size_t s = 0;
-    while (owner._neighbors[std::size_t(from)][s] != to)
+    while (s < 4 && owner._neighbors[std::size_t(from)][s] != to)
       ++s;
+    if constexpr (tf::core::verification)
+      tf::core::verify(s < 4, "the mate names the cell back");
     return s;
   };
   const auto has = [](const key_t &facet, Index corner) {
@@ -98,7 +109,9 @@ auto flip_tet_quad(Owner &owner,
     for (std::size_t s = 0; s < 4; ++s) {
       const auto facet = tet_facet(corners, s);
       if (has(facet, a) && has(facet, b)) {
-        assert(!tet_facet_is_protected(owner, cell, s));
+        if constexpr (tf::core::verification)
+          tf::core::verify(!tet_facet_is_protected(owner, cell, s),
+                           "a flip removes no protected facet");
         continue;
       }
       const Index across = owner._neighbors[std::size_t(cell)][s];
@@ -109,13 +122,18 @@ auto flip_tet_quad(Owner &owner,
                                : Owner::none});
     }
   }
-  assert(outer.size() == 8);
+  if constexpr (tf::core::verification)
+    tf::core::verify(outer.size() == 8, "four cells ring the flipped edge");
   std::sort(outer.begin(), outer.end(),
             [](const carried &x, const carried &y) { return x.key < y.key; });
   std::array<Index, 4> rows{ring[0].cell, ring[1].cell, ring[2].cell,
                             ring[3].cell};
   for (std::size_t k = 0; k < 4; ++k)
-    write_tet(owner, rows[k], made[k][0], made[k][1], made[k][2], made[k][3]);
+    if (!admit_tet_site_patch(round, made[k][0]))
+      return {Owner::none, Owner::none, Owner::none, Owner::none};
+  for (std::size_t k = 0; k < 4; ++k)
+    write_tet(owner, rows[k], made[k][0], made[k][1], made[k][2], made[k][3],
+              round);
   struct held {
     Index row;
     std::size_t slot;
@@ -150,17 +168,34 @@ auto flip_tet_quad(Owner &owner,
             break;
           }
       }
-      assert(link[s] != Owner::none);
+      if constexpr (tf::core::verification)
+        tf::core::verify(link[s] != Owner::none, "every made cell is linked");
     }
   }
   for (const auto &h : protect)
     state_tet_facet_protection(owner, h.row, h.slot, true, h.owner);
-  if (owner._record_killed)
+  if (owner._record_killed && round.open())
+    round.killed.push_back({std::min(a, b), std::max(a, b)});
+  else if (owner._record_killed)
     owner._killed.push_back({std::min(a, b), std::max(a, b)});
   owner._hint = rows[c == Owner::infinite ? 2 : 0];
   owner._delaunay = false;
-  ++owner._stats.quad_flips;
+  if (round.open())
+    ++round.quad_flips;
+  else
+    ++owner._stats.quad_flips;
   return rows;
+}
+
+/// The same outside a round.
+template <typename Owner>
+auto flip_tet_quad(Owner &owner,
+                   const std::array<tet_edge_ref<typename Owner::index_type>, 4>
+                       &ring,
+                   std::size_t at)
+    -> std::array<typename Owner::index_type, 4> {
+  tet_round_state<typename Owner::index_type> closed;
+  return flip_tet_quad(owner, ring, at, closed);
 }
 
 } // namespace tf::topology::cdt::dt3

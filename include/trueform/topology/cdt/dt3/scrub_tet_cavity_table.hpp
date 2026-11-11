@@ -18,7 +18,7 @@
 namespace tf::topology::cdt::dt3 {
 
 /// Empties the table slots of the first `n_facets` facets' edges, read through
-/// the stamps of the standing generation.
+/// the local ids the open boundary gave their corners.
 template <typename Index>
 auto scrub_tet_cavity_table(tet_cavity_links<Index> &links,
                             std::size_t n_facets) -> void {
@@ -27,7 +27,7 @@ auto scrub_tet_cavity_table(tet_cavity_links<Index> &links,
     const auto &facet = links.facets[i];
     std::uint32_t local[3];
     for (std::size_t q = 0; q < 3; ++q)
-      local[q] = links.local_of_site[tet_cavity_stamp_slot(facet[q])] & 255u;
+      local[q] = links.local_of_site[tet_cavity_stamp_slot(facet[q])];
     for (std::size_t e = 0; e < 3; ++e) {
       const std::uint32_t a = local[(e + 1) % 3], b = local[(e + 2) % 3];
       const std::uint32_t lo = a < b ? a : b, hi = a < b ? b : a;

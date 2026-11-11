@@ -25,8 +25,11 @@ enum class tet_segment_status : std::uint8_t {
   degenerate, ///< The segment's two ends are one site.
   wrapped,    ///< Every split it proposed wrapped a protected facet.
   capacity,   ///< The index type cannot name the sites it needs.
-  budget      ///< The sites its splits need would pass the call's site
+  budget,     ///< The sites its splits need would pass the call's site
               ///< budget.
+  passes,     ///< A walk of it spent the turns a walk may take
+              ///< (@ref tet_execution_tuning::recovery_walk_passes).
+  retired     ///< No face holds it any more; its chain is no constraint.
 };
 
 } // namespace tf::topology::cdt::dt3

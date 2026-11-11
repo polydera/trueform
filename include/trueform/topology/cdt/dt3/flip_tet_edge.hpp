@@ -11,14 +11,16 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/verify.hpp"
 #include "./state_tet_facet_protection.hpp"
 #include "./tet_facet_is_protected.hpp"
 #include "./tet_facets.hpp"
 #include "./tet_orient3d_sites.hpp"
+#include "./admitted_tet_edge.hpp"
+#include "./tet_round_state.hpp"
 #include "./tet_state.hpp"
 #include "./write_tet.hpp"
 #include <array>
-#include <cassert>
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
@@ -36,23 +38,29 @@ namespace tf::topology::cdt::dt3 {
 /// Returns the two rows.
 template <typename Owner>
 auto flip_tet_edge(Owner &owner, typename Owner::index_type cell,
-                   std::size_t slot, std::size_t edge)
+                   std::size_t slot, std::size_t edge,
+                   tet_round_state<typename Owner::index_type> &round)
     -> std::array<typename Owner::index_type, 2> {
   using Index = typename Owner::index_type;
+  owner._canonical = false;
   const auto read = [&owner](Index c) {
     const auto row = owner._corners[std::size_t(c)];
     return std::array<Index, 4>{row[0], row[1], row[2], row[3]};
   };
   const auto slot_of = [](const std::array<Index, 4> &corners, Index corner) {
     std::size_t s = 0;
-    while (corners[s] != corner)
+    while (s < 4 && corners[s] != corner)
       ++s;
+    if constexpr (tf::core::verification)
+      tf::core::verify(s < 4, "the cell holds the corner");
     return s;
   };
   const auto back_slot = [&owner](Index from, Index to) {
     std::size_t s = 0;
-    while (owner._neighbors[std::size_t(from)][s] != to)
+    while (s < 4 && owner._neighbors[std::size_t(from)][s] != to)
       ++s;
+    if constexpr (tf::core::verification)
+      tf::core::verify(s < 4, "the mate names the cell back");
     return s;
   };
   const auto has = [](const std::array<Index, 3> &facet, Index corner) {
@@ -64,13 +72,21 @@ auto flip_tet_edge(Owner &owner, typename Owner::index_type cell,
   const Index p = facet[edge], q = facet[(edge + 1) % 3],
               r = facet[(edge + 2) % 3];
   const Index other = owner._neighbors[std::size_t(cell)][slot];
+  if (!admit_tet_flip_closure(owner, round, cell) ||
+      !admit_tet_flip_closure(owner, round, other))
+    return {Owner::none, Owner::none};
   const auto c1 = read(other);
   std::size_t wslot = 0;
-  while (c1[wslot] == p || c1[wslot] == q || c1[wslot] == r)
+  while (wslot < 4 && (c1[wslot] == p || c1[wslot] == q || c1[wslot] == r))
     ++wslot;
+  if constexpr (tf::core::verification)
+    tf::core::verify(wslot < 4, "the mate holds an apex off the facet");
   const Index w = c1[wslot];
   const Index third = owner._neighbors[std::size_t(cell)][slot_of(c0, r)];
-  assert(third == owner._neighbors[std::size_t(other)][slot_of(c1, r)]);
+  if constexpr (tf::core::verification)
+    tf::core::verify(third ==
+                         owner._neighbors[std::size_t(other)][slot_of(c1, r)],
+                     "three cells ring the flipped edge");
   const std::array<Index, 3> ring{cell, other, third};
   const std::array<std::array<Index, 4>, 3> corners{c0, c1, read(third)};
   struct side {
@@ -90,23 +106,31 @@ auto flip_tet_edge(Owner &owner, typename Owner::index_type cell,
                          ? owner._owners[4 * std::size_t(ring[i]) + s]
                          : Owner::none};
     }
-  assert(!tet_facet_is_protected(owner, cell, slot) &&
-         !tet_facet_is_protected(owner, cell, slot_of(c0, r)) &&
-         !tet_facet_is_protected(owner, other, slot_of(c1, r)));
+  if constexpr (tf::core::verification)
+    tf::core::verify(!tet_facet_is_protected(owner, cell, slot) &&
+                         !tet_facet_is_protected(owner, cell, slot_of(c0, r)) &&
+                         !tet_facet_is_protected(owner, other, slot_of(c1, r)),
+                     "a flip removes no protected facet");
   const int sign = tet_orient3d_sites(owner, a, w, r, p);
-  assert(sign != 0);
+  if constexpr (tf::core::verification)
+    tf::core::verify(sign != 0, "a flip makes no flat cell");
   const std::array<Index, 2> rows{cell, other};
+  if (!admit_tet_site_patch(round, a) || !admit_tet_site_patch(round, w))
+    return {Owner::none, Owner::none};
   if (sign > 0) {
-    write_tet(owner, rows[0], a, w, r, p);
-    write_tet(owner, rows[1], w, a, r, q);
+    write_tet(owner, rows[0], a, w, r, p, round);
+    write_tet(owner, rows[1], w, a, r, q, round);
   } else {
-    write_tet(owner, rows[0], w, a, r, p);
-    write_tet(owner, rows[1], a, w, r, q);
+    write_tet(owner, rows[0], w, a, r, p, round);
+    write_tet(owner, rows[1], a, w, r, q, round);
   }
   owner._states[std::size_t(third)] = tet_state::dead;
   if (std::size_t(third) < owner._protected_slots.size())
     owner._protected_slots[std::size_t(third)] = 0;
-  ++owner._n_dead;
+  if (round.open())
+    ++round.dead;
+  else
+    ++owner._n_dead;
   for (std::size_t k = 0; k < 2; ++k) {
     const auto made = read(rows[k]);
     auto link = owner._neighbors[std::size_t(rows[k])];
@@ -135,8 +159,20 @@ auto flip_tet_edge(Owner &owner, typename Owner::index_type cell,
   }
   owner._hint = cell;
   owner._delaunay = false;
-  ++owner._stats.edge_flips;
+  if (round.open())
+    ++round.edge_flips;
+  else
+    ++owner._stats.edge_flips;
   return rows;
+}
+
+/// The same outside a round.
+template <typename Owner>
+auto flip_tet_edge(Owner &owner, typename Owner::index_type cell,
+                   std::size_t slot, std::size_t edge)
+    -> std::array<typename Owner::index_type, 2> {
+  tet_round_state<typename Owner::index_type> closed;
+  return flip_tet_edge(owner, cell, slot, edge, closed);
 }
 
 } // namespace tf::topology::cdt::dt3

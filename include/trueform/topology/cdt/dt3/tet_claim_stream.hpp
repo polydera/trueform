@@ -21,6 +21,11 @@ struct alignas(tf::core::cache_aligned_slot<int>::alignment) tet_claim_stream {
   std::size_t begin = 0, end = 0, free_count = 0;
   std::size_t fresh_begin = 0, fresh_end = 0;
   Index free_head = -1, hint_begin = -1, hint_end = -1;
+  /// The pool rows the cavity that stopped the last pass takes; zero when
+  /// none stopped it.
+  std::size_t stopping = 0;
+  /// The rows the stream's insertions killed less the rows they took.
+  long long dead_delta = 0;
 };
 
 } // namespace tf::topology::cdt::dt3

@@ -29,9 +29,9 @@ auto tet_segment_numerator(const Sites &sites, typename Sites::index_type a,
                            typename Sites::index_type p, int bits)
     -> std::int64_t {
   using T2 = typename tf::exact::meta<typename Sites::int_type>::T2;
-  const auto &pa = sites[std::size_t(a)].pt;
-  const auto &pb = sites[std::size_t(b)].pt;
-  const auto &pp = sites[std::size_t(p)].pt;
+  const auto pa = sites[std::size_t(a)].pt;
+  const auto pb = sites[std::size_t(b)].pt;
+  const auto pp = sites[std::size_t(p)].pt;
   std::size_t axis = 0;
   for (std::size_t k = 1; k < 3; ++k) {
     const T2 span = T2(pb[k]) - T2(pa[k]), widest = T2(pb[axis]) - T2(pa[axis]);

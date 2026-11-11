@@ -12,6 +12,7 @@
  */
 #pragma once
 #include "../tet_finite_cell.hpp"
+#include "../tet_site_cell.hpp"
 #include "../tet_site_position.hpp"
 #include "./walk_to_tet_point.hpp"
 #include <cstddef>

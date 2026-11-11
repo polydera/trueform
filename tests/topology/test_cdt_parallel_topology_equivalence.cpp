@@ -10,8 +10,9 @@
  *
  * Author: Žiga Sajovic
  */
+#include "worker_ladder.hpp"
 #include <catch2/catch_test_macros.hpp>
-#include <tbb/global_control.h>
+#include <tbb/task_arena.h>
 #include <trueform/core/edges.hpp>
 #include <trueform/core/points_buffer.hpp>
 #include <trueform/topology/cdt/delaunay_execution_policy.hpp>
@@ -90,20 +91,21 @@ auto make_sites(std::size_t n_sites) -> tf::points_buffer<coordinate_type, 2> {
 } // namespace
 
 TEST_CASE("Delaunay topology is identical under serial and parallel policies",
-          "[constrained_delaunay]") {
+          "[.fuzz][constrained_delaunay]") {
   const auto points = make_sites(60000);
 
   const auto serial = triangulate<serial_policy>(points);
-  const tbb::global_control workers(
-      tbb::global_control::max_allowed_parallelism, 4);
-  const auto parallel = triangulate<parallel_policy>(points);
-  const auto repeated = triangulate<parallel_policy>(points);
+  tbb::task_arena arena(static_cast<int>(tf::test::capped_workers(4)));
+  const auto parallel =
+      arena.execute([&] { return triangulate<parallel_policy>(points); });
+  const auto repeated =
+      arena.execute([&] { return triangulate<parallel_policy>(points); });
   REQUIRE(serial == parallel);
   REQUIRE(parallel == repeated);
 
   const auto constrained_serial =
       triangulate_with_constraints<serial_policy>(points);
-  const auto constrained_parallel =
-      triangulate_with_constraints<parallel_policy>(points);
+  const auto constrained_parallel = arena.execute(
+      [&] { return triangulate_with_constraints<parallel_policy>(points); });
   REQUIRE(constrained_serial == constrained_parallel);
 }

@@ -25,12 +25,12 @@
 #include "./cdt/dt3/check_tetrahedralization_validity.hpp"
 #include "./cdt/dt3/clear_tet_claim_workspace.hpp"
 #include "./cdt/dt3/clear_tetrahedralization.hpp"
+#include "./cdt/dt3/publish_tetrahedralization.hpp"
 #include "./cdt/dt3/tet_claim_workspace.hpp"
 #include "./cdt/dt3/tet_owner_view.hpp"
 #include "./cdt/dt3/tetrahedralization_owner.hpp"
 #include "./tetrahedralization_refusal.hpp"
 #include "./tetrahedralization_stats.hpp"
-#include <array>
 #include <cstddef>
 #include <type_traits>
 #include <utility>
@@ -45,8 +45,15 @@ namespace tf {
 /// Cell corners index sites(), and index_map() relates sites to input slots.
 /// Cells are published ascending by their sorted corner slots, each stated
 /// from its smallest corner with its orientation kept, so the product is the
-/// same at any worker count and under either execution policy. Refusal
-/// publishes no cells and retains any prepared sites and map.
+/// same at any worker count and under either execution policy. Every build
+/// and every append publishes at its own end: it costs its own rows, then one
+/// canonical compaction of the whole complex, so an append is priced at its
+/// sites plus one publication. Every getter is a plain view of the complex
+/// the last public mutation published. A recovery grows the rows through
+/// @ref owner() and @ref workspace() at the owner level, where nothing is
+/// published between its rounds, and publishes once at its end before a
+/// getter reads. Refusal publishes no cells and retains any prepared sites
+/// and map.
 ///
 /// @tparam Index Integer type naming sites, cells and facets.
 /// @tparam Coord Integer type a site coordinate is stored in.
@@ -70,16 +77,26 @@ class delaunay_tetrahedralizer {
                      tf::none_t>
       _workspace;
 
-  auto published() const {
-    return tf::topology::cdt::dt3::tet_owner_view<decltype(_owner)>(_owner);
+  auto view() const {
+    return tf::topology::cdt::dt3::tet_owner_view<
+        tf::topology::cdt::dt3::tetrahedralization_owner<Index, Coord, Int>>(
+        _owner);
+  }
+
+  auto published(bool built) -> bool {
+    tf::topology::cdt::dt3::publish_tetrahedralization<
+        ExecutionPolicy::parallel>(_owner);
+    return built;
   }
 
   template <typename Sites> auto build_sites(const Sites &sites) -> bool {
     if constexpr (ExecutionPolicy::parallel)
-      return tf::topology::cdt::dt3::build_parallel_tetrahedralization(
-          _owner, sites, _workspace);
+      return published(
+          tf::topology::cdt::dt3::build_parallel_tetrahedralization(
+              _owner, sites, _workspace));
     else
-      return tf::topology::cdt::dt3::build_tetrahedralization(_owner, sites);
+      return published(
+          tf::topology::cdt::dt3::build_tetrahedralization(_owner, sites));
   }
 
 public:
@@ -99,8 +116,10 @@ public:
   /// Clear all output and build state while retaining buffer capacity.
   auto clear() -> void {
     tf::topology::cdt::dt3::clear_tetrahedralization(_owner);
-    if constexpr (ExecutionPolicy::parallel)
+    if constexpr (ExecutionPolicy::parallel) {
       tf::topology::cdt::dt3::clear_tet_claim_workspace(_workspace);
+      _workspace.ownership.clear();
+    }
   }
 
   /// Build from lattice points, each site named by its input slot.
@@ -129,20 +148,12 @@ public:
   /// withdrawn: its input slot maps to @ref k_none and the slots after it in
   /// the call close up.
   template <typename Sites> auto append_sites(const Sites &sites) -> bool {
-    return tf::topology::cdt::dt3::append_tetrahedralization_sites<
-        ExecutionPolicy::parallel>(_owner, sites, _workspace);
+    return published(tf::topology::cdt::dt3::append_tetrahedralization_sites<
+                     ExecutionPolicy::parallel>(_owner, sites, _workspace));
   }
 
-  /// Append as above, serially in the canonical order, withdrawing a site
-  /// whenever `keep(owner, i)`, read just before site `i` of `sites` would be
-  /// inserted, answers false: the recovery operation's own lazy test.
-  template <typename Sites, typename Keep>
-  auto append_sites(const Sites &sites, const Keep &keep) -> bool {
-    return tf::topology::cdt::dt3::append_tetrahedralization_sites<
-        ExecutionPolicy::parallel>(_owner, sites, _workspace, keep);
-  }
-
-  /// The owner itself, for the flips a recovery makes on its lanes.
+  /// The owner itself, for a recovery growing and flipping its lanes: its
+  /// rows as the last mutation left them, published after a public one.
   auto owner() -> tf::topology::cdt::dt3::tetrahedralization_owner<Index, Coord,
                                                                  Int> & {
     return _owner;
@@ -153,17 +164,9 @@ public:
     return _owner;
   }
 
-  /// Whether appends record the edges their cavities take — the dirty set
-  /// a recovery operation reads — and the edges recorded since the last
-  /// clear, each its corner slots ascending.
-  auto record_killed_edges(bool on) -> void {
-    _owner._record_killed = on;
-    _owner._killed.clear();
-  }
-  auto killed_edges() const -> const tf::buffer<std::array<Index, 2>> & {
-    return _owner._killed;
-  }
-  auto clear_killed_edges() -> void { _owner._killed.clear(); }
+  /// The claim workspace a parallel append draws on, for a recovery
+  /// appending at the owner level; `tf::none_t` under the serial policy.
+  auto workspace() -> decltype(_workspace) & { return _workspace; }
 
   /// Why the last build or append published no cells.
   auto refusal() const -> tf::tetrahedralization_refusal {
@@ -171,27 +174,29 @@ public:
   }
 
   /// Work since the last build, including admitted appends.
-  auto stats() const -> const tf::tetrahedralization_stats & {
-    return _owner._stats;
+  auto stats() const -> tf::tetrahedralization_stats {
+    tf::tetrahedralization_stats stats = _owner._stats;
+    stats.compactions = _owner._compaction_epoch;
+    return stats;
   }
 
   /// The finite cells, four site slots each.
-  auto n_tets() const -> std::size_t { return published().n_tets(); }
+  auto n_tets() const -> std::size_t { return view().n_tets(); }
 
-  auto tets() const { return published().tets(); }
+  auto tets() const { return view().tets(); }
 
   /// Per finite cell, the cell across the facet opposite each corner, or
   /// @ref k_none where that facet is on the convex hull.
-  auto neighbors() const { return published().neighbors(); }
+  auto neighbors() const { return view().neighbors(); }
 
   /// The welded build sites followed by admitted appended sites.
-  auto n_sites() const -> std::size_t { return published().n_sites(); }
+  auto n_sites() const -> std::size_t { return view().n_sites(); }
 
-  auto sites() const { return published().sites(); }
+  auto sites() const { return view().sites(); }
 
   /// The first name above every site's, from which sites minted for an
   /// append take fresh names.
-  auto next_name() const -> std::size_t { return published().next_name(); }
+  auto next_name() const -> std::size_t { return view().next_name(); }
 
   /// `f()[input]` is the site an input slot welded onto, or @ref k_none for
   /// a withdrawn append, `kept_ids()[site]` the input slot retained for that
@@ -203,8 +208,9 @@ public:
   /// Whether the published complex satisfies every structural law of a
   /// tetrahedralization. A refused build has none to satisfy.
   auto is_valid() const -> bool {
-    return _owner._refusal == tf::tetrahedralization_refusal::none &&
-           tf::topology::cdt::dt3::check_tetrahedralization_validity(_owner);
+    if (_owner._refusal != tf::tetrahedralization_refusal::none)
+      return false;
+    return tf::topology::cdt::dt3::check_tetrahedralization_validity(_owner);
   }
 };
 

@@ -11,9 +11,12 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/inline.hpp"
+#include "../../../core/config/verify.hpp"
+#include "./record_tet_written_row.hpp"
 #include "./tet_orient3d_sites.hpp"
+#include "./tet_round_state.hpp"
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 
@@ -24,11 +27,12 @@ namespace tf::topology::cdt::dt3 {
 /// recorded, make a finite cell its corners' site cell, and while rows are
 /// recorded, record a finite one. Returns the final slot of c3.
 template <typename Owner>
-auto write_tet_topology(Owner &owner, typename Owner::index_type tet,
-                        typename Owner::index_type c0,
-                        typename Owner::index_type c1,
-                        typename Owner::index_type c2,
-                        typename Owner::index_type c3) -> std::size_t {
+TF_FORCE_INLINE auto
+write_tet_topology(Owner &owner, typename Owner::index_type tet,
+                   typename Owner::index_type c0, typename Owner::index_type c1,
+                   typename Owner::index_type c2, typename Owner::index_type c3,
+                   tet_round_state<typename Owner::index_type> &round)
+    -> std::size_t {
   using Index = typename Owner::index_type;
   std::array<Index, 4> corners{c0, c1, c2, c3};
   std::size_t base = 3;
@@ -41,9 +45,11 @@ auto write_tet_topology(Owner &owner, typename Owner::index_type tet,
         break;
       }
 
-  assert(corners[3] == Owner::infinite ||
-         tet_orient3d_sites(owner, corners[0], corners[1], corners[2],
-                            corners[3]) > 0);
+  if constexpr (tf::core::verification)
+    tf::core::verify(corners[3] == Owner::infinite ||
+                         tet_orient3d_sites(owner, corners[0], corners[1],
+                                            corners[2], corners[3]) > 0,
+                     "a finite cell is positively oriented");
 
   auto row = owner._corners[std::size_t(tet)];
   auto link = owner._neighbors[std::size_t(tet)];
@@ -57,11 +63,32 @@ auto write_tet_topology(Owner &owner, typename Owner::index_type tet,
       owner._owners[4 * std::size_t(tet) + slot] = Owner::none;
   }
   if (owner._record_site_cells && corners[3] != Owner::infinite)
-    for (auto corner : corners)
+    for (auto corner : corners) {
+      if (round.open()) {
+        const auto held = owner._site_cells.load(std::size_t(corner));
+        if (held < 0 || !tet_row_admits(round.sites, owner, held, round.patch))
+          continue;
+      }
       owner._site_cells.store(std::size_t(corner), tet);
-  if (owner._record_written && corners[3] != Owner::infinite)
-    owner._written.push_back(tet);
+    }
+  if (owner._record_written && corners[3] != Owner::infinite) {
+    if (round.open())
+      round.written.push_back(tet);
+    else
+      record_tet_written_row(owner, tet);
+  }
   return base;
+}
+
+/// The same outside a round: the complex takes the record itself.
+template <typename Owner>
+TF_FORCE_INLINE auto
+write_tet_topology(Owner &owner, typename Owner::index_type tet,
+                   typename Owner::index_type c0, typename Owner::index_type c1,
+                   typename Owner::index_type c2, typename Owner::index_type c3)
+    -> std::size_t {
+  tet_round_state<typename Owner::index_type> closed;
+  return write_tet_topology(owner, tet, c0, c1, c2, c3, closed);
 }
 
 } // namespace tf::topology::cdt::dt3

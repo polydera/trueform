@@ -12,13 +12,13 @@
  */
 #pragma once
 #include "../../core/algorithm/parallel_for_each.hpp"
+#include "../../core/config/parallel_workers.hpp"
 #include "../../core/views/sequence_range.hpp"
 #include "./delaunay_execution_tuning.hpp"
 #include "./is_owned_unconstrained_delaunay_face.hpp"
 #include "./materialize_unconstrained_delaunay_faces_serial.hpp"
 #include <algorithm>
 #include <cstddef>
-#include <tbb/task_arena.h>
 
 namespace tf::topology::cdt {
 
@@ -29,7 +29,7 @@ auto materialize_unconstrained_delaunay_faces_parallel(Owner &owner,
   using Index = typename Owner::index_type;
   using VertexPolicy = typename Owner::vertex_policy;
   if (owner._edges.size() < delaunay_execution_tuning::parallel_face_darts ||
-      tbb::this_task_arena::max_concurrency() < 2) {
+      tf::core::parallel_workers() < 2) {
     materialize_unconstrained_delaunay_faces_serial(owner, visited);
     return;
   }

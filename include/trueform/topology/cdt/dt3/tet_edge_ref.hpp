@@ -11,8 +11,8 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/verify.hpp"
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -103,11 +103,13 @@ auto tet_edge_of(const Owner &owner, typename Owner::index_type cell,
     ++sa;
   while (sb < 3 && corners[sb] != b)
     ++sb;
-  assert(corners[sa] == a && corners[sb] == b && sa != sb);
+  if constexpr (tf::core::verification)
+    tf::core::verify(corners[sa] == a && corners[sb] == b && sa != sb,
+                     "the cell holds both corners");
   return {cell, sa, sb};
 }
 
-/// The corners [a, b, c, d] of the edge's cell in the reference's order.
+/// The corners [a, b, c, d] of the edge's cell in the edge's reading.
 template <typename Owner>
 auto tet_edge_corners(const Owner &owner,
                       const tet_edge_ref<typename Owner::index_type> &edge)

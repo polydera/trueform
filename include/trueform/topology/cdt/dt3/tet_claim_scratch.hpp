@@ -12,13 +12,13 @@
  */
 #pragma once
 #include "../../../core/buffer.hpp"
+#include <cstdint>
 
 namespace tf::topology::cdt::dt3 {
 
 template <typename Index> struct tet_claim_scratch {
   tf::buffer<Index> held, cavity, boundary, rows;
-  int interfering = -1;
-  Index interfering_cell = -1;
+  tf::buffer<std::uint8_t> entered;
 };
 
 } // namespace tf::topology::cdt::dt3

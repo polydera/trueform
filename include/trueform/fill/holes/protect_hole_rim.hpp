@@ -14,11 +14,16 @@
 #include "../../core/points.hpp"
 #include "../../core/range.hpp"
 #include "../../topology/cdt/dt3/compact_tetrahedralization.hpp"
+#include "../../topology/cdt/dt3/recovery/for_each_tet_chain_piece.hpp"
 #include "../../topology/cdt/dt3/recovery/recover_tet_segments.hpp"
 #include "../../topology/cdt/dt3/recovery/tet_segment_status.hpp"
+#include "../../topology/cdt/dt3/tet_claim_workspace.hpp"
+#include "../../topology/cdt/dt3/tet_owner_complex.hpp"
+#include "../../topology/cdt/dt3/tetrahedralization_owner.hpp"
 #include "../../topology/tetrahedralization_refusal.hpp"
 #include "../hole_fill_status.hpp"
 #include "../hole_split.hpp"
+#include "./hole_lattice.hpp"
 #include "./hole_rim.hpp"
 #include "./hole_split_position.hpp"
 #include "./hole_table.hpp"
@@ -28,12 +33,13 @@
 
 namespace tf::fill {
 
-/// Recover the rim's edges as segments of its own complex, split at most
-/// @ref tf::hole_split_depth times on the original edge's dyadic frame,
-/// publish the complex canonically as the segment phase does, then state
-/// the expanded rim once from the chains: its positions, corners and edges,
-/// its sites being the complex's (`position_of_site`, `site_of_position`),
-/// while `rim.sites` keeps the cycle the complex was built from. A refusal
+/// Recover the rim's edges as segments of its own complex, at the owner level
+/// so no round publishes, split at most @ref tf::hole_split_depth times on
+/// the original edge's dyadic frame, publish the complex canonically once as
+/// the segment phase does, then state the expanded rim once from the chains:
+/// its positions, corners and edges, its sites being the complex's
+/// (`position_of_site`, `site_of_position`), while `rim.sites` keeps the
+/// cycle the complex was built from. A refusal
 /// names the rim edge settled first, the lowest of a round. A chain through
 /// any site its own edge did not mint pinches the rim. Where `split_rim`
 /// forbids touching an original edge, no split is admitted and a missing rim
@@ -55,22 +61,36 @@ auto protect_hole_rim(const tf::points<PointsPolicy> &points, bool split_rim,
   for (std::size_t k = 0; k < n; ++k)
     scratch.segments[k] = {first[k], first[k + 1 == n ? 0 : k + 1]};
   auto &recovery = scratch.recovery;
+  tf::topology::cdt::dt3::tet_owner_complex<
+      true,
+      tf::topology::cdt::dt3::tetrahedralization_owner<
+          Index, tf::fill::hole_site_coord<Int>, Int>,
+      tf::topology::cdt::dt3::tet_claim_workspace<Index>>
+      complex(scratch.dt.owner(), scratch.dt.workspace());
   if (!tf::topology::cdt::dt3::recover_tet_segments(
-          scratch.dt, scratch.segments, split_rim ? tf::hole_split_depth : 0,
+          complex, scratch.segments, 0, split_rim ? tf::hole_split_depth : 0,
           recovery))
     return tf::hole_fill_status::refused_resource;
   tf::topology::cdt::dt3::compact_tetrahedralization<true, true>(
       scratch.dt.owner());
 
-  const auto pinched = [&recovery](std::size_t k) {
-    const auto chain = recovery.chains[k];
-    for (std::size_t j = 1; j + 1 < chain.size(); ++j) {
-      const auto slot = std::size_t(chain[j].site);
-      if (chain[j].numerator < 0 || slot < recovery.first_minted ||
-          std::size_t(recovery.minted[slot - recovery.first_minted]) != k)
-        return true;
-    }
-    return false;
+  const int depth = split_rim ? tf::hole_split_depth : 0;
+  const auto pinched = [&recovery, depth](std::size_t k) {
+    const Index tail =
+        recovery.subsegments[std::size_t(recovery.last[k])].b;
+    bool pinch = false;
+    tf::topology::cdt::dt3::for_each_tet_chain_piece(
+        recovery, k, depth,
+        [&recovery, &pinch, tail, k](Index, Index b, std::int64_t,
+                                     std::int64_t n1) {
+          const auto slot = std::size_t(b);
+          pinch = pinch ||
+                  (b != tail &&
+                   (n1 < 0 || slot < recovery.first_minted ||
+                    std::size_t(recovery.minted[slot -
+                                                recovery.first_minted]) != k));
+        });
+    return pinch;
   };
   std::size_t refused = n;
   for (std::size_t k = 0; k < n; ++k)
@@ -97,27 +117,30 @@ auto protect_hole_rim(const tf::points<PointsPolicy> &points, bool split_rim,
   scratch.corners.clear();
   scratch.rim_edges.clear();
   for (std::size_t k = 0; k < n; ++k) {
-    const auto chain = recovery.chains[k];
     const auto &edge = rim.edges[k];
     const auto parameter = [&edge](std::int64_t numerator) {
       return std::uint8_t(edge.t0 == 0 ? numerator
                                        : tf::hole_split_scale - numerator);
     };
-    for (std::size_t j = 0; j + 1 < chain.size(); ++j) {
-      scratch.site_of_position.push_back(chain[j].site);
-      if (j) {
-        scratch.positions.push_back(tf::fill::hole_split_position(
-            points, edge.v0, edge.v1, int(parameter(chain[j].numerator))));
-        scratch.corners.push_back(Index(-1));
-      } else {
-        scratch.positions.push_back(rim.positions[k]);
-        scratch.corners.push_back(rim.corners[k]);
-      }
-      auto subedge = edge;
-      subedge.t0 = parameter(chain[j].numerator);
-      subedge.t1 = parameter(chain[j + 1].numerator);
-      scratch.rim_edges.push_back(subedge);
-    }
+    bool head = true;
+    tf::topology::cdt::dt3::for_each_tet_chain_piece(
+        recovery, k, depth,
+        [&](Index a, Index, std::int64_t n0, std::int64_t n1) {
+          scratch.site_of_position.push_back(a);
+          if (!head) {
+            scratch.positions.push_back(tf::fill::hole_split_position(
+                points, edge.v0, edge.v1, int(parameter(n0))));
+            scratch.corners.push_back(Index(-1));
+          } else {
+            scratch.positions.push_back(rim.positions[k]);
+            scratch.corners.push_back(rim.corners[k]);
+          }
+          head = false;
+          auto subedge = edge;
+          subedge.t0 = parameter(n0);
+          subedge.t1 = parameter(n1);
+          scratch.rim_edges.push_back(subedge);
+        });
   }
   std::swap(rim.positions, scratch.positions);
   std::swap(rim.corners, scratch.corners);

@@ -15,6 +15,7 @@
 #include "./tet_deep_lattice.hpp"
 #include "./tet_deepest_of.hpp"
 #include "./tet_site_position.hpp"
+#include "./tet_site_width.hpp"
 #include "./tet_with_sites.hpp"
 #include "./tetrahedralization_owner.hpp"
 #include <cstddef>
@@ -62,7 +63,10 @@ auto tet_insphere_conflict_sites(
   if constexpr (tet_deep_lattice<Int, Coord>::cap > 0)
     if (lanes.deepest)
       return tet_insphere_conflict_deep_sites(owner, c0, c1, c2, c3, e);
-  return tf::exact::insphere_conflict_scaled<Int>(
+  // A difference of two sites on the frame spans the stored width plus one
+  // bit, exact in a double up to 53: the filter forms it without a check.
+  constexpr bool exact_images = tet_site_width<Int, Coord>::value <= 52;
+  return tf::exact::insphere_conflict_scaled<Int, exact_images>(
       lanes.shallow(c0), lanes.shallow(c1), lanes.shallow(c2),
       lanes.shallow(c3), lanes.shallow(e), 1);
 }

@@ -12,6 +12,7 @@
  */
 #pragma once
 #include "../../../core/buffer.hpp"
+#include "../../../core/config/verify.hpp"
 #include "./tet_facets.hpp"
 #include "./tet_orient3d_sites.hpp"
 #include "./tet_site_position.hpp"
@@ -25,9 +26,12 @@
 namespace tf::topology::cdt::dt3 {
 
 /// Check cell orientation, site coverage, reciprocal facet incidence and a
-/// closed hull. This does not certify the Delaunay empty-sphere property.
-template <typename Owner>
-auto check_tetrahedralization_validity(const Owner &owner) -> bool {
+/// closed hull. A site `retired(site)` calls retired is held by no cell and
+/// is not required to be. This does not certify the Delaunay empty-sphere
+/// property.
+template <typename Owner, typename Retired>
+auto check_tetrahedralization_validity(const Owner &owner,
+                                       const Retired &retired) -> bool {
   using Index = typename Owner::index_type;
 
   struct facet_record {
@@ -44,6 +48,23 @@ auto check_tetrahedralization_validity(const Owner &owner) -> bool {
     return false;
   if (owner._hint < 0 || std::size_t(owner._hint) >= n)
     return false;
+  if constexpr (tf::core::verification) {
+    std::size_t dead = 0, bits = 0;
+    for (std::size_t tet = 0; tet < n; ++tet) {
+      if (owner._states[tet] == tet_state::dead) {
+        ++dead;
+        continue;
+      }
+      if (tet < owner._protected_slots.size())
+        for (std::size_t slot = 0; slot < 4; ++slot)
+          if ((owner._protected_slots[tet] >> slot) & 1u)
+            ++bits;
+    }
+    tf::core::verify(dead == owner._n_dead, "the dead count is the dead rows'");
+    tf::core::verify(bits == 2 * owner._n_held,
+                     "the held count is the protected facets', each on both "
+                     "its cells");
+  }
 
   tf::buffer<facet_record> facets;
   tf::buffer<std::array<Index, 4>> cells;
@@ -104,7 +125,7 @@ auto check_tetrahedralization_validity(const Owner &owner) -> bool {
   if (n_finite != owner._n_finite)
     return false;
   for (std::size_t i = 0; i < n_sites; ++i)
-    if (!covered[i])
+    if (!covered[i] && !retired(Index(i)))
       return false;
 
   std::sort(cells.begin(), cells.end());
@@ -148,6 +169,12 @@ auto check_tetrahedralization_validity(const Owner &owner) -> bool {
     if (rim[i] != rim[i + 1] || (i + 2 < rim.size() && rim[i + 2] == rim[i]))
       return false;
   return true;
+}
+
+template <typename Owner>
+auto check_tetrahedralization_validity(const Owner &owner) -> bool {
+  return check_tetrahedralization_validity(
+      owner, [](typename Owner::index_type) { return false; });
 }
 
 } // namespace tf::topology::cdt::dt3

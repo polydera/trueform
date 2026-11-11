@@ -34,10 +34,10 @@ auto tet_lifted_volume(const Sites &sites, typename Sites::index_type c0,
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;
   using T3 = typename tf::exact::meta<Int>::T3;
-  const auto &p0 = sites[std::size_t(c0)].pt;
-  const auto &p1 = sites[std::size_t(c1)].pt;
-  const auto &p2 = sites[std::size_t(c2)].pt;
-  const auto &p3 = sites[std::size_t(c3)].pt;
+  const auto p0 = sites[std::size_t(c0)].pt;
+  const auto p1 = sites[std::size_t(c1)].pt;
+  const auto p2 = sites[std::size_t(c2)].pt;
+  const auto p3 = sites[std::size_t(c3)].pt;
   T2 six = tf::exact::orient3d_value_scaled<Int>(p0, p1, p2, p3);
   if (six < 0)
     six = -six;

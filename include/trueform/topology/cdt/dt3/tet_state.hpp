@@ -15,8 +15,9 @@
 
 namespace tf::topology::cdt::dt3 {
 
-/// Serial liveness and hull classification; concurrent insertion publishes this
-/// lane after joining, from temporary ownership and the infinity corner.
+/// Liveness and hull classification, the one statement of a dead row: written
+/// by whatever writes or kills the row, under concurrent insertion the stream
+/// holding it.
 enum class tet_state : std::uint8_t { live, infinite, dead };
 
 } // namespace tf::topology::cdt::dt3

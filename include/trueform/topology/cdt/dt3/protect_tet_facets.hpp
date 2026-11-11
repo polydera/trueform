@@ -19,6 +19,7 @@
 #include "./share_tet_facet.hpp"
 #include "./locate_tet_facet.hpp"
 #include "./state_tet_facet_protection.hpp"
+#include "./tet_edge_star.hpp"
 #include "./tet_facet_is_protected.hpp"
 #include <algorithm>
 #include <array>
@@ -39,31 +40,33 @@ auto protect_tet_facets(Owner &owner, const Facets &facets,
   keys.allocate(facets.size());
   tf::buffer<Index> tickets;
   tickets.allocate(facets.size());
+  struct local_t {
+    tet_edge_star<Index> star;
+  };
   tf::parallel_for_each(
       tf::make_sequence_range(facets.size()),
-      [&keys, &tickets, &facets, &owner](std::size_t i) {
+      [&keys, &tickets, &facets, &owner](std::size_t i, local_t &local) {
         std::array<Index, 3> key{Index(facets[i][0]), Index(facets[i][1]),
                                  Index(facets[i][2])};
         std::sort(key.begin(), key.end());
         keys[i] = key;
-        tickets[i] = locate_tet_facet(owner, key);
+        tickets[i] = locate_tet_facet(owner, key, local.star);
       },
-      tf::checked);
+      local_t{}, tf::checked);
   auto &unheld = owner._protected_unheld;
   for (std::size_t i = 0; i < facets.size(); ++i) {
     const Index ticket = tickets[i];
     if (ticket == Owner::none) {
-      const auto at = std::lower_bound(unheld.begin(), unheld.end(), keys[i],
-                                       [](const auto &record, const auto &key) {
-                                         return record.first < key;
-                                       });
-      if (at != unheld.end() && at->first == keys[i]) {
-        if (at->second == Owner::none)
-          at->second = face;
-        else if (face != Owner::none && at->second != face) {
-          if (at->second != Owner::shared_owner) {
-            share_tet_facet(owner, keys[i], at->second);
-            at->second = Owner::shared_owner;
+      const auto at = std::lower_bound(
+          unheld.begin(), unheld.end(), keys[i],
+          [](const auto &record, const auto &key) { return record.key < key; });
+      if (at != unheld.end() && at->key == keys[i]) {
+        if (at->face == Owner::none)
+          at->face = face;
+        else if (face != Owner::none && at->face != face) {
+          if (at->face != Owner::shared_owner) {
+            share_tet_facet(owner, keys[i], at->face);
+            at->face = Owner::shared_owner;
           }
           share_tet_facet(owner, keys[i], face);
         }
@@ -72,7 +75,6 @@ auto protect_tet_facets(Owner &owner, const Facets &facets,
       const auto offset = std::ptrdiff_t(at - unheld.begin());
       unheld.push_back({keys[i], face});
       std::rotate(unheld.begin() + offset, unheld.end() - 1, unheld.end());
-      ++owner._n_protected;
       continue;
     }
     const Index cell = Index(std::size_t(ticket) / 4);
@@ -82,7 +84,6 @@ auto protect_tet_facets(Owner &owner, const Facets &facets,
       continue;
     }
     state_tet_facet_protection(owner, cell, slot, true, face);
-    ++owner._n_protected;
   }
 }
 

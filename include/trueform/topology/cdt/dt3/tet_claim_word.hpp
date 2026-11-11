@@ -19,9 +19,8 @@ namespace tf::topology::cdt::dt3 {
 using tet_claim_word = std::uint32_t;
 inline constexpr tet_claim_word tet_unowned =
     std::numeric_limits<tet_claim_word>::max();
-inline constexpr tet_claim_word tet_pooled =
-    tet_claim_word(std::uint32_t(1) << (sizeof(tet_claim_word) * 8 - 1));
-inline constexpr tet_claim_word tet_conflict = tet_pooled >> 1;
+inline constexpr tet_claim_word tet_conflict =
+    tet_claim_word(std::uint32_t(1) << (sizeof(tet_claim_word) * 8 - 2));
 inline constexpr tet_claim_word tet_classified = tet_conflict >> 1;
 inline constexpr tet_claim_word tet_worker_mask = tet_classified - 1;
 

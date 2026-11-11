@@ -28,7 +28,8 @@ namespace tf::topology::cdt::dt3 {
 /// its sites and its input map. An append or a compaction may move every
 /// lane it reads, so a snapshot is taken where it is read and never held
 /// across either; re-take it after every mutation, as a binding re-takes a
-/// view after growth. Take it after a canonical compaction.
+/// view after growth. Its cells and links read the rows a publication places
+/// first (@ref publish_tetrahedralization); its sites and map read no row.
 template <typename Owner> class tet_owner_view {
 public:
   using index_type = typename Owner::index_type;

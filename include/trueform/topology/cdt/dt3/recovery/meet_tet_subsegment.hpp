@@ -51,9 +51,9 @@ auto meet_tet_subsegment(const DT &dt, const Star &star, const Row &row,
     return tet_with_sites(
         owner, tet_deepest_of(owner, a, b, corner), [&](const auto &sites) {
           using lattice = typename std::decay_t<decltype(sites)>::int_type;
-          const auto &pa = sites[std::size_t(a)].pt;
-          const auto &pb = sites[std::size_t(b)].pt;
-          const auto &pt = sites[std::size_t(corner)].pt;
+          const auto pa = sites[std::size_t(a)].pt;
+          const auto pb = sites[std::size_t(b)].pt;
+          const auto pt = sites[std::size_t(corner)].pt;
           if (tet_site_on_segment<lattice>(pa, pb, pt)) {
             query.on = corner;
             return true;

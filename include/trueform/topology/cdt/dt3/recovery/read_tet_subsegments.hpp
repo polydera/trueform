@@ -23,9 +23,9 @@ namespace tf::topology::cdt::dt3 {
 
 /// Read every due row against the published complex into `recovery.queries`,
 /// one per `recovery.dirty` row: present when its second end is in the star
-/// of its first and it is not redirected, which reads it encroached. The
-/// stars are the cells of every site (@ref state_tet_site_cells), stated
-/// once for the pass into `recovery.site_cells`; a row keeps the first cell
+/// of its first. The stars are the cells of the rows' first ends (@ref
+/// state_tet_site_cells), stated once for the pass into `recovery.site_cells`
+/// beside the ascending ends `recovery.star_sites`; a row keeps the first cell
 /// of its first end as its next hint.
 template <typename DT, typename Index, typename Coord>
 auto read_tet_subsegments(const DT &dt,
@@ -33,17 +33,25 @@ auto read_tet_subsegments(const DT &dt,
     -> void {
   const std::size_t n = recovery.dirty.size();
   auto &site_cells = recovery.site_cells;
-  state_tet_site_cells(dt, site_cells);
+  auto &sites = recovery.star_sites;
+  sites.allocate(n);
+  tf::parallel_for_each(
+      tf::make_sequence_range(n),
+      [&recovery, &sites](std::size_t i) {
+        sites[i] = recovery.subsegments[std::size_t(recovery.dirty[i])].a;
+      },
+      tf::checked);
+  state_tet_site_cells(dt, sites, site_cells, recovery.site_scratch);
   recovery.queries.allocate(n);
   tf::parallel_for_each(
       tf::make_sequence_range(n),
-      [&recovery, &site_cells, &dt](std::size_t i) {
+      [&recovery, &sites, &site_cells, &dt](std::size_t i) {
         const Index k = recovery.dirty[i];
         auto &row = recovery.subsegments[std::size_t(k)];
-        const auto star = site_cells[std::size_t(row.a)];
-        read_tet_subsegment(dt, star, row, k,
+        const auto star = tet_site_cells_of(sites, site_cells, row.a);
+        read_tet_subsegment(dt, star, row,
                             star.size() ? Index(star[0]) : row.hint,
-                            recovery.redirected, recovery.queries[i]);
+                            recovery.queries[i]);
       },
       tf::checked(64));
 }

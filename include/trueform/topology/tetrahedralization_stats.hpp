@@ -34,7 +34,8 @@ struct tetrahedralization_stats {
   std::size_t parallel_bands = 0;
   /// Sites committed by concurrent streams.
   std::size_t parallel_insertions = 0;
-  /// Barriers that transferred free rows before retrying blocked streams.
+  /// Rounds a band ran past its first, on the sites its streams collided on
+  /// or could not hold the rows for.
   std::size_t pool_restarts = 0;
 };
 

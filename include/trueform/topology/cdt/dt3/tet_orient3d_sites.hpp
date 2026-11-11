@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/inline.hpp"
 #include "./tet_deep_lattice.hpp"
 #include "./tet_deepest_of.hpp"
 #include "./tet_orient3d_sign.hpp"
@@ -46,7 +47,7 @@ auto tet_orient3d_deep_sites(
 /// every site stands on the frame, the per-model flag the one check the
 /// frame's path pays, else read at the deepest depth among them.
 template <typename Index, typename Coord, typename Int>
-auto tet_orient3d_sites(
+TF_FORCE_INLINE auto tet_orient3d_sites(
     const tetrahedralization_owner<Index, Coord, Int> &owner,
     typename tetrahedralization_owner<Index, Coord, Int>::index_type a,
     typename tetrahedralization_owner<Index, Coord, Int>::index_type b,

@@ -30,6 +30,7 @@ auto clear_tetrahedralization_cells(Owner &owner) -> void {
   owner._hint = Index(0);
   owner._n_dead = 0;
   owner._n_finite = 0;
+  owner._canonical = true;
 }
 
 } // namespace tf::topology::cdt::dt3

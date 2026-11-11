@@ -20,7 +20,8 @@ namespace tf {
 /// @see tf::delaunay_tetrahedralizer::refusal()
 enum class tetrahedralization_refusal {
   none,           ///< The build completed.
-  rank_deficient, ///< The welded sites span a plane, a line or a point.
+  rank_deficient, ///< The welded sites span a plane, a line or a point, or
+                  ///< there are none.
   index_capacity  ///< The cells outgrew the index type that names them.
 };
 

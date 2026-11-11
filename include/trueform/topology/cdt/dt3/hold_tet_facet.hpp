@@ -18,21 +18,31 @@
 
 namespace tf::topology::cdt::dt3 {
 
-/// Hold the facet of ticket `4 cell + slot` as face `face`'s child: an
-/// unprotected facet is protected with it as owner, a protected one adopts
-/// it, into its stack when other faces hold it.
-template <typename Owner>
+/// Hold the facet of ticket `4 cell + slot` as face `face`'s child covering
+/// `layers` of it: an unprotected facet is protected with it as owner, a
+/// protected one adopts it, into its stack when other faces hold it or the
+/// face covers it more than once (@ref adopt_tet_facet_owner).
+template <typename Owner, typename Index>
 auto hold_tet_facet(Owner &owner, typename Owner::index_type ticket,
-                    typename Owner::index_type face) -> void {
-  using Index = typename Owner::index_type;
+                    typename Owner::index_type face,
+                    typename Owner::index_type layers,
+                    tet_round_state<Index> &round) -> void {
   const Index cell = Index(std::size_t(ticket) / 4);
   const std::size_t slot = std::size_t(ticket) % 4;
-  if (tet_facet_is_protected(owner, cell, slot)) {
-    adopt_tet_facet_owner(owner, cell, slot, face);
+  if (!admit_tet_row(owner, round, cell))
     return;
-  }
-  state_tet_facet_protection(owner, cell, slot, true, face);
-  ++owner._n_protected;
+  if (!tet_facet_is_protected(owner, cell, slot))
+    state_tet_facet_protection(owner, cell, slot, true, Owner::none, round);
+  adopt_tet_facet_owner(owner, cell, slot, face, layers, round);
+}
+
+/// The same outside a round, where every row is the one task's.
+template <typename Owner>
+auto hold_tet_facet(Owner &owner, typename Owner::index_type ticket,
+                    typename Owner::index_type face,
+                    typename Owner::index_type layers = 1) -> void {
+  tet_round_state<typename Owner::index_type> closed;
+  hold_tet_facet(owner, ticket, face, layers, closed);
 }
 
 } // namespace tf::topology::cdt::dt3

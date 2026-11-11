@@ -11,11 +11,13 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../../core/memory.hpp"
 #include "../../../../exact/meta.hpp"
 #include "../../../../exact/projection_axes.hpp"
 #include "../state_tet_protected_facets.hpp"
 #include "../tet_facet_is_protected.hpp"
 #include "../tet_facet_key.hpp"
+#include "../tet_facet_owner.hpp"
 #include "../tet_orient3d_sign.hpp"
 #include "../tet_shared_owners.hpp"
 #include "../tet_site_position.hpp"
@@ -31,15 +33,15 @@
 #include <cstddef>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace tf::topology::cdt::dt3 {
 
 /// Whether every face `recovery` states recovered stands tiled by the lane
 /// facets it owns, read off the published complex `owner` alone: each in the
 /// lane, on the face's plane and in the closed face
-/// (@ref tet_triangle_in_facet), their areas
-/// the face's, exactly on the lattice, every site of a face read at the
+/// (@ref tet_triangle_in_facet), their areas, each counted once per layer
+/// the face covers it with, the face's own triangles' areas summed, exactly
+/// on the lattice, every site of a face read at the
 /// owner's deepest depth. The face half of the phase law's oracle.
 template <typename Owner, typename Faces>
 auto check_tet_face_fixpoint(
@@ -49,9 +51,9 @@ auto check_tet_face_fixpoint(
                             typename Owner::int_type> &recovery) -> bool {
   using Index = typename Owner::index_type;
   const auto &faces_status = recovery.status;
-  std::vector<std::array<Index, 3>> lane;
+  tf::core::std_vector<std::array<Index, 3>> lane;
   state_tet_protected_facets(owner, lane);
-  std::vector<std::pair<Index, std::array<Index, 3>>> owned;
+  tf::core::std_vector<tet_facet_owner<Index>> owned;
   const std::size_t rows = std::min(std::size_t(owner._corners.size()),
                                     owner._protected_slots.size());
   for (std::size_t cell = 0; cell < rows; ++cell) {
@@ -66,23 +68,27 @@ auto check_tet_face_fixpoint(
         continue;
       const auto key = tet_facet_key(owner._corners[cell], slot);
       if (who != Owner::shared_owner) {
-        owned.push_back({who, key});
+        owned.push_back({key, who});
         continue;
       }
       const auto stack = tet_shared_owners(owner, key);
       for (auto at = stack.first; at != stack.second; ++at)
-        owned.push_back({at->second, key});
+        owned.push_back(*at);
     }
   }
-  std::sort(owned.begin(), owned.end());
+  std::sort(
+      owned.begin(), owned.end(),
+      [](const tet_facet_owner<Index> &x, const tet_facet_owner<Index> &y) {
+        return x.face < y.face || (x.face == y.face && x.key < y.key);
+      });
   const auto tiles = [&owned, &lane](const auto &sites, const auto &facet,
                                      Index f) {
     using Int = typename std::decay_t<decltype(sites)>::int_type;
     using T2 = typename tf::exact::meta<Int>::T2;
     const auto &first = facet[0];
-    const auto &a = sites[std::size_t(first[0])].pt;
-    const auto &b = sites[std::size_t(first[1])].pt;
-    const auto &c = sites[std::size_t(first[2])].pt;
+    const auto a = sites[std::size_t(first[0])].pt;
+    const auto b = sites[std::size_t(first[1])].pt;
+    const auto c = sites[std::size_t(first[2])].pt;
     const auto axes =
         tf::exact::projection_axes<Int>(tet_plane_normal<Int>(a, b, c));
     T2 expected(0), covered(0);
@@ -91,10 +97,12 @@ auto check_tet_face_fixpoint(
                                                 Index(triangle[1]),
                                                 Index(triangle[2]));
     const auto held = std::equal_range(
-        owned.begin(), owned.end(), std::make_pair(f, std::array<Index, 3>{}),
-        [](const auto &x, const auto &y) { return x.first < y.first; });
+        owned.begin(), owned.end(), tet_facet_owner<Index>{{}, f},
+        [](const tet_facet_owner<Index> &x, const tet_facet_owner<Index> &y) {
+          return x.face < y.face;
+        });
     for (auto at = held.first; at != held.second; ++at) {
-      const auto &key = at->second;
+      const auto &key = at->key;
       if (!std::binary_search(lane.begin(), lane.end(), key))
         return false;
       for (auto site : key)
@@ -103,7 +111,8 @@ auto check_tet_face_fixpoint(
       if (!tet_triangle_in_facet(sites, facet, axes, key))
         return false;
       covered =
-          covered + tet_projected_area2(sites, axes, key[0], key[1], key[2]);
+          covered + T2(at->layers) * tet_projected_area2(sites, axes, key[0],
+                                                         key[1], key[2]);
     }
     return covered == expected;
   };

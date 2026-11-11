@@ -26,12 +26,10 @@ inline auto claim_tet_cell(tet_claim_workspace<Index> &work, std::size_t worker,
                            tet_claim_scratch<Index> &scratch, Index cell,
                            tet_claim_word &word) -> bool {
   word = work.ownership[std::size_t(cell)].load(std::memory_order_relaxed);
-  if ((word & tet_worker_mask) == worker && !(word & tet_pooled))
+  if ((word & tet_worker_mask) == worker)
     return true;
-  if (!acquire_tet_cell(work, worker, cell, scratch.interfering)) {
-    scratch.interfering_cell = cell;
+  if (!acquire_tet_cell(work, worker, cell))
     return false;
-  }
   scratch.held.push_back(cell);
   word = tet_claim_word(worker);
   return true;

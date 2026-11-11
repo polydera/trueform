@@ -11,34 +11,36 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "./tet_claim_rows_asked.hpp"
+#include "./tet_claim_stream.hpp"
 #include "./tet_claim_workspace.hpp"
-#include "./tet_execution_tuning.hpp"
 #include <algorithm>
 #include <cstddef>
 
 namespace tf::topology::cdt::dt3 {
 
-/// At the barrier, move free rows from finished streams to blocked ones;
-/// whether any moved.
+/// At a barrier, give every stream holding fewer rows than it asks for at
+/// `density` (@ref tet_claim_rows_asked) what it lacks, from the rows each
+/// other stream holds beyond its own ask; whether any moved.
 template <typename Index>
-inline auto redistribute_tet_claim_rows(tet_claim_workspace<Index> &work)
-    -> bool {
-  using Tuning = tet_execution_tuning;
+inline auto redistribute_tet_claim_rows(tet_claim_workspace<Index> &work,
+                                        double density) -> bool {
   bool moved = false;
   for (auto &target : work.streams) {
-    if (target.begin == target.end)
+    const auto asked = tet_claim_rows_asked(target, density);
+    if (target.free_count >= asked)
       continue;
-    auto wanted = Tuning::borrowed_rows_per_site * (target.end - target.begin) +
-                  Tuning::borrowed_rows_floor;
+    auto wanted = asked - target.free_count;
     for (auto &source : work.streams) {
-      if (source.begin != source.end || source.free_count == 0)
+      const auto kept = tet_claim_rows_asked(source, density);
+      if (source.free_count <= kept)
         continue;
       if (source.fresh_begin < source.fresh_end) {
         work.free_next[source.fresh_end - 1] = source.free_head;
         source.free_head = Index(source.fresh_begin);
         source.fresh_begin = source.fresh_end;
       }
-      const auto count = std::min(wanted, source.free_count);
+      const auto count = std::min(wanted, source.free_count - kept);
       const auto first = source.free_head;
       auto last = first;
       for (std::size_t i = 1; i < count; ++i)

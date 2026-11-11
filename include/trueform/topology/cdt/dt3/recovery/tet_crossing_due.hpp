@@ -11,15 +11,15 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include <cstdint>
+#include "../../../../core/buffer.hpp"
 
 namespace tf::topology::cdt::dt3 {
 
-/// A vertex of a recovered chain: its site slot and its numerator over
-/// 2^depth along the segment, `-1` for a shared site off that grid.
-template <typename Index> struct tet_chain_vertex {
-  Index site;
-  std::int64_t numerator;
+/// The constraints a cut made due: the subsegment `rows` phase S recovers
+/// and the `faces` phase F covers, each joining the queue the phase drains.
+template <typename Index> struct tet_crossing_due {
+  tf::buffer<Index> rows;
+  tf::buffer<Index> faces;
 };
 
 } // namespace tf::topology::cdt::dt3

@@ -28,9 +28,13 @@ auto prepare_tet_sites(Owner &owner, const Sites &sites) -> bool {
     owner._refusal = tf::tetrahedralization_refusal::index_capacity;
     return false;
   }
-  load_tetrahedralization_sites<Parallel>(owner, sites);
-  weld_tetrahedralization_sites<Parallel>(owner);
-  if (!seed_tetrahedralization(owner)) {
+  bool seeded = false;
+  if (sites.size()) {
+    load_tetrahedralization_sites<Parallel>(owner, sites);
+    weld_tetrahedralization_sites<Parallel>(owner);
+    seeded = seed_tetrahedralization(owner);
+  }
+  if (!seeded) {
     clear_tetrahedralization_cells(owner);
     owner._refusal = tf::tetrahedralization_refusal::rank_deficient;
     return false;

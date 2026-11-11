@@ -39,7 +39,7 @@ auto state_tet_protected_facets(const Owner &owner, Facets &facets) -> void {
       }
   }
   for (const auto &record : owner._protected_unheld)
-    facets.push_back(record.first);
+    facets.push_back(record.key);
   std::sort(facets.begin(), facets.end());
   facets.erase(std::unique(facets.begin(), facets.end()), facets.end());
 }

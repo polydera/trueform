@@ -47,9 +47,9 @@ auto tet_face_lattice_point(
     using lattice = typename sites_t::int_type;
     using T2 = typename tf::exact::meta<lattice>::T2;
     const auto &first = facet[0];
-    const auto &a = sites[std::size_t(first[0])].pt;
-    const auto &b = sites[std::size_t(first[1])].pt;
-    const auto &c = sites[std::size_t(first[2])].pt;
+    const auto a = sites[std::size_t(first[0])].pt;
+    const auto b = sites[std::size_t(first[1])].pt;
+    const auto c = sites[std::size_t(first[2])].pt;
     const T2 od = tf::exact::orient3d_value_scaled<lattice>(
         a, b, c, sites[std::size_t(d)].pt);
     const T2 oe = tf::exact::orient3d_value_scaled<lattice>(

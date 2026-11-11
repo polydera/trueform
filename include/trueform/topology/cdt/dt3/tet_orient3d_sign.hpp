@@ -32,7 +32,7 @@ auto tet_orient3d_sign(const tf::exact::pt3<Coord> &a,
                        const tf::exact::pt3<Coord> &d) -> int {
   if constexpr (tf::exact::float_filter_sound &&
                 sizeof(Int) > sizeof(std::int32_t)) {
-    const int filtered = tf::exact::orient3d_filter_sign<Int>(a, b, c, d);
+    const int filtered = tf::exact::orient3d_filter_sign(a, b, c, d);
     if (filtered)
       return filtered;
   }

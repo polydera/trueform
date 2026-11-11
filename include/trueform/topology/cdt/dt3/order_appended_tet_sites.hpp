@@ -14,13 +14,13 @@
 #include "../../../core/views/mapped_range.hpp"
 #include "../../../core/views/sequence_range.hpp"
 #include "./measure_tet_site_domain.hpp"
+#include "./tet_appended_key.hpp"
 #include "./tet_position.hpp"
 #include "./tet_site_morton_key.hpp"
 #include "./tet_site_position.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <utility>
 
 namespace tf::topology::cdt::dt3 {
 
@@ -47,17 +47,17 @@ auto order_appended_tet_sites(Owner &owner, std::size_t count) -> void {
     keyed[i] = {tet_site_morton_key(appended[i], domain, shift),
                 Index(first + i)};
   std::sort(keyed.begin(), keyed.end(),
-            [&owner](const std::pair<std::uint64_t, Index> &x,
-                     const std::pair<std::uint64_t, Index> &y) {
-              if (x.first != y.first)
-                return x.first < y.first;
-              const auto a = tet_site_position(owner, x.second);
-              const auto b = tet_site_position(owner, y.second);
-              return a < b || (a == b && tet_site_name(owner, x.second) <
-                                             tet_site_name(owner, y.second));
+            [&owner](const tet_appended_key<Index> &x,
+                     const tet_appended_key<Index> &y) {
+              if (x.key != y.key)
+                return x.key < y.key;
+              const auto a = tet_site_position(owner, x.site);
+              const auto b = tet_site_position(owner, y.site);
+              return a < b || (a == b && tet_site_name(owner, x.site) <
+                                             tet_site_name(owner, y.site));
             });
   for (std::size_t i = 0; i < count; ++i)
-    owner._order[i] = keyed[i].second;
+    owner._order[i] = keyed[i].site;
 }
 
 } // namespace tf::topology::cdt::dt3

@@ -11,9 +11,9 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/config/verify.hpp"
 #include "./mark_unconstrained_delaunay_face_visited.hpp"
 #include "./unconstrained_delaunay_triangle_orbit.hpp"
-#include <cassert>
 #include <cstddef>
 
 namespace tf::topology::cdt {
@@ -32,7 +32,8 @@ auto materialize_unconstrained_delaunay_faces_serial(Owner &owner,
         visited[std::size_t(first)] != 0)
       continue;
     const auto orbit = trace_unconstrained_delaunay_triangle(owner, first);
-    assert(orbit.closed);
+    if constexpr (tf::core::verification)
+      tf::core::verify(orbit.closed, "every live dart closes a triangle");
     if (!orbit.closed)
       continue;
     const Index second = orbit.darts[1];

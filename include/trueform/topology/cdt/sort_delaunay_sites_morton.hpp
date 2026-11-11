@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/config/parallel_workers.hpp"
 #include "./certify_delaunay_site_predicates.hpp"
 #include "./delaunay_execution_tuning.hpp"
 #include "./encode_delaunay_morton_keys.hpp"
@@ -18,7 +19,6 @@
 #include "./stable_radix_order_delaunay_sites.hpp"
 #include <algorithm>
 #include <cstddef>
-#include <tbb/task_arena.h>
 
 namespace tf::topology::cdt {
 
@@ -27,8 +27,8 @@ auto sort_delaunay_sites_morton_impl(Owner &owner) -> void {
   const std::size_t n_sites = owner._sites.size();
   std::size_t partition_count = 1;
   if constexpr (Parallel) {
-    const std::size_t concurrency = std::max(
-        std::size_t(1), std::size_t(tbb::this_task_arena::max_concurrency()));
+    const std::size_t concurrency =
+        std::max(std::size_t(1), tf::core::parallel_workers());
     if (n_sites < delaunay_execution_tuning::parallel_order_sites ||
         concurrency < 2) {
       sort_delaunay_sites_morton_impl<false>(owner);

@@ -13,7 +13,6 @@
 #pragma once
 #include "./scrub_tet_cavity_table.hpp"
 #include "./tet_cavity_links.hpp"
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
@@ -34,11 +33,7 @@ auto open_tet_cavity_links(tet_cavity_links<Index> &links, std::size_t n_sites)
   links.pending = true;
   const std::size_t slots = tet_cavity_stamp_slot(Index(n_sites));
   if (links.local_of_site.size() < slots)
-    links.local_of_site.reallocate_and_initialize(slots, 0u);
-  if (++links.generation == (std::uint32_t(1) << 24)) {
-    std::fill(links.local_of_site.begin(), links.local_of_site.end(), 0u);
-    links.generation = 1;
-  }
+    links.local_of_site.reallocate_and_initialize(slots, std::uint8_t(0));
 }
 
 } // namespace tf::topology::cdt::dt3

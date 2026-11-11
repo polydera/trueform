@@ -11,7 +11,8 @@
  */
 
 #include "fill_generators.hpp"
-#include "oneapi/tbb/global_control.h"
+#include "uniform_draw.hpp"
+#include "worker_ladder.hpp"
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -22,6 +23,7 @@
 #include <random>
 #include <tbb/task_arena.h>
 #include <trueform/core/constants.hpp>
+#include <trueform/core/none.hpp>
 #include <trueform/core/points.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/fill/fill_holes.hpp>
@@ -32,11 +34,15 @@
 #include <trueform/fill/holes/validate_hole_rim.hpp>
 #include <trueform/geometry/make_plane_mesh.hpp>
 #include <trueform/topology/cdt/delaunay_execution_policy.hpp>
+#include <trueform/topology/cdt/dt3/publish_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/recovery/recover_tet_segments.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_segment_recovery.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_segment_status.hpp>
+#include <trueform/topology/cdt/dt3/tet_execution_tuning.hpp>
+#include <trueform/topology/cdt/dt3/tet_owner_complex.hpp>
 #include <trueform/topology/delaunay_tetrahedralizer.hpp>
 #include <trueform/topology/face_membership.hpp>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -201,7 +207,8 @@ auto table_missing_by_edge_sort(const table_complex_t &complex, table_index n)
  * @brief The rim edges the complex is missing, as segment recovery states
  *        them where no split is admitted: a missing edge is flipped back
  *        where a flip can reach it and refuses for depth otherwise, and no
- *        site is added.
+ *        site is added. The recovery runs on the owner and the complex is
+ *        published once after it.
  */
 template <typename DT, typename Positions>
 auto table_missing_by_recovery(DT &dt, const Positions &site_of_position,
@@ -213,13 +220,19 @@ auto table_missing_by_recovery(DT &dt, const Positions &site_of_position,
   tf::topology::cdt::dt3::tet_segment_recovery<table_index,
                                                typename DT::coord_type>
       recovery;
-  REQUIRE(
-      tf::topology::cdt::dt3::recover_tet_segments(dt, segments, 0, recovery));
+  using work_t = std::decay_t<decltype(dt.workspace())>;
+  constexpr bool parallel = !std::is_same_v<work_t, tf::none_t>;
+  tf::topology::cdt::dt3::tet_owner_complex<
+      parallel, std::decay_t<decltype(dt.owner())>, work_t>
+      complex(dt.owner(), dt.workspace());
+  REQUIRE(tf::topology::cdt::dt3::recover_tet_segments(complex, segments, 0, 0,
+                                                       recovery));
+  tf::topology::cdt::dt3::publish_tetrahedralization<parallel>(dt.owner());
   std::vector<table_index> missing;
   for (std::size_t k = 0; k < n; ++k)
     if (recovery.status[k] !=
             tf::topology::cdt::dt3::tet_segment_status::recovered ||
-        recovery.chains[k].size() > 2)
+        recovery.first[k] != recovery.last[k])
       missing.push_back(table_index(k));
   return missing;
 }
@@ -248,13 +261,15 @@ auto table_facets_by_cell_emission(const table_complex_t &complex)
 }
 
 auto table_random_case(std::mt19937 &rng, int n) -> table_case {
-  std::uniform_real_distribution<float> jitter(-1.0f, 1.0f);
+  const auto jitter = [&rng] {
+    return tf::test::uniform_real(rng, -1.0f, 1.0f);
+  };
   std::vector<tf::point<table_real, 3>> rim;
   for (int k = 0; k < n; ++k) {
     const float angle = 6.2831853f * float(k) / float(n);
-    const float radius = 1.0f + 0.6f * jitter(rng);
-    rim.push_back({radius * std::cos(angle), radius * std::sin(angle),
-                   0.7f * jitter(rng)});
+    const float radius = 1.0f + 0.6f * jitter();
+    rim.push_back(
+        {radius * std::cos(angle), radius * std::sin(angle), 0.7f * jitter()});
   }
   auto mesh = hole_cone_mesh<table_index, table_real>(
       rim, tf::point<table_real, 3>{0.0f, 0.0f, -6.0f});
@@ -341,9 +356,10 @@ auto table_prepare_rim(
 }
 
 /**
- * @brief One rim solved end to end, leaving the table it was solved on.
+ * @brief One rim solved end to end, leaving the complex and the table it was
+ *        solved on.
  */
-auto table_solve_lanes(const table_case &instance,
+auto table_solve_lanes(const table_case &instance, table_complex_t &complex,
                        tf::fill::hole_table<table_index> &table,
                        tf::buffer<table_triangle> &triangles)
     -> tf::hole_fill_status {
@@ -352,7 +368,6 @@ auto table_solve_lanes(const table_case &instance,
   table_rim_t rim;
   if (!table_prepare_rim(instance, membership, preflight, rim))
     return tf::hole_fill_status::refused_invalid_rim;
-  table_complex_t complex;
   tf::buffer<tf::point<table_real, 3>> minted;
   tf::buffer<tf::hole_split<table_index>> splits;
   table_index offending = -1;
@@ -706,7 +721,7 @@ TEST_CASE("fill: a rim edge no cell can carry is named, the wrap included",
 }
 
 TEST_CASE("fill: the table lanes are the same at any worker count",
-          "[fill][table]") {
+          "[.fuzz][fill][table][parallel]") {
   // A rim whose widest span band outgrows the band grain, so the schedule
   // under test is the parallel one and not its serial fallback.
   std::vector<tf::point<table_real, 3>> ring;
@@ -720,9 +735,11 @@ TEST_CASE("fill: the table lanes are the same at any worker count",
   const table_case instance{mesh, tf::make_boundary_rims(mesh.polygons())};
   REQUIRE(instance.rims.size() == 1);
 
+  table_complex_t reference_complex;
   tf::fill::hole_table<table_index> reference;
   tf::buffer<table_triangle> reference_triangles;
-  REQUIRE(table_solve_lanes(instance, reference, reference_triangles) ==
+  REQUIRE(table_solve_lanes(instance, reference_complex, reference,
+                            reference_triangles) ==
           tf::hole_fill_status::filled);
   const std::size_t kept = reference.facets.size();
   const std::size_t states = 2 * kept + 1;
@@ -731,14 +748,18 @@ TEST_CASE("fill: the table lanes are the same at any worker count",
     widest = std::max(widest, reference.bands[span].size());
   REQUIRE(widest > tf::fill::hole_table_band_grain);
 
-  for (std::size_t workers :
-       {std::size_t(1), std::size_t(2), std::size_t(4), std::size_t(16)}) {
-    const tbb::global_control control(
-        tbb::global_control::max_allowed_parallelism, workers);
+  for (const std::size_t workers : tf::test::worker_ladder({1, 2, 4, 16})) {
+    CAPTURE(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
+    table_complex_t complex;
     tf::fill::hole_table<table_index> stated;
     tf::buffer<table_triangle> triangles;
-    REQUIRE(table_solve_lanes(instance, stated, triangles) ==
-            tf::hole_fill_status::filled);
+    REQUIRE(arena.execute([&] {
+      return table_solve_lanes(instance, complex, stated, triangles);
+    }) == tf::hole_fill_status::filled);
+    CHECK((complex.dt.stats().parallel_insertions > 0) ==
+          (workers >=
+           tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers));
     REQUIRE(stated.facets.size() == kept);
     CHECK(table_lane_holds(stated.facets, reference.facets, kept));
     CHECK(table_lane_holds(stated.normal, reference.normal, kept));
@@ -815,9 +836,10 @@ TEST_CASE("hole table: parallel Delaunay preserves rim candidates",
   Serial serial;
   tf::delaunay_tetrahedralizer<int, table_int> parallel;
   REQUIRE(serial.build(points));
-  tbb::task_arena arena(8);
-  REQUIRE(arena.execute([&] { return parallel.build(points); }));
-  REQUIRE(parallel.stats().parallel_insertions > 0);
+  REQUIRE(parallel.build(points));
+  REQUIRE((parallel.stats().parallel_insertions > 0) ==
+          (tf::test::machine_workers() >=
+           tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers));
   REQUIRE(parallel.n_sites() == n);
   tf::buffer<int> serial_positions, parallel_positions;
   serial_positions.allocate(serial.n_sites());
@@ -844,4 +866,7 @@ TEST_CASE("hole table: parallel Delaunay preserves rim candidates",
   REQUIRE(serial_missing.size() == parallel_missing.size());
   CHECK(std::equal(serial_missing.begin(), serial_missing.end(),
                    parallel_missing.begin()));
+  if (tf::test::machine_workers() <
+      tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers)
+    SKIP("the claims need minimum_workers");
 }

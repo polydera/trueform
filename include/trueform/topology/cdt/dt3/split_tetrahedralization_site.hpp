@@ -11,7 +11,8 @@
  * Author: Žiga Sajovic
  */
 #pragma once
-#include "../../../core/small_vector.hpp"
+#include "../../../core/buffer.hpp"
+#include "../../../core/config/verify.hpp"
 #include "./share_tet_facet.hpp"
 #include "./state_tet_facet_protection.hpp"
 #include "./tet_facet_is_protected.hpp"
@@ -20,29 +21,30 @@
 #include "./tet_insertion.hpp"
 #include "./tet_orient3d_sites.hpp"
 #include "./tet_shared_owners.hpp"
+#include "./tet_split_scratch.hpp"
 #include "./write_tet.hpp"
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 
 namespace tf::topology::cdt::dt3 {
 
-/// Insert `site` into a complex that is not Delaunay by splitting the
-/// simplex it lies in: `cell`, the finite cell holding it, into four, the
-/// facet it lies on into six over the two cells holding it, or the edge it
-/// lies on into two cells per cell of the edge's ring. A hull cell among
-/// them keeps the hull's winding: its facet is the finite side's read
-/// outward, which the orientation sign cannot state for it. No
-/// conflict region is read and no wall is met: every facet of the old
-/// cells keeps its protection and its owner on the new cell holding it,
-/// stated once every link stands, since a reused row's stale links would
-/// seat an owner on the wrong facet; a
-/// split facet's halves keep both (a shared facet's halves are shared
-/// alike), and the edge a ring split divides is the one edge that dies,
-/// recorded as killed when the owner records. Returns `placed`, or
-/// `capacity` when the rows would pass the index.
+/// Insert `site` by splitting the simplex it lies in, which leaves the
+/// complex not Delaunay, as `_delaunay` then says: `cell`, the finite cell
+/// holding it, into four, the facet it lies on into six over the two cells
+/// holding it, or the edge it lies on into two cells per cell of the edge's
+/// ring. A hull cell among them keeps the hull's winding: its facet is the
+/// finite side's read outward, which the orientation sign cannot state for it.
+/// No conflict region is read and no wall is met: every facet of the old cells
+/// keeps its protection and its owner on the new cell holding it, stated once
+/// every link stands, since a reused row's stale links would seat an owner on
+/// the wrong facet; a split facet's halves keep both (a shared facet's halves
+/// are shared alike), and the edge a ring split divides is the one edge that
+/// dies, stated in `_divided` and recorded as killed when the owner records.
+/// Returns `placed`, or `capacity` when the rows would pass the index. The
+/// lists it walks on are the owner's (@ref tet_split_scratch): the serial
+/// insertion is the only path that splits.
 template <typename Owner>
 auto split_tetrahedralization_site(Owner &owner,
                                    typename Owner::index_type site,
@@ -50,18 +52,8 @@ auto split_tetrahedralization_site(Owner &owner,
     -> tet_insertion {
   using Index = typename Owner::index_type;
   using key_t = std::array<Index, 3>;
-  struct carried {
-    key_t key;
-    Index across;
-    std::size_t back;
-    bool held;
-    Index owner;
-  };
-  struct halved {
-    key_t key;
-    bool held;
-    Index owner;
-  };
+  using carried = tet_split_facet<Index>;
+  using halved = tet_split_half<Index>;
   const auto orient = [&owner, site](const key_t &f) {
     return tet_orient3d_sites(owner, f[0], f[1], f[2], site);
   };
@@ -71,8 +63,10 @@ auto split_tetrahedralization_site(Owner &owner,
   };
   const auto back_slot = [&owner](Index from, Index to) {
     std::size_t s = 0;
-    while (owner._neighbors[std::size_t(from)][s] != to)
+    while (s < 4 && owner._neighbors[std::size_t(from)][s] != to)
       ++s;
+    if constexpr (tf::core::verification)
+      tf::core::verify(s < 4, "the mate names the cell back");
     return s;
   };
   const auto protection = [&owner](Index cell, std::size_t slot) {
@@ -80,19 +74,28 @@ auto split_tetrahedralization_site(Owner &owner,
     return std::pair<bool, Index>{
         held, held ? owner._owners[4 * std::size_t(cell) + slot] : Owner::none};
   };
-  assert(owner._corners[std::size_t(cell)][3] != Owner::infinite);
+  if constexpr (tf::core::verification)
+    tf::core::verify(owner._corners[std::size_t(cell)][3] != Owner::infinite,
+                     "the cell a split cuts is finite");
   const auto c0 = read(cell);
   std::array<int, 4> sign{};
   std::size_t zeros = 0;
   for (std::size_t s = 0; s < 4; ++s) {
     sign[s] = orient(tet_facet(c0, s));
-    assert(sign[s] <= 0);
+    if constexpr (tf::core::verification)
+      tf::core::verify(sign[s] <= 0, "a split's site lies in the closed cell "
+                                     "it cuts");
     zeros += sign[s] == 0;
   }
-  assert(zeros < 3);
-  tf::small_vector<Index, 32> old;
-  tf::small_vector<std::array<Index, 4>, 32> made;
-  tf::small_vector<halved, 32> halves;
+  if constexpr (tf::core::verification)
+    tf::core::verify(zeros < 3, "a split's site stands on at most two facets "
+                                "of its cell");
+  auto &old = owner._split.old;
+  auto &made = owner._split.made;
+  auto &halves = owner._split.halves;
+  old.clear();
+  made.clear();
+  halves.clear();
   key_t edge{Owner::none, Owner::none, Owner::none};
   if (zeros == 0) {
     old.push_back(cell);
@@ -102,14 +105,18 @@ auto split_tetrahedralization_site(Owner &owner,
     }
   } else if (zeros == 1) {
     std::size_t z = 0;
-    while (sign[z] != 0)
+    while (z < 4 && sign[z] != 0)
       ++z;
+    if constexpr (tf::core::verification)
+      tf::core::verify(z < 4, "the counted zero names a slot");
     const Index other = owner._neighbors[std::size_t(cell)][z];
     const auto f = tet_facet(c0, z);
     const auto c1 = read(other);
     std::size_t w = 0;
-    while (c1[w] == f[0] || c1[w] == f[1] || c1[w] == f[2])
+    while (w < 4 && (c1[w] == f[0] || c1[w] == f[1] || c1[w] == f[2]))
       ++w;
+    if constexpr (tf::core::verification)
+      tf::core::verify(w < 4, "the mate holds an apex off the facet");
     old.push_back(cell);
     old.push_back(other);
     for (std::size_t e = 0; e < 3; ++e) {
@@ -121,11 +128,13 @@ auto split_tetrahedralization_site(Owner &owner,
     halves.push_back({tet_facet_key(f), held.first, held.second});
   } else {
     std::size_t z1 = 0;
-    while (sign[z1] != 0)
+    while (z1 < 4 && sign[z1] != 0)
       ++z1;
     std::size_t z2 = z1 + 1;
-    while (sign[z2] != 0)
+    while (z2 < 4 && sign[z2] != 0)
       ++z2;
+    if constexpr (tf::core::verification)
+      tf::core::verify(z2 < 4, "the counted zeros name two slots");
     Index u = Owner::none, v = Owner::none;
     for (std::size_t s = 0; s < 4; ++s)
       if (s != z1 && s != z2)
@@ -158,29 +167,31 @@ auto split_tetrahedralization_site(Owner &owner,
       for (std::size_t s = 0; s < 4 && exit == 4; ++s)
         if (s != entry && c_next[s] != u && c_next[s] != v)
           exit = s;
-      assert(exit < 4);
+      if constexpr (tf::core::verification)
+        tf::core::verify(exit < 4, "every cell of the ring a split walks has a "
+                                   "facet off the edge to leave by");
     }
   }
   for (auto &m : made) {
     if (m[3] == Owner::infinite)
       continue;
     const int o = tet_orient3d_sites(owner, m[0], m[1], m[2], m[3]);
-    assert(o != 0);
+    if constexpr (tf::core::verification)
+      tf::core::verify(o != 0, "every finite cell a split makes has volume");
     if (o < 0)
       std::swap(m[1], m[2]);
   }
   std::sort(halves.begin(), halves.end(),
             [](const halved &a, const halved &b) { return a.key < b.key; });
-  halves.erase(std::unique(halves.begin(), halves.end(),
-                           [](const halved &a, const halved &b) {
-                             return a.key == b.key;
-                           }),
-               halves.end());
+  halves.erase_till_end(std::unique(
+      halves.begin(), halves.end(),
+      [](const halved &a, const halved &b) { return a.key == b.key; }));
   const std::size_t first = owner._corners.size();
   const std::size_t fresh = made.size() - old.size();
   if (first + fresh > std::size_t(Owner::max_tets))
     return tet_insertion::capacity;
-  tf::small_vector<carried, 64> outer;
+  auto &outer = owner._split.outer;
+  outer.clear();
   for (auto c : old) {
     const auto corners = read(c);
     for (std::size_t s = 0; s < 4; ++s) {
@@ -197,8 +208,10 @@ auto split_tetrahedralization_site(Owner &owner,
   owner._corners.reallocate(first + fresh);
   owner._neighbors.reallocate(first + fresh);
   owner._states.reallocate(first + fresh);
-  tf::small_vector<Index, 32> rows;
-  tf::small_vector<std::pair<Index, std::pair<std::size_t, Index>>, 64> protect;
+  auto &rows = owner._split.rows;
+  auto &protect = owner._split.protect;
+  rows.clear();
+  protect.clear();
   for (std::size_t i = 0; i < made.size(); ++i) {
     const Index row = i < old.size() ? old[i] : Index(first + i - old.size());
     rows.push_back(row);
@@ -218,7 +231,7 @@ auto split_tetrahedralization_site(Owner &owner,
         link[s] = out->across;
         owner._neighbors[std::size_t(out->across)][out->back] = rows[i];
         if (out->held)
-          protect.push_back({rows[i], {s, out->owner}});
+          protect.push_back({rows[i], s, out->owner});
         continue;
       }
       for (std::size_t j = 0; j < rows.size() && link[s] == Owner::none; ++j) {
@@ -232,20 +245,22 @@ auto split_tetrahedralization_site(Owner &owner,
             break;
           }
       }
-      assert(link[s] != Owner::none);
+      if constexpr (tf::core::verification)
+        tf::core::verify(link[s] != Owner::none,
+                         "every facet of a split's cells finds its mate");
     }
   }
   for (const auto &h : protect)
-    state_tet_facet_protection(owner, h.first, h.second.first, true,
-                               h.second.second);
+    state_tet_facet_protection(owner, h.row, h.slot, true, h.owner);
   for (const auto &half : halves) {
     if (!half.held)
       continue;
-    tf::small_vector<Index, 4> owners;
+    auto &owners = owner._split.owners;
+    owners.clear();
     if (half.owner == Owner::shared_owner) {
       const auto stack = tet_shared_owners(owner, half.key);
       for (auto at = stack.first; at != stack.second; ++at)
-        owners.push_back(at->second);
+        owners.push_back(*at);
       auto &shared = owner._shared;
       shared.erase_till_end(std::copy(
           shared.begin() + (stack.second - shared.begin()), shared.end(),
@@ -263,30 +278,32 @@ auto split_tetrahedralization_site(Owner &owner,
         if (tet_facet_is_protected(owner, rows[i], s))
           continue;
         state_tet_facet_protection(owner, rows[i], s, true, half.owner);
-        ++owner._n_protected;
         if (half.owner == Owner::shared_owner)
-          for (auto o : owners)
-            share_tet_facet(owner, key, o);
+          for (const auto &o : owners)
+            share_tet_facet(owner, key, o.face, o.layers);
       }
     }
-    --owner._n_protected;
+    --owner._n_held;
   }
-  const bool linked = [&owner, &rows, &read, &back_slot] {
-    for (auto row : rows)
-      for (std::size_t s = 0; s < 4; ++s) {
-        const Index mate = owner._neighbors[std::size_t(row)][s];
-        if (mate == Owner::none ||
-            tet_facet_key(read(mate), back_slot(mate, row)) !=
-                tet_facet_key(read(row), s))
-          return false;
-      }
-    return true;
-  }();
-  assert(linked);
-  (void)linked;
+  if constexpr (tf::core::verification)
+    tf::core::verify(
+        [&owner, &rows, &read, &back_slot] {
+          for (auto row : rows)
+            for (std::size_t s = 0; s < 4; ++s) {
+              const Index mate = owner._neighbors[std::size_t(row)][s];
+              if (mate == Owner::none ||
+                  tet_facet_key(read(mate), back_slot(mate, row)) !=
+                      tet_facet_key(read(row), s))
+                return false;
+            }
+          return true;
+        }(),
+        "a split states every link of its cells from both sides");
+  owner._divided = {edge[0], edge[1]};
   if (edge[0] != Owner::none && owner._record_killed)
     owner._killed.push_back({edge[0], edge[1]});
   owner._hint = rows[0];
+  owner._delaunay = false;
   ++owner._stats.insertions;
   return tet_insertion::placed;
 }

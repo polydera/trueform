@@ -14,10 +14,12 @@
 #include "../../../core/config/verify.hpp"
 #include "../../../core/coordinate_type.hpp"
 #include "../../../core/point_like.hpp"
+#include "../../../exact/meta.hpp"
 #include "../../../exact/vertex.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace tf::topology::cdt::dt3 {
 
@@ -97,6 +99,56 @@ auto tet_minted_position(const tf::point_like<3, Policy> &x, int frame_bits = 0,
   for (std::size_t k = 0; k < 3; ++k)
     p.residual[k] = std::int64_t(rest[k]);
   return p;
+}
+
+/// The integer a difference of two coordinates is read in: the coordinate's
+/// double width where the exact tier names one, the coordinate itself on the
+/// widest, whose lattices leave it the headroom.
+template <typename Coord, typename = void> struct tet_reach_int {
+  using type = Coord;
+};
+
+template <typename Coord>
+struct tet_reach_int<Coord, std::void_t<typename tf::exact::meta<Coord>::T1>> {
+  using type = typename tf::exact::meta<Coord>::T1;
+};
+
+/// The cell of the reach grid of side `reach` the lattice coordinate `x`
+/// stands in: `x` divided by `reach`, rounded down, a lattice point its own
+/// cell where `reach` is below one.
+template <typename Coord> auto tet_reach_cell(Coord x, Coord reach) -> Coord {
+  if (reach < Coord(2))
+    return x;
+  const Coord q = Coord(x / reach);
+  return Coord(q - Coord(q * reach > x));
+}
+
+/// The cell of the reach grid a position stands in on axis `k`. A position
+/// stands in its floor's unit cell, and a unit cell lies inside one cell of
+/// the grid, so the floor names it.
+template <typename Coord>
+auto tet_reach_cell(const tet_position<Coord> &p, std::size_t k, Coord reach)
+    -> Coord {
+  return tet_reach_cell(p.floor[k], reach);
+}
+
+/// THE REACH every mint reads is a grid, not a radius: two positions in one
+/// cell of side `reach`, the input quantum on the frame, are one the input
+/// cannot tell apart, so a tier about to mint a point there names the site
+/// standing in its cell instead. The cell is the key, so the relation is
+/// transitive and never chains; two positions in adjacent cells stay two.
+/// The entrance states the originals by it (@ref
+/// tf::tetmesh::state_tet_reach_cells), so no two stand in one cell. A
+/// `reach` of zero is exact equality.
+template <typename Coord>
+auto tet_shares_reach_cell(const tet_position<Coord> &a,
+                           const tet_position<Coord> &b, Coord reach) -> bool {
+  if (!(Coord(0) < reach))
+    return a == b;
+  for (std::size_t k = 0; k < 3; ++k)
+    if (tet_reach_cell(a, k, reach) != tet_reach_cell(b, k, reach))
+      return false;
+  return true;
 }
 
 } // namespace tf::topology::cdt::dt3

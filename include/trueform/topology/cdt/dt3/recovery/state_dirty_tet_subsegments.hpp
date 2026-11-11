@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "./revive_tet_segments.hpp"
 #include "./tet_segment_recovery.hpp"
 #include "./tet_segment_status.hpp"
 #include <algorithm>
@@ -18,43 +19,24 @@
 
 namespace tf::topology::cdt::dt3 {
 
-/// The rows the next round reads: the ones this round split, withdrew or
-/// deferred (`revisits`), and every pending row whose edge a cavity of this
-/// round took, read off the complex's own record of the edges its appends
-/// took, each found through its sites' row tickets.
+/// The rows the next round reads: the pending ones this round split, withdrew
+/// or deferred (`revisits`), and the rows whose edges a cavity of this round
+/// took (@ref revive_tet_segments).
 template <typename DT, typename Index, typename Coord>
 auto state_dirty_tet_subsegments(DT &dt,
                                  tet_segment_recovery<Index, Coord> &recovery)
     -> void {
   auto &dirty = recovery.dirty;
   dirty.clear();
-  const auto pending = [&recovery](Index k) {
-    return recovery.status[std::size_t(
-               recovery.subsegments[std::size_t(k)].segment)] ==
-           tet_segment_status::pending;
-  };
   for (auto k : recovery.revisits)
-    if (pending(k))
+    if (recovery.status[std::size_t(
+            recovery.subsegments[std::size_t(k)].segment)] ==
+        tet_segment_status::pending)
       dirty.push_back(k);
-  const auto &killed = dt.killed_edges();
-  const auto &heads = recovery.row_heads;
-  for (const auto &edge : killed) {
-    if (std::size_t(edge[0]) >= heads.size())
-      continue;
-    for (Index t = heads[std::size_t(edge[0])]; t != Index(-1);
-         t = recovery.row_tickets[std::size_t(t)].second) {
-      const Index k = recovery.row_tickets[std::size_t(t)].first;
-      const auto &row = recovery.subsegments[std::size_t(k)];
-      if (((row.a == edge[0] && row.b == edge[1]) ||
-           (row.a == edge[1] && row.b == edge[0])) &&
-          pending(k))
-        dirty.push_back(k);
-    }
-  }
+  revive_tet_segments(dt, recovery, dirty);
   std::sort(dirty.begin(), dirty.end());
   dirty.erase_till_end(std::unique(dirty.begin(), dirty.end()));
   recovery.revisits.clear();
-  dt.clear_killed_edges();
 }
 
 } // namespace tf::topology::cdt::dt3

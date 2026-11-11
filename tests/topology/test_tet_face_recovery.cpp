@@ -7,6 +7,7 @@
  *
  * Author: Žiga Sajovic
  */
+#include "uniform_draw.hpp"
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -14,11 +15,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <random>
+#include <trueform/core/buffer.hpp>
 #include <trueform/core/none.hpp>
 #include <trueform/core/offset_block_buffer.hpp>
 #include <trueform/core/points.hpp>
 #include <trueform/core/range.hpp>
 #include <trueform/core/views/offset_block_range.hpp>
+#include <trueform/core/views/sequence_range.hpp>
+#include <trueform/core/views/slice.hpp>
 #include <trueform/exact/int32.hpp>
 #include <trueform/exact/int64.hpp>
 #include <trueform/exact/meta.hpp>
@@ -26,11 +30,15 @@
 #include <trueform/exact/projection_axes.hpp>
 #include <trueform/topology/cdt/dt3/build_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/check_tetrahedralization_validity.hpp>
+#include <trueform/topology/cdt/dt3/compact_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/load_tetrahedralization_sites.hpp>
 #include <trueform/topology/cdt/dt3/recovery/check_tet_face_fixpoint.hpp>
 #include <trueform/topology/cdt/dt3/recovery/check_tet_pieces_stand.hpp>
+#include <trueform/topology/cdt/dt3/recovery/check_tet_segment_fixpoint.hpp>
+#include <trueform/topology/cdt/dt3/recovery/for_each_tet_chain_piece.hpp>
 #include <trueform/topology/cdt/dt3/recovery/recover_tet_face_phase.hpp>
 #include <trueform/topology/cdt/dt3/recovery/recover_tet_segment_phase.hpp>
+#include <trueform/topology/cdt/dt3/recovery/tet_crossing_pair.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_face_recovery.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_face_status.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_pierce_in_facet.hpp>
@@ -40,6 +48,8 @@
 #include <trueform/topology/cdt/dt3/recovery/tet_rim_piece.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_segment_phase.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_segment_status.hpp>
+#include <trueform/topology/cdt/dt3/recovery/tet_face_rim_sites.hpp>
+#include <trueform/topology/cdt/dt3/retire_tet_faces.hpp>
 #include <trueform/topology/cdt/dt3/tet_aligned_position.hpp>
 #include <trueform/topology/cdt/dt3/tet_decision_sites.hpp>
 #include <trueform/topology/cdt/dt3/tet_facet_is_protected.hpp>
@@ -47,6 +57,7 @@
 #include <trueform/topology/cdt/dt3/tet_facets.hpp>
 #include <trueform/topology/cdt/dt3/tet_flip_constraints.hpp>
 #include <trueform/topology/cdt/dt3/tet_flip_eligible.hpp>
+#include <trueform/topology/cdt/dt3/tet_protected_count.hpp>
 #include <trueform/topology/cdt/dt3/tet_shared_owners.hpp>
 #include <trueform/topology/cdt/dt3/tet_site_position.hpp>
 #include <trueform/topology/cdt/dt3/tet_state.hpp>
@@ -65,6 +76,31 @@ using face_owner = dt3::tetrahedralization_owner<int, face_coord, face_i32>;
 using face_phase_t = dt3::tet_segment_phase<int, face_coord>;
 using face_recovery_t = dt3::tet_face_recovery<int, face_coord, face_i32>;
 using face_facets_t = tf::offset_block_buffer<int, face_t>;
+
+/// One vertex of a segment's chain.
+struct face_chain_vertex {
+  int site;
+  std::int64_t numerator;
+};
+
+/// The chain of segment `s` read off its rows (@ref
+/// tf::topology::cdt::dt3::for_each_tet_chain_piece) as its vertices, every
+/// numerator over 2^depth lifted to the deepest frame any segment holds.
+template <typename Recovery>
+auto face_chain_of(const Recovery &recovery, std::size_t s, int depth)
+    -> std::vector<face_chain_vertex> {
+  for (auto bits : recovery.bits)
+    depth = std::max(depth, bits);
+  std::vector<face_chain_vertex> chain;
+  tf::topology::cdt::dt3::for_each_tet_chain_piece(
+      recovery, s, depth,
+      [&chain](int a, int b, std::int64_t n0, std::int64_t n1) {
+        if (chain.empty())
+          chain.push_back({a, n0});
+        chain.push_back({b, n1});
+      });
+  return chain;
+}
 
 /// The sites standing at `points`, loaded and welded into `owner` as a
 /// build welds them; per point, the slot it took.
@@ -95,10 +131,12 @@ auto face_slotted(const std::vector<face_t> &facet,
 auto face_cloud(std::uint32_t seed, std::size_t n, int span, int scale)
     -> std::vector<face_coord> {
   std::mt19937 rng(seed);
-  std::uniform_int_distribution<int> axis(-span, span);
+  const auto axis = [&rng, span] {
+    return tf::test::uniform_int(rng, -span, span);
+  };
   std::vector<face_coord> flat;
   for (std::size_t i = 0; i < 3 * n; ++i)
-    flat.push_back(face_coord(axis(rng)) * (face_coord(1) << scale));
+    flat.push_back(face_coord(axis()) * (face_coord(1) << scale));
   return flat;
 }
 
@@ -110,7 +148,9 @@ auto face_cube_case(std::uint32_t seed, int cuts, int scale, std::size_t cloud,
   const face_coord unit = face_coord(1) << scale;
   const int side = 1 << 10;
   std::mt19937 rng(seed);
-  std::uniform_int_distribution<int> axis(-2 * side, 2 * side);
+  const auto axis = [&rng, reach = 2 * side] {
+    return tf::test::uniform_int(rng, -reach, reach);
+  };
   flat.clear();
   faces.clear();
   std::vector<std::array<int, 3>> corners;
@@ -148,8 +188,8 @@ auto face_cube_case(std::uint32_t seed, int cuts, int scale, std::size_t cloud,
         }
   for (std::size_t i = 0; i < cloud; ++i)
     flat.insert(flat.end(),
-                {face_coord(axis(rng)) * unit, face_coord(axis(rng)) * unit,
-                 face_coord(axis(rng)) * unit});
+                {face_coord(axis()) * unit, face_coord(axis()) * unit,
+                 face_coord(axis()) * unit});
 }
 
 /// Pages of a book about one spine, each a triangle on the spine's two
@@ -159,7 +199,7 @@ auto face_book_case(std::uint32_t seed, std::vector<face_coord> &flat,
   const int depth = 12;
   const face_coord unit = face_coord(1) << depth;
   std::mt19937 rng(seed);
-  std::uniform_int_distribution<int> axis(-1500, 1500);
+  const auto axis = [&rng] { return tf::test::uniform_int(rng, -1500, 1500); };
   flat = {0, 0, -1000 * unit, 0, 0, 1000 * unit};
   faces.clear();
   const int pages = 6 + int(seed % 5);
@@ -170,13 +210,13 @@ auto face_book_case(std::uint32_t seed, std::vector<face_coord> &flat,
     flat.insert(flat.end(),
                 {face_coord(std::llround(reach * std::cos(angle))) * unit,
                  face_coord(std::llround(reach * std::sin(angle))) * unit,
-                 face_coord(axis(rng) / 4) * unit});
+                 face_coord(axis() / 4) * unit});
     faces.push_back({0, 1, 2 + p});
   }
   for (int i = 0; i < 200; ++i)
     flat.insert(flat.end(),
-                {face_coord(axis(rng)) * unit, face_coord(axis(rng)) * unit,
-                 face_coord(axis(rng)) * unit});
+                {face_coord(axis()) * unit, face_coord(axis()) * unit,
+                 face_coord(axis()) * unit});
 }
 
 /// One block per face of `faces`, each of one triangle, or, given
@@ -197,13 +237,16 @@ auto face_facets_of(const std::vector<face_t> &faces,
 /// Build the complex of `flat`, rename `faces` and `segments` into its
 /// slots, then run phase S over the faces' rims and the segments given and
 /// phase F over the faces, serially, blocked into facets at `offsets`
-/// (@ref face_facets_of). Returns whether every append was published.
+/// (@ref face_facets_of), every crossing phase S refuses kept in `named`
+/// where given. Returns whether every append was published.
 auto face_case(face_owner &owner, const std::vector<face_coord> &flat,
                std::vector<std::array<int, 2>> segments,
                std::vector<face_t> &faces, face_phase_t &phase,
                face_recovery_t &recovery, int depth = 12,
                std::size_t budget_ratio = 32,
-               const std::vector<int> &offsets = {}) -> bool {
+               const std::vector<int> &offsets = {},
+               std::vector<dt3::tet_crossing_pair<int>> *named = nullptr)
+    -> bool {
   REQUIRE(dt3::build_tetrahedralization(
       owner, tf::make_points<3>(tf::make_range(flat))));
   for (auto &face : faces)
@@ -217,10 +260,21 @@ auto face_case(face_owner &owner, const std::vector<face_coord> &flat,
   const auto blocks =
       tf::make_offset_block_range(facets.offsets_buffer(), facets.data_buffer());
   phase.segment.site_budget = dt3::tet_site_count(owner) * budget_ratio;
-  REQUIRE(dt3::recover_tet_segment_phase<false>(owner, serial, segments, blocks,
-                                                depth, phase));
-  return dt3::recover_tet_face_phase<false>(owner, serial, blocks, phase,
-                                            recovery);
+  const auto name = [named](const dt3::tet_crossing_pair<int> &pair, auto &) {
+    if (named)
+      named->push_back(pair);
+    return false;
+  };
+  REQUIRE(dt3::recover_tet_segment_phase<false>(
+      owner, serial, segments, blocks,
+      tf::make_sequence_range(int(blocks.size())), depth, phase, tf::none_t{},
+      name));
+  dt3::compact_tetrahedralization<false, true>(owner);
+  const bool recovered = dt3::recover_tet_face_phase<false>(
+      owner, serial, blocks, tf::make_sequence_range(int(blocks.size())), phase,
+      recovery);
+  dt3::compact_tetrahedralization<false, true>(owner);
+  return recovered;
 }
 
 /// The test's own reading of a face's cover: every facet of the published
@@ -309,7 +363,7 @@ auto face_recovered_whole(const face_owner &owner,
       tf::make_offset_block_range(facets.offsets_buffer(), facets.data_buffer());
   return dt3::check_tetrahedralization_validity(owner) &&
          dt3::check_tet_face_fixpoint(owner, blocks, recovery) &&
-         dt3::check_tet_pieces_stand(owner, phase.pieces);
+         dt3::check_tet_segment_fixpoint(owner, phase);
 }
 
 /// The owners of the lane facet `key`, slots ascending: its stack, or its
@@ -328,7 +382,7 @@ auto face_owners_of(const face_owner &owner, face_t key) -> std::vector<int> {
       std::vector<int> stack;
       const auto range = dt3::tet_shared_owners(owner, key);
       for (auto at = range.first; at != range.second; ++at)
-        stack.push_back(at->second);
+        stack.push_back(at->face);
       return stack;
     }
   return {};
@@ -357,6 +411,31 @@ auto face_wings_of(const face_owner &owner, int f, int p, int q)
       if (corner != p && corner != q)
         wings.push_back(corner);
   return wings;
+}
+/// A prism over the footprint `xy`, wound counterclockwise from above,
+/// between the heights `z0` and `z1`, appended to `flat` and to `faces`,
+/// each of its six sides one facet of two triangles at `offsets`.
+auto face_prism_case(const std::array<std::array<int, 2>, 4> &xy, int z0,
+                     int z1, std::vector<face_coord> &flat,
+                     std::vector<face_t> &faces, std::vector<int> &offsets)
+    -> void {
+  const face_coord unit = face_coord(1) << 12;
+  const int base = int(flat.size() / 3);
+  for (int z : {z0, z1})
+    for (const auto &p : xy)
+      flat.insert(flat.end(), {face_coord(p[0]) * unit, face_coord(p[1]) * unit,
+                               face_coord(z) * unit});
+  const auto quad = [&](int a, int b, int c, int d) {
+    if (offsets.empty())
+      offsets.push_back(0);
+    faces.push_back({base + a, base + b, base + c});
+    faces.push_back({base + a, base + c, base + d});
+    offsets.push_back(int(faces.size()));
+  };
+  quad(0, 3, 2, 1);
+  quad(4, 5, 6, 7);
+  for (int i = 0; i < 4; ++i)
+    quad(i, (i + 1) % 4, 4 + (i + 1) % 4, 4 + i);
 }
 } // namespace
 
@@ -390,7 +469,7 @@ TEST_CASE("tet faces: facets the complex holds are covered without a flip",
 }
 
 TEST_CASE("tet faces: a cube's surface among a cloud is tiled by the complex",
-          "[topology][delaunay3][faces][surface]") {
+          "[.fuzz][topology][delaunay3][faces][surface]") {
   for (std::uint32_t seed = 9900; seed < 9910; ++seed) {
     CAPTURE(seed);
     std::vector<face_coord> flat;
@@ -403,6 +482,141 @@ TEST_CASE("tet faces: a cube's surface among a cloud is tiled by the complex",
     CHECK(face_recovered_whole(owner, faces, phase, recovery));
     CHECK(recovery.census.refused == 0);
   }
+}
+
+TEST_CASE("tet faces: faces due later recover on the standing complex",
+          "[topology][delaunay3][faces][due]") {
+  // The cube's first faces are recovered alone, then the rest are due on the
+  // standing complex: their rims are stated beside the standing ones, the
+  // standing segments keep their ids, and every face ends tiled with the
+  // first ones' statuses untouched by the second entry.
+  for (std::uint32_t seed = 9900; seed < 9903; ++seed) {
+    CAPTURE(seed);
+    std::vector<face_coord> flat;
+    std::vector<face_t> faces;
+    face_cube_case(seed, 3, 12, 300, flat, faces);
+    face_owner owner;
+    REQUIRE(dt3::build_tetrahedralization(
+        owner, tf::make_points<3>(tf::make_range(flat))));
+    for (auto &face : faces)
+      for (auto &corner : face)
+        corner = owner._index_map.f()[std::size_t(corner)];
+    const auto facets = face_facets_of(faces);
+    const auto blocks = tf::make_offset_block_range(facets.offsets_buffer(),
+                                                    facets.data_buffer());
+    const std::size_t n = blocks.size(), k = n / 2;
+    tf::none_t serial{};
+    face_phase_t phase;
+    face_recovery_t recovery;
+    phase.segment.site_budget = dt3::tet_site_count(owner) * 32;
+    const auto first = tf::slice(blocks, 0, k);
+    REQUIRE(dt3::recover_tet_segment_phase<false>(
+        owner, serial, std::vector<std::array<int, 2>>{}, first,
+        tf::make_sequence_range(int(k)), 12, phase));
+    dt3::compact_tetrahedralization<false, true>(owner);
+    REQUIRE(dt3::recover_tet_face_phase<false>(owner, serial, first,
+                                               tf::make_sequence_range(int(k)),
+                                               phase, recovery));
+    dt3::compact_tetrahedralization<false, true>(owner);
+    const std::size_t standing = phase.segments.size();
+    const auto standing_segments = std::vector<std::array<int, 2>>(
+        phase.segments.begin(), phase.segments.end());
+    const std::vector<dt3::tet_face_status> before(recovery.status.begin(),
+                                                   recovery.status.end());
+    REQUIRE(dt3::recover_tet_segment_phase<false>(
+        owner, serial, std::vector<std::array<int, 2>>{}, blocks,
+        tf::make_sequence_range(int(k), int(blocks.size())), 12, phase));
+    dt3::compact_tetrahedralization<false, true>(owner);
+    REQUIRE(dt3::recover_tet_face_phase<false>(
+        owner, serial, blocks, tf::make_sequence_range(int(k), int(n)), phase,
+        recovery));
+    dt3::compact_tetrahedralization<false, true>(owner);
+    CHECK(phase.segments.size() > standing);
+    for (std::size_t s = 0; s < standing; ++s)
+      CHECK(phase.segments[s] == standing_segments[s]);
+    // an edge the standing rims hold is one segment, not a second
+    std::vector<std::array<int, 2>> keys(phase.segments.begin(),
+                                         phase.segments.end());
+    std::sort(keys.begin(), keys.end());
+    CHECK(std::adjacent_find(keys.begin(), keys.end()) == keys.end());
+    for (std::size_t f = 0; f < k; ++f)
+      CHECK(recovery.status[f] == before[f]);
+    CHECK(face_recovered_whole(owner, faces, phase, recovery));
+    CHECK(recovery.census.refused == 0);
+  }
+}
+
+TEST_CASE("tet faces: a retired face releases its facets and recovers as due",
+          "[topology][delaunay3][faces][retire]") {
+  // Faces of a cube retired after recovery hold no facet of the lane, which
+  // counts only what is still held; due again on the standing complex they
+  // recover whole. A stack of faces on one facet that loses all but one
+  // owner leaves that one owning the facet alone.
+  std::vector<face_coord> flat;
+  std::vector<face_t> faces;
+  face_cube_case(9901, 3, 12, 300, flat, faces);
+  face_owner owner;
+  face_phase_t phase;
+  face_recovery_t recovery;
+  REQUIRE(face_case(owner, flat, {}, faces, phase, recovery));
+  REQUIRE(face_recovered_whole(owner, faces, phase, recovery));
+  const auto count_protected = [&owner] {
+    std::size_t count = 0;
+    for (std::size_t cell = 0; cell < std::size_t(owner._corners.size());
+         ++cell)
+      for (std::size_t slot = 0; slot < 4; ++slot)
+        count += owner._states[cell] != dt3::tet_state::dead &&
+                 dt3::tet_facet_is_protected(owner, int(cell), slot) &&
+                 std::size_t(owner._neighbors[cell][slot]) > cell;
+    return count;
+  };
+  REQUIRE(count_protected() == dt3::tet_protected_count(owner));
+  tf::buffer<int> retired;
+  for (int f = 0; f < int(faces.size()); f += 3)
+    retired.push_back(f);
+  tf::buffer<dt3::tet_retired_facet<int>> scratch;
+  dt3::retire_tet_faces(owner, retired, dt3::tet_face_rim_sites(phase),
+                        scratch);
+  CHECK(count_protected() == dt3::tet_protected_count(owner));
+  for (std::size_t cell = 0; cell < std::size_t(owner._corners.size()); ++cell)
+    for (std::size_t slot = 0; slot < 4; ++slot)
+      if (owner._states[cell] != dt3::tet_state::dead &&
+          dt3::tet_facet_is_protected(owner, int(cell), slot))
+        CHECK(!std::binary_search(retired.begin(), retired.end(),
+                                  owner._owners[4 * cell + slot]));
+  const auto facets = face_facets_of(faces);
+  const auto blocks = tf::make_offset_block_range(facets.offsets_buffer(),
+                                                  facets.data_buffer());
+  tf::none_t serial{};
+  REQUIRE(dt3::recover_tet_face_phase<false>(owner, serial, blocks, retired,
+                                             phase, recovery));
+  dt3::compact_tetrahedralization<false, true>(owner);
+  CHECK(face_recovered_whole(owner, faces, phase, recovery));
+
+  const auto cloud = face_cloud(31, 200, 1 << 12, 12);
+  auto sites = cloud;
+  const face_coord unit = face_coord(1) << 12;
+  const int base = int(cloud.size() / 3);
+  sites.insert(sites.end(), {-900 * unit, -900 * unit, 0, 900 * unit,
+                             -900 * unit, 0, 0, 900 * unit, 0});
+  std::vector<face_t> stack{{base, base + 1, base + 2},
+                            {base, base + 2, base + 1},
+                            {base, base + 1, base + 2}};
+  face_owner stacked;
+  face_phase_t stack_phase;
+  face_recovery_t stack_recovery;
+  REQUIRE(face_case(stacked, sites, {}, stack, stack_phase, stack_recovery));
+  bool tiled = false;
+  const auto cover = face_cover_of(stacked, stack[0], tiled);
+  REQUIRE(!cover.empty());
+  tf::buffer<int> two;
+  two.push_back(0);
+  two.push_back(2);
+  dt3::retire_tet_faces(stacked, two, dt3::tet_face_rim_sites(stack_phase),
+                        scratch);
+  for (const auto &facet : cover)
+    CHECK(face_owners_of(stacked, facet) == std::vector<int>{1});
+  CHECK(stacked._shared.size() == 0);
 }
 
 TEST_CASE("tet faces: a cube alone is tiled through its hull",
@@ -563,20 +777,20 @@ TEST_CASE("tet faces: a fin on a plate's interior edge holds the plate from "
         std::find(recovery.uncovered.begin(), recovery.uncovered.end(), 1) !=
         recovery.uncovered.end();
     CHECK(serial == pierced);
-    const auto chain = phase.segment.chains[segment];
+    const auto chain = face_chain_of(phase.segment, segment, 0);
     REQUIRE(chain.size() > 2);
     CHECK(descends(chain));
     const auto cd = segment_of(c, d);
     REQUIRE(cd < phase.segments.size());
-    REQUIRE(phase.segment.chains[cd].size() > 2);
-    CHECK(descends(phase.segment.chains[cd]));
+    REQUIRE(face_chain_of(phase.segment, cd, 0).size() > 2);
+    CHECK(descends(face_chain_of(phase.segment, cd, 0)));
     if (pierced) {
       // the plate is the serial pass's last face, so the rim it read stands
       CHECK(recovery.census.flipped + recovery.census.points >= 1);
       for (std::size_t i = 1; i < chain.size(); ++i) {
         const int p = chain[i - 1].site, q = chain[i].site;
         const auto pieces = std::equal_range(
-            recovery.rim.begin(), recovery.rim.end(),
+            recovery.cover_scratch.rim.begin(), recovery.cover_scratch.rim.end(),
             dt3::tet_rim_piece<int>{std::min(p, q), std::max(p, q), 0});
         REQUIRE(pieces.second - pieces.first == 2);
         CHECK(pieces.first->side != 0);
@@ -609,7 +823,7 @@ TEST_CASE("tet faces: a fin on a plate's interior edge holds the plate from "
                                                     facets.data_buffer());
     CHECK(dt3::check_tetrahedralization_validity(owner));
     CHECK(dt3::check_tet_face_fixpoint(owner, blocks, recovery));
-    CHECK(dt3::check_tet_pieces_stand(owner, phase.pieces));
+    CHECK(dt3::check_tet_segment_fixpoint(owner, phase));
   }
 }
 
@@ -622,19 +836,21 @@ TEST_CASE("tet faces: a plate among sites on its own plane is tiled as found",
     CAPTURE(seed);
     const face_coord unit = face_coord(1) << 12;
     std::mt19937 rng(seed);
-    std::uniform_int_distribution<int> span(-1000, 1000);
-    std::uniform_int_distribution<int> off(-2000, 2000);
+    const auto spread = [&rng] {
+      return tf::test::uniform_int(rng, -1000, 1000);
+    };
+    const auto off = [&rng] { return tf::test::uniform_int(rng, -2000, 2000); };
     std::vector<face_coord> flat{-1500 * unit, -1500 * unit, 0,
                                  1500 * unit,  -1500 * unit, 0,
                                  1500 * unit,  1500 * unit,  0,
                                  -1500 * unit, 1500 * unit,  0};
     for (int i = 0; i < 60; ++i)
-      flat.insert(flat.end(), {face_coord(span(rng)) * unit,
-                               face_coord(span(rng)) * unit, 0});
+      flat.insert(flat.end(), {face_coord(spread()) * unit,
+                               face_coord(spread()) * unit, 0});
     for (int i = 0; i < 300; ++i)
       flat.insert(flat.end(),
-                  {face_coord(off(rng)) * unit, face_coord(off(rng)) * unit,
-                   face_coord(off(rng)) * unit});
+                  {face_coord(off()) * unit, face_coord(off()) * unit,
+                   face_coord(off()) * unit});
     std::vector<face_t> faces{{0, 1, 2}, {0, 2, 3}};
     face_owner owner;
     face_phase_t phase;
@@ -679,6 +895,24 @@ TEST_CASE("tet faces: Schoenhardt's prism resolves with a point",
   CHECK(recovery.census.refused == 0);
 }
 
+TEST_CASE("tet faces: a chain that spends its passes refuses the face",
+          "[topology][delaunay3][faces][refusal]") {
+  // The face of "places one below it": its chain places a point and reads
+  // the cover again, so one pass cannot finish it and the face refuses.
+  const std::vector<face_coord> flat{-13, 16,  -32, 15,  36, 6,  9,   -29, -32,
+                                     21,  34,  -17, -35, 2,  6,  -19, 11,  33,
+                                     2,   -27, -22, -17, 5,  12, -7,  14,  -26};
+  std::vector<face_t> faces{{0, 1, 2}};
+  face_owner owner;
+  face_phase_t phase;
+  face_recovery_t recovery;
+  recovery.chain_passes = 1;
+  REQUIRE(face_case(owner, flat, {}, faces, phase, recovery, 0));
+  CHECK(recovery.census.capped == 1);
+  CHECK(recovery.census.refused == 1);
+  CHECK(recovery.status[0] == dt3::tet_face_status::refused);
+}
+
 TEST_CASE("tet faces: a segment piercing a face refuses it as crossed",
           "[topology][delaunay3][faces][refusal]") {
   const face_coord unit = face_coord(1) << 12;
@@ -700,6 +934,89 @@ TEST_CASE("tet faces: a segment piercing a face refuses it as crossed",
   CHECK(recovery.status[0] == dt3::tet_face_status::refused);
   CHECK(recovery.census.crossed == 1);
   CHECK(dt3::check_tetrahedralization_validity(owner));
+}
+
+TEST_CASE("tet faces: two boxes crossing name the constraints they cross",
+          "[topology][delaunay3][faces][refusal]") {
+  // the second box's edges pierce the first one's sides and its sides are
+  // pierced by the first one's edges; set on the first one's top, a diamond
+  // crosses its rim inside the plane they share, where no dyadic split of
+  // either rim lands
+  for (const bool coplanar : {false, true}) {
+    CAPTURE(coplanar);
+    std::vector<face_coord> flat;
+    std::vector<face_t> faces;
+    std::vector<int> offsets;
+    face_prism_case(
+        {{{-1000, -1000}, {1000, -1000}, {1000, 1000}, {-1000, 1000}}}, -1000,
+        1000, flat, faces, offsets);
+    if (coplanar)
+      face_prism_case({{{1300, 0}, {0, 1300}, {-1300, 0}, {0, -1300}}}, 1000,
+                      2000, flat, faces, offsets);
+    else
+      face_prism_case(
+          {{{-500, -500}, {1500, -500}, {1500, 1500}, {-500, 1500}}}, -500,
+          1500, flat, faces, offsets);
+    face_owner owner;
+    face_phase_t phase;
+    face_recovery_t recovery;
+    std::vector<dt3::tet_crossing_pair<int>> named;
+    REQUIRE(face_case(owner, flat, {}, faces, phase, recovery, 12, 32, offsets,
+                      &named));
+    const auto &slot = owner._index_map.f();
+    const auto box_of_site = [&slot](int site) {
+      for (std::size_t i = 0; i < 16; ++i)
+        if (slot[i] == site)
+          return int(i / 8);
+      return -1;
+    };
+    const auto box_of_segment = [&](int s) {
+      const auto &ends = phase.segments[std::size_t(s)];
+      const int box = box_of_site(int(ends[0]));
+      return box == box_of_site(int(ends[1])) ? box : -1;
+    };
+    std::size_t depth = 0, crossed = 0;
+    for (std::size_t s = 0; s < phase.segment.status.size(); ++s) {
+      const auto pair =
+          std::find_if(named.begin(), named.end(), [s](const auto &named_pair) {
+            return named_pair.segment == int(s);
+          });
+      if (phase.segment.status[s] != dt3::tet_segment_status::depth) {
+        CHECK(pair == named.end());
+        continue;
+      }
+      ++depth;
+      REQUIRE(pair != named.end());
+      const int other = pair->crosses.segment;
+      REQUIRE(other >= 0);
+      CHECK(box_of_segment(other) == 1 - box_of_segment(int(s)));
+    }
+    for (std::size_t f = 0; f < recovery.status.size(); ++f) {
+      const auto &crossing = recovery.crossing[f];
+      const int box = int(f) / 6;
+      if (recovery.status[f] != dt3::tet_face_status::refused) {
+        CHECK(crossing.segment == -1);
+        CHECK(crossing.face == -1);
+        continue;
+      }
+      if (crossing.segment >= 0) {
+        ++crossed;
+        CHECK(box_of_segment(crossing.segment) == 1 - box);
+      } else if (crossing.face >= 0) {
+        CHECK(crossing.face / 6 == 1 - box);
+      }
+    }
+    CHECK(recovery.census.crossed == crossed);
+    CHECK(recovery.census.pierced == 0);
+    if (coplanar) {
+      CHECK(depth >= 2);
+      CHECK(recovery.census.open_rim >= 2);
+    } else {
+      CHECK(depth == 0);
+      CHECK(crossed >= 6);
+    }
+    CHECK(dt3::check_tetrahedralization_validity(owner));
+  }
 }
 
 TEST_CASE("tet faces: a face whose lattice point stands places one below the "
@@ -812,6 +1129,9 @@ TEST_CASE("tet faces: the fixpoint oracles catch a dropped piece and an "
   std::vector<face_coord> flat;
   std::vector<face_t> faces;
   face_cube_case(9901, 3, 12, 300, flat, faces);
+  // a site on the middle of one rim edge, so that edge's chain splits there
+  const face_coord unit = face_coord(1) << 12;
+  flat.insert(flat.end(), {-1024 * unit, -683 * unit, -1024 * unit});
   face_owner owner;
   face_phase_t phase;
   face_recovery_t recovery;
@@ -821,18 +1141,18 @@ TEST_CASE("tet faces: the fixpoint oracles catch a dropped piece and an "
   const auto blocks =
       tf::make_offset_block_range(facets.offsets_buffer(), facets.data_buffer());
   {
-    auto pieces = phase.pieces;
+    std::vector<std::array<int, 2>> pieces;
     bool dropped = false;
-    for (const auto &chain : phase.segment.chains)
-      if (chain.size() > 2) {
+    for (std::size_t g = 0; g < phase.segment.status.size(); ++g)
+      if (const auto chain = face_chain_of(phase.segment, g, 0);
+          chain.size() > 2) {
         pieces.push_back({std::min(chain[0].site, chain[2].site),
                           std::max(chain[0].site, chain[2].site)});
-        std::sort(pieces.begin(), pieces.end());
         dropped = true;
         break;
       }
-    if (dropped)
-      CHECK_FALSE(dt3::check_tet_pieces_stand(owner, pieces));
+    REQUIRE(dropped);
+    CHECK_FALSE(dt3::check_tet_pieces_stand(owner, pieces));
   }
   {
     face_owner untiled = owner;
@@ -843,7 +1163,6 @@ TEST_CASE("tet faces: the fixpoint oracles catch a dropped piece and an "
             untiled._owners[4 * cell + slot] >= 0) {
           dt3::state_tet_facet_protection(untiled, int(cell), slot, false,
                                           face_owner::none);
-          --untiled._n_protected;
           cleared = true;
         }
     REQUIRE(cleared);

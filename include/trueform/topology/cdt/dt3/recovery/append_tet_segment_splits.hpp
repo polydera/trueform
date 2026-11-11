@@ -18,11 +18,13 @@
 #include "../../../../core/views/sequence_range.hpp"
 #include "../tet_minted_site.hpp"
 #include "../tet_owner_complex.hpp"
+#include "./grow_tet_steiner.hpp"
 #include "./split_tet_subsegment.hpp"
 #include "./tet_segment_recovery.hpp"
 #include "./tet_segment_status.hpp"
 #include "./tet_subsegment_stands.hpp"
 #include "./ticket_tet_subsegment.hpp"
+#include "./withdraw_tet_subsegment.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <limits>
@@ -131,7 +133,7 @@ auto append_tet_segment_splits(DT &dt, Index round,
   const auto &f = map.f();
   auto &targets = recovery.targets;
   targets.allocate(live);
-  recovery.placed_from = recovery.placed.size();
+  std::size_t placed = 0;
   std::size_t next = recovery.subsegments.size();
   std::size_t withdrawn = 0;
   for (std::size_t i = 0; i < live; ++i) {
@@ -148,16 +150,17 @@ auto append_tet_segment_splits(DT &dt, Index round,
         withdrawn += !recovery.declined[i - skipped];
         continue;
       }
-      recovery.placed.push_back(
-          {slot, recovery.subsegments[std::size_t(split.subsegment)].hint});
+      ++placed;
       if (split.ring != Index(-1))
         recovery.rings[std::size_t(split.ring)] = -1;
     }
     targets[i] = Index(next++);
   }
   recovery.subsegments.reallocate(next);
+  recovery.row_links.reallocate(next);
   recovery.proposed.reallocate(next);
   recovery.minted.reallocate(dt.n_sites() - recovery.first_minted);
+  grow_tet_steiner(recovery, dt.n_sites());
   tf::parallel_for_each(
       tf::make_sequence_range(live),
       [&recovery, &splits, &targets, &f, &segment_of, base, skipped,
@@ -170,6 +173,7 @@ auto append_tet_segment_splits(DT &dt, Index round,
           site = f[base + (i - skipped)];
           recovery.minted[std::size_t(site) - recovery.first_minted] =
               segment_of(split);
+          recovery.steiner[std::size_t(site)] = char(1);
         }
         split_tet_subsegment(recovery, split.subsegment, targets[i], site,
                              split.numerator);
@@ -179,16 +183,19 @@ auto append_tet_segment_splits(DT &dt, Index round,
     if (targets[i] == Index(-1))
       continue;
     const Index k = splits[i].subsegment, next = targets[i];
-    const auto &tail = recovery.subsegments[std::size_t(next)];
+    const auto &head = recovery.subsegments[std::size_t(k)];
+    const Index was =
+        std::min(head.a, recovery.subsegments[std::size_t(next)].b);
     recovery.revisits.push_back(k);
     recovery.revisits.push_back(next);
-    ticket_tet_subsegment(recovery, tail.a, k);
-    ticket_tet_subsegment(recovery, tail.a, next);
-    ticket_tet_subsegment(recovery, tail.b, next);
+    if (std::min(head.a, head.b) != was) {
+      withdraw_tet_subsegment(recovery, was, k);
+      ticket_tet_subsegment(recovery, k);
+    }
+    ticket_tet_subsegment(recovery, next);
   }
 
-  if (withdrawn && recovery.placed.size() == recovery.placed_from &&
-      live == skipped + fresh)
+  if (withdrawn && !placed && live == skipped + fresh)
     for (std::size_t i = skipped; i < skipped + fresh; ++i) {
       const auto segment = std::size_t(segment_of(splits[i]));
       recovery.status[segment] = tet_segment_status::wrapped;

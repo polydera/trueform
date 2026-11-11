@@ -11,9 +11,9 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../../core/config/verify.hpp"
 #include "./tet_edge_ref.hpp"
 #include "./tet_orient3d_sites.hpp"
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -31,13 +31,12 @@ enum class tet_direction : std::uint8_t {
 /// Find the cell on the path from the org a of `edge` to `end`: `edge` keeps
 /// its org and ends as [a, b, c, d] with `across_vertex` when a b is collinear
 /// with the path, b the end or a site on it; `across_edge` when the edge b c
-/// meets it; `across_face` when the facet b c d does; `hull` when the walk
-/// left the finite complex, which a convex complex never does. Where several
-/// cells may be entered the next is drawn as the reference draws it, from its
-/// own congruential generator, seeded here by the walk's start and end so the
-/// walk is the same at any worker count; a fixed choice can circle in a
-/// complex that is not Delaunay, the draw does not, and a walk that still
-/// outlasts twice the cell count is `lost`.
+/// meets it; `across_face` when the facet b c d does; `hull` when the walk left
+/// the finite complex, which a convex complex never does. Where several cells
+/// may be entered the next is drawn from a congruential generator seeded by the
+/// walk's start and end, so the walk is the same at any worker count; a fixed
+/// choice can circle in a complex that is not Delaunay, the draw does not, and
+/// a walk that still outlasts twice the cell count is `lost`.
 template <typename Owner>
 auto find_tet_direction(const Owner &owner,
                         tet_edge_ref<typename Owner::index_type> &edge,
@@ -127,7 +126,9 @@ auto find_tet_direction(const Owner &owner,
       }
       return tet_direction::across_face;
     }
-    assert(owner._corners[std::size_t(edge.cell)][edge.a] == pa);
+    if constexpr (tf::core::verification)
+      tf::core::verify(owner._corners[std::size_t(edge.cell)][edge.a] == pa,
+                       "the walk keeps the site its org");
   }
 }
 

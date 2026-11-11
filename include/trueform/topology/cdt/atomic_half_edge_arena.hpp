@@ -11,9 +11,9 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/config/verify.hpp"
 #include "./delaunay_execution_tuning.hpp"
 #include <atomic>
-#include <cassert>
 #include <cstddef>
 
 namespace tf::topology::cdt {
@@ -46,12 +46,16 @@ public:
     }
 
     decltype(auto) operator[](std::size_t index) {
-      assert(index < _arena->_capacity);
+      if constexpr (tf::core::verification)
+        tf::core::verify(index < _arena->_capacity,
+                         "a dart index lies inside the arena");
       return (*_arena->_edges)[index];
     }
 
     decltype(auto) operator[](std::size_t index) const {
-      assert(index < _arena->_capacity);
+      if constexpr (tf::core::verification)
+        tf::core::verify(index < _arena->_capacity,
+                         "a dart index lies inside the arena");
       return static_cast<const Edges &>(*_arena->_edges)[index];
     }
 

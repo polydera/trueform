@@ -1,6 +1,7 @@
 add_executable(trueform_topology_tests
   test_boundary.cpp
   test_connectivity.cpp
+  test_tet_connectivity.cpp
   test_half_edges.cpp
   test_neighborhoods.cpp
   test_mesh_analysis.cpp
@@ -13,8 +14,12 @@ add_executable(trueform_topology_tests
   test_hole_patcher.cpp
   test_constrained_delaunay_triangulator.cpp
   test_delaunay_tetrahedralizer.cpp
+  test_tet_collapse.cpp
   test_tet_segment_recovery.cpp
   test_tet_face_recovery.cpp
+  test_tet_empty_sites.cpp
+  test_tet_hull_order.cpp
+  test_tet_row_admission.cpp
   test_cdt_constraint_owner_api.cpp
   test_cdt_meeting_landings.cpp
   test_cdt_half_edge_carrier_lifecycle.cpp
@@ -37,4 +42,17 @@ target_compile_options(trueform_topology_tests PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4244 /wd4267 /wd4458 /wd4701>
 )
 
-catch_discover_tests(trueform_topology_tests TEST_PREFIX "topology::")
+tf_discover_tests(trueform_topology_tests "topology::")
+
+# The deep-lattice suites over the house int128 class; they read no builder.
+if(TARGET trueform_test_int128_class)
+  add_executable(trueform_topology_int128_class_tests
+    test_delaunay_tetrahedralizer.cpp
+    test_tet_segment_recovery.cpp
+    test_tet_face_recovery.cpp
+  )
+  target_link_libraries(trueform_topology_int128_class_tests PRIVATE
+    trueform_test_int128_class)
+  tf_discover_tests(trueform_topology_int128_class_tests
+    "topology_int128_class::")
+endif()

@@ -9,7 +9,12 @@
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
+#include "fill_generators.hpp"
+#include "worker_ladder.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
+#include <cstddef>
+#include <tbb/task_arena.h>
 #include <trueform/core/signed_volume.hpp>
 #include <trueform/fill/fill_holes.hpp>
 #include <trueform/fill/make_filled_mesh.hpp>
@@ -21,10 +26,6 @@
 #include <trueform/topology/is_closed.hpp>
 #include <trueform/topology/is_manifold.hpp>
 #include <trueform/topology/policy/face_membership.hpp>
-#include "fill_generators.hpp"
-#include "oneapi/tbb/global_control.h"
-#include <cmath>
-#include <cstddef>
 #include <vector>
 
 namespace {
@@ -151,17 +152,18 @@ TEST_CASE("fill: a punched sphere comes back closed and near its own volume",
 }
 
 TEST_CASE("fill: the product does not depend on how many workers ran it",
-          "[fill][entry]") {
+          "[.fuzz][fill][entry]") {
   const auto sphere = tf::make_sphere_mesh<entry_index>(1.0f, 8, 12);
   const auto holed = hole_punched_mesh(sphere, {3, 4, 15, 16, 30, 31, 32});
   const auto rims = tf::make_boundary_rims(holed.polygons());
   const auto reference = tf::fill_holes(holed.polygons(), rims);
   REQUIRE(entry_same(reference, tf::fill_holes(holed.polygons(), rims)));
-  for (std::size_t workers : {std::size_t(1), std::size_t(2),
-                              std::size_t(4)}) {
-    const tbb::global_control control(
-        tbb::global_control::max_allowed_parallelism, workers);
-    REQUIRE(entry_same(reference, tf::fill_holes(holed.polygons(), rims)));
+  for (const std::size_t workers : tf::test::worker_ladder({1, 2, 4})) {
+    CAPTURE(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
+    REQUIRE(entry_same(reference, arena.execute([&] {
+      return tf::fill_holes(holed.polygons(), rims);
+    })));
   }
 }
 
@@ -272,19 +274,19 @@ TEST_CASE("fill: a rim vertex standing on an n-gon refuses the fairing alone",
 }
 
 TEST_CASE("fill: a faired product does not depend on how many workers ran it",
-          "[fill][entry]") {
+          "[.fuzz][fill][entry]") {
   const auto mesh = entry_rhombus_mesh();
   const auto rims = tf::make_boundary_rims(mesh.polygons());
   tf::hole_fill_config config;
   config.min_quality = 0.25;
   const auto reference = tf::fill_holes(mesh.polygons(), rims, config);
   REQUIRE(reference.faired[0] == tf::hole_fair_status::faired);
-  for (std::size_t workers : {std::size_t(1), std::size_t(2),
-                              std::size_t(4)}) {
-    const tbb::global_control control(
-        tbb::global_control::max_allowed_parallelism, workers);
-    REQUIRE(entry_same(reference,
-                       tf::fill_holes(mesh.polygons(), rims, config)));
+  for (const std::size_t workers : tf::test::worker_ladder({1, 2, 4})) {
+    CAPTURE(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
+    REQUIRE(entry_same(reference, arena.execute([&] {
+      return tf::fill_holes(mesh.polygons(), rims, config);
+    })));
   }
 }
 

@@ -29,7 +29,7 @@ auto tet_orient2d_sign(const tf::exact::pt2<Coord> &a,
   using T1 = typename tf::exact::meta<Int>::T1;
   using T2 = typename tf::exact::meta<Int>::T2;
   if constexpr (tf::exact::float_filter_sound) {
-    const int filtered = tf::exact::orient2d_filter_sign<Int>(a, b, c);
+    const int filtered = tf::exact::orient2d_filter_sign(a, b, c);
     if (filtered)
       return filtered;
   }

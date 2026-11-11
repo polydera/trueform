@@ -10,6 +10,8 @@
  *
  * Author: Žiga Sajovic
  */
+#include "uniform_draw.hpp"
+#include "worker_ladder.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <trueform/core/index_map.hpp>
 #include <trueform/core/none.hpp>
@@ -31,6 +33,8 @@
 #include <trueform/topology/cdt/dt3/compact_tet_dead_rows.hpp>
 #include <trueform/topology/cdt/dt3/compact_tetrahedralization.hpp>
 #include <trueform/topology/cdt/dt3/protect_tet_facets.hpp>
+#include <trueform/topology/cdt/dt3/publish_tetrahedralization.hpp>
+#include <trueform/topology/cdt/dt3/recovery/for_each_tet_chain_piece.hpp>
 #include <trueform/topology/cdt/dt3/recovery/recover_tet_segments.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_segment_point.hpp>
 #include <trueform/topology/cdt/dt3/recovery/tet_segment_recovery.hpp>
@@ -38,6 +42,7 @@
 #include <trueform/topology/cdt/dt3/recovery/tet_site_on_segment.hpp>
 #include <trueform/topology/cdt/dt3/tet_aligned_position.hpp>
 #include <trueform/topology/cdt/dt3/tet_claim_workspace.hpp>
+#include <trueform/topology/cdt/dt3/tet_execution_tuning.hpp>
 #include <trueform/topology/cdt/dt3/tet_facets.hpp>
 #include <trueform/topology/cdt/dt3/tet_owner_complex.hpp>
 #include <trueform/topology/cdt/dt3/tet_position.hpp>
@@ -75,7 +80,7 @@ auto seg_recover(DT &dt, const Segments &segments, int depth,
                  Recovery &recovery) -> bool {
   tf::topology::cdt::dt3::compact_tet_dead_rows<true>(dt.owner());
   const bool appended = tf::topology::cdt::dt3::recover_tet_segments(
-      dt, segments, depth, recovery);
+      dt, segments, 0, depth, recovery);
   tf::topology::cdt::dt3::compact_tetrahedralization<true, true>(dt.owner());
   return appended;
 }
@@ -83,14 +88,39 @@ using seg_recovery =
     tf::topology::cdt::dt3::tet_segment_recovery<int, seg_coord>;
 using seg_status = tf::topology::cdt::dt3::tet_segment_status;
 
+/// One vertex of a segment's chain.
+struct seg_chain_vertex {
+  int site;
+  std::int64_t numerator;
+};
+
+/// The chain of segment `s` read off its rows (@ref
+/// tf::topology::cdt::dt3::for_each_tet_chain_piece) as its vertices, every
+/// numerator over 2^depth lifted to the deepest frame any segment holds.
+template <typename Recovery>
+auto seg_chain_of(const Recovery &recovery, std::size_t s, int depth)
+    -> std::vector<seg_chain_vertex> {
+  for (auto bits : recovery.bits)
+    depth = std::max(depth, bits);
+  std::vector<seg_chain_vertex> chain;
+  tf::topology::cdt::dt3::for_each_tet_chain_piece(
+      recovery, s, depth,
+      [&chain](int a, int b, std::int64_t n0, std::int64_t n1) {
+        if (chain.empty())
+          chain.push_back({a, n0});
+        chain.push_back({b, n1});
+      });
+  return chain;
+}
+
 /// A cloud on the int32 lattice, stored scaled by 2^scale.
 auto seg_cloud(std::uint32_t seed, std::size_t n, int span, int scale)
     -> std::vector<seg_coord> {
   std::mt19937 rng(seed);
-  std::uniform_int_distribution<int> axis(-span, span);
   std::vector<seg_coord> flat;
   for (std::size_t i = 0; i < 3 * n; ++i)
-    flat.push_back(seg_coord(axis(rng)) * (seg_coord(1) << scale));
+    flat.push_back(seg_coord(tf::test::uniform_int(rng, -span, span)) *
+                   (seg_coord(1) << scale));
   return flat;
 }
 
@@ -119,7 +149,7 @@ template <typename DT, typename Segment>
 auto seg_chain_holds(const DT &dt, const seg_recovery &recovery, std::size_t s,
                      const Segment &segment, int depth) -> bool {
   namespace dt3 = tf::topology::cdt::dt3;
-  const auto chain = recovery.chains[s];
+  const auto chain = seg_chain_of(recovery, s, depth);
   const auto &owner = dt.owner();
   const auto edges = seg_edges(dt);
   if (chain.size() < 2 || chain[0].site != segment[0] ||
@@ -213,7 +243,7 @@ TEST_CASE("tet segments: a segment through a standing site splits there",
     REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
     REQUIRE(recovery.status[0] == seg_status::recovered);
     CHECK(seg_chain_holds(dt, recovery, 0, segments[0], depth));
-    const auto chain = recovery.chains[0];
+    const auto chain = seg_chain_of(recovery, 0, depth);
     bool shared = false;
     for (const auto &vertex : chain)
       shared = shared || vertex.site == f[2];
@@ -271,7 +301,7 @@ auto seg_stream(const DT &dt, const seg_recovery &recovery) {
   for (std::size_t s = 0; s < recovery.status.size(); ++s) {
     stream.push_back(std::int64_t(recovery.status[s]));
     stream.push_back(recovery.rounds[s]);
-    for (const auto &vertex : recovery.chains[s]) {
+    for (const auto &vertex : seg_chain_of(recovery, s, 0)) {
       stream.push_back(vertex.site);
       stream.push_back(vertex.numerator);
     }
@@ -320,22 +350,23 @@ TEST_CASE("tet segments: a 65k cloud refuses at a shallow depth and keeps "
 TEST_CASE("tet segments: a segment whose frame runs out deepens it and "
           "recovers",
           "[topology][delaunay3][segments][depth]") {
-  // A segment 2^21 lattice units long passes through 512 sites within 16 of
-  // its middle, stored at 2^10: its pieces there are finer than a 10-bit
-  // frame splits, so on that frame it refuses for depth. Deepening, its
-  // frame reaches past the sites' own, its splits stand exactly on it below
-  // the frame, and it recovers as a chain of edges.
+  // A segment 2^21 lattice units long, rising 2 * 65539 across its length,
+  // passes through the full lattice cube of side 7 about its middle, less the
+  // middle it holds; the cube's sites along its axis stand a fraction of a
+  // unit off it. Stored at 2^10. The pieces between the cube's sites are finer
+  // than a 10-bit frame names, so on that frame it refuses for depth.
+  // Deepening, its frame reaches past the sites' own, its splits stand exactly
+  // on it below the frame where the rise makes them fractional, and it recovers
+  // as a chain of edges.
   namespace dt3 = tf::topology::cdt::dt3;
   const int depth = 10;
-  const seg_coord reach = seg_coord(1) << 20;
-  std::mt19937 rng(1);
-  std::uniform_int_distribution<int> spread(-int(reach), int(reach)),
-      cluster(-16, 16);
-  std::vector<seg_coord> flat{-reach, 0, 0, reach, 0, 0};
-  for (int i = 0; i < 32; ++i)
-    flat.insert(flat.end(), {spread(rng), spread(rng), spread(rng)});
-  for (int i = 0; i < 512; ++i)
-    flat.insert(flat.end(), {cluster(rng), cluster(rng), cluster(rng)});
+  const seg_coord reach = seg_coord(1) << 20, rise = 65539, side = 3;
+  std::vector<seg_coord> flat{-reach, -rise, 0, reach, rise, 0};
+  for (seg_coord x = -side; x <= side; ++x)
+    for (seg_coord y = -side; y <= side; ++y)
+      for (seg_coord z = -side; z <= side; ++z)
+        if (z != 0 || y * reach != rise * x)
+          flat.insert(flat.end(), {x, y, z});
   for (auto &coordinate : flat)
     coordinate *= seg_coord(1) << depth;
   for (const bool deepens : {false, true}) {
@@ -365,7 +396,7 @@ TEST_CASE("tet segments: a segment whose frame runs out deepens it and "
       return dt3::tet_aligned_position<seg_coord>(
           dt3::tet_site_position(owner, site), deepest);
     };
-    const auto chain = recovery.chains[0];
+    const auto chain = seg_chain_of(recovery, 0, depth);
     REQUIRE(chain.size() > 2);
     CHECK(chain[0].site == segments[0][0]);
     CHECK(chain[chain.size() - 1].site == segments[0][1]);
@@ -391,15 +422,15 @@ TEST_CASE("tet segments: a segment whose frame runs out deepens it and "
 
 TEST_CASE("tet segments: recovery on a parallel-built source is one stream "
           "at any worker count",
-          "[topology][delaunay3][segments][determinism]") {
+          "[.fuzz][topology][delaunay3][segments][determinism][parallel]") {
   const int scale = 12;
   const auto flat = seg_cloud(9300, 16384, 1 << 18, scale);
   const auto points = tf::make_points<3>(tf::make_range(flat));
   std::vector<std::int64_t> expected;
   std::size_t minted = 0;
-  for (int workers : {1, 4, 8}) {
+  for (const std::size_t workers : tf::test::worker_ladder({1, 4, 8})) {
     CAPTURE(workers);
-    tbb::task_arena arena(workers);
+    tbb::task_arena arena(static_cast<int>(workers));
     seg_owner_t owner;
     seg_dt dt{owner, seg_serial};
     seg_recovery recovery;
@@ -409,13 +440,16 @@ TEST_CASE("tet segments: recovery on a parallel-built source is one stream "
       if (!tf::topology::cdt::dt3::build_parallel_tetrahedralization(
               owner, points, work))
         return false;
+      tf::topology::cdt::dt3::publish_tetrahedralization<true>(owner);
       segments = seg_long_segments(dt, 9301, 48);
       const auto n = dt.n_sites();
       const bool done = seg_recover(dt, segments, scale, recovery);
       minted = dt.n_sites() - n;
       return done;
     }));
-    CHECK((owner._stats.parallel_bands > 0) == (workers >= 4));
+    CHECK((owner._stats.parallel_insertions > 0) ==
+          (workers >=
+           tf::topology::cdt::dt3::tet_execution_tuning::minimum_workers));
     CHECK(minted > 0);
     for (std::size_t s = 0; s < segments.size(); ++s)
       CHECK(recovery.status[s] == seg_status::recovered);
@@ -425,8 +459,6 @@ TEST_CASE("tet segments: recovery on a parallel-built source is one stream "
     CHECK(stream == expected);
   }
 }
-
-
 
 TEST_CASE("tet segments: wide lattice sites recover, their splits at exact "
           "midpoints",
@@ -450,7 +482,7 @@ TEST_CASE("tet segments: wide lattice sites recover, their splits at exact "
       seg_recover(dt, segments, 4, recovery));
   REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
   REQUIRE(recovery.status[0] == seg_status::recovered);
-  const auto chain = recovery.chains[0];
+  const auto chain = seg_chain_of(recovery, 0, 4);
   CHECK(chain.size() >= 2);
   namespace dt3 = tf::topology::cdt::dt3;
   const auto split = [&owner, &f](std::int64_t numerator) {
@@ -490,13 +522,13 @@ TEST_CASE("tet segments: two segments whose splits land on one point share "
   CHECK(recovery.status[0] == seg_status::recovered);
   CHECK(recovery.status[1] == seg_status::recovered);
   const auto shared = [&recovery](std::size_t s, int site) {
-    for (const auto &vertex : recovery.chains[s])
+    for (const auto &vertex : seg_chain_of(recovery, s, 0))
       if (vertex.site == site)
         return true;
     return false;
   };
   int common = -1;
-  for (const auto &vertex : recovery.chains[0])
+  for (const auto &vertex : seg_chain_of(recovery, 0, depth))
     if (std::size_t(vertex.site) >= n_sites && shared(1, vertex.site) &&
         tf::topology::cdt::dt3::tet_shallow_point(owner, vertex.site) ==
             tf::exact::pt3<seg_coord>{0, 0, 0})
@@ -537,11 +569,12 @@ auto seg_on_segment_exact(const tf::exact::pt3<Coord> &a,
 template <typename Int, typename Coord>
 auto seg_check_on_segment(std::uint32_t seed, Coord span) -> void {
   std::mt19937_64 rng(seed);
-  std::uniform_int_distribution<long long> axis(-(long long)(span),
-                                                (long long)(span));
-  const auto point = [&] {
-    return tf::exact::pt3<Coord>{Coord(axis(rng)), Coord(axis(rng)),
-                                 Coord(axis(rng))};
+  const auto reach = (long long)(span);
+  const auto point = [&rng, reach] {
+    return tf::exact::pt3<Coord>{
+        Coord(tf::test::uniform_int(rng, -reach, reach)),
+        Coord(tf::test::uniform_int(rng, -reach, reach)),
+        Coord(tf::test::uniform_int(rng, -reach, reach))};
   };
   std::size_t on = 0;
   for (int trial = 0; trial < 4000; ++trial) {
@@ -578,3 +611,36 @@ TEST_CASE("tet segments: the filtered on-segment test agrees with its exact "
   seg_check_on_segment<tf::exact::int64, wide>(9502, wide(1) << 60);
 }
 
+
+TEST_CASE("tet segments: a walk that spends its turns refuses the segment",
+          "[topology][delaunay3][segments]") {
+  const int depth = 12;
+  const auto flat = seg_cloud(9601, 400, 1 << 16, depth);
+  seg_owner_t owner;
+  REQUIRE(seg_build(owner, flat));
+  seg_dt dt{owner, seg_serial};
+  std::mt19937 rng(9602);
+  std::vector<std::array<int, 2>> segments;
+  for (int i = 0; i < 24; ++i) {
+    const int a = int(rng() % dt.n_sites());
+    int b = int(rng() % dt.n_sites());
+    if (b == a)
+      b = (b + 1) % int(dt.n_sites());
+    segments.push_back({a, b});
+  }
+  seg_recovery recovery;
+  // one turn recovers only a segment whose first obstruction is its last
+  recovery.flips.walk_passes = 1;
+  REQUIRE(seg_recover(dt, segments, depth, recovery));
+  REQUIRE(tf::topology::cdt::dt3::check_tetrahedralization_validity(owner));
+  std::size_t refused = 0;
+  for (std::size_t s = 0; s < segments.size(); ++s) {
+    CAPTURE(s, int(recovery.status[s]));
+    CHECK((recovery.status[s] == seg_status::recovered ||
+           recovery.status[s] == seg_status::passes));
+    refused += recovery.status[s] == seg_status::passes;
+  }
+  CHECK(refused > 0);
+  CHECK(recovery.passes_capped >= refused);
+  CHECK(recovery.flips.walk_capped >= refused);
+}

@@ -14,7 +14,6 @@
 #include "../../../core/config/verify.hpp"
 #include "../../../core/range.hpp"
 #include "../../../exact/vertex.hpp"
-#include "./find_tet_deep_row.hpp"
 #include "./tet_deep_site.hpp"
 #include "./tet_position.hpp"
 #include "./tetrahedralization_owner.hpp"
@@ -23,28 +22,34 @@
 namespace tf::topology::cdt::dt3 {
 
 /// The one reader of the sites' positions, a value over the owner's lanes:
-/// per slot its name and floor, the deep rows by name and the deepest depth
-/// they state (@ref tetrahedralization_owner). A shallow read verifies that
+/// per slot its name and floor, the deep rows and their tickets by name, and
+/// the deepest depth they state (@ref tetrahedralization_owner). Every read
+/// is a ticket: no table is searched. A shallow read verifies that
 /// its site stands on the frame, so a floor is never taken for the position
 /// of a site below it.
 template <typename Index, typename Coord> struct tet_site_lanes {
   tf::range<const tf::exact::vertex<Index, Coord> *, tf::dynamic_size> floors;
   tf::range<const tet_deep_site<Index> *, tf::dynamic_size> rows;
+  tf::range<const Index *, tf::dynamic_size> at;
   int deepest;
 
   auto name(Index slot) const -> Index { return floors[std::size_t(slot)].id; }
+  auto row(Index slot) const -> Index {
+    const Index key = name(slot);
+    return std::size_t(key) < at.size() ? at[std::size_t(key)] : Index(-1);
+  }
   auto depth(Index slot) const -> int {
     if (!deepest)
       return 0;
-    const Index row = find_tet_deep_row(rows, name(slot));
-    return row < 0 ? 0 : rows[std::size_t(row)].depth;
+    const Index ticket = row(slot);
+    return ticket < 0 ? 0 : rows[std::size_t(ticket)].depth;
   }
   auto position(Index slot) const -> tet_position<Coord> {
     tet_position<Coord> p;
     p.floor = floors[std::size_t(slot)].pt;
     if (!deepest)
       return p;
-    const Index row = find_tet_deep_row(rows, name(slot));
+    const Index row = this->row(slot);
     if (row >= 0) {
       p.depth = rows[std::size_t(row)].depth;
       p.residual = rows[std::size_t(row)].residual;
@@ -63,7 +68,7 @@ template <typename Index, typename Coord, typename Int>
 auto tet_site_lanes_of(const tetrahedralization_owner<Index, Coord, Int> &owner)
     -> tet_site_lanes<Index, Coord> {
   return {tf::make_range(owner._floors), tf::make_range(owner._deep),
-          owner._deepest};
+          tf::make_range(owner._deep_at), owner._deepest};
 }
 
 template <typename Index, typename Coord, typename Int>

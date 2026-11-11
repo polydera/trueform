@@ -12,15 +12,15 @@
  */
 #pragma once
 #include "../../../core/index_map.hpp"
+#include "../../../core/none.hpp"
 #include "../../../core/range.hpp"
 #include "../../../core/tetras.hpp"
 #include "../../../core/views/blocked_range.hpp"
 #include "../../../core/views/mapped_range.hpp"
 #include "./append_tetrahedralization_sites.hpp"
-#include "./recovery/restore_tet_delaunay.hpp"
 #include "./tet_facet_is_protected.hpp"
-#include "./tet_finite_cell.hpp"
 #include "./tet_site_position.hpp"
+#include "./tet_split_route.hpp"
 #include "./tet_state.hpp"
 #include <array>
 #include <cstddef>
@@ -87,15 +87,21 @@ public:
                : hint;
   }
   template <typename Sites> auto append_sites(const Sites &sites) -> bool {
-    return append_tetrahedralization_sites<Parallel, false>(_owner, sites,
-                                                            _work);
+    return append_tetrahedralization_sites<Parallel>(_owner, sites, _work);
   }
   /// Append serially in the canonical order, withdrawing a site `keep`
   /// declines just before its insertion.
   template <typename Sites, typename Keep>
   auto append_sites(const Sites &sites, const Keep &keep) -> bool {
-    return append_tetrahedralization_sites<Parallel, false>(_owner, sites,
-                                                            _work, keep);
+    return append_tetrahedralization_sites<Parallel>(_owner, sites, _work,
+                                                     keep);
+  }
+  /// Append serially, every site placed by the split of the simplex it lies
+  /// in (@ref tet_split_route).
+  template <typename Sites>
+  auto append_sites(const Sites &sites, tet_split_route_t route) -> bool {
+    return append_tetrahedralization_sites<Parallel>(_owner, sites, _work,
+                                                     tf::none, route);
   }
   /// The owner itself, for the flips a recovery makes on its lanes.
   auto owner() -> Owner & { return _owner; }
@@ -103,17 +109,6 @@ public:
   /// Whether the facet of `cell` opposite `slot` is protected.
   auto facet_protected(index_type cell, std::size_t slot) const -> bool {
     return tet_facet_is_protected(_owner, cell, slot);
-  }
-  /// Restore the complex to Delaunay wherever flips reach around the rows
-  /// written since the last restoration (@ref restore_tet_delaunay), the
-  /// pieces of `recovery` barred; the rows are then forgotten. Returns the
-  /// reads left standing.
-  template <typename Index, typename Coord>
-  auto restore_delaunay(tet_segment_recovery<Index, Coord> &recovery)
-      -> std::size_t {
-    const std::size_t left = restore_tet_delaunay(_owner, recovery);
-    _owner._written.clear();
-    return left;
   }
   /// Whether appends record the edges their cavities take, and the edges
   /// recorded since the last clear, each its corner slots ascending.
@@ -126,27 +121,5 @@ public:
   }
   auto clear_killed_edges() -> void { _owner._killed.clear(); }
 };
-
-/// A row of the owner a reader may enter: live and finite.
-template <bool Parallel, typename Owner, typename Work>
-auto tet_finite_cell(const tet_owner_complex<Parallel, Owner, Work> &dt,
-                     typename Owner::index_type cell) -> bool {
-  return dt.finite(cell);
-}
-
-/// A cell holding `site`, from the owner's site cells.
-template <bool Parallel, typename Owner, typename Work>
-auto tet_site_cell(const tet_owner_complex<Parallel, Owner, Work> &dt,
-                   typename Owner::index_type site) ->
-    typename Owner::index_type {
-  return dt.site_cell(site);
-}
-
-/// The finite cell the owner's last write left beside its hint.
-template <bool Parallel, typename Owner, typename Work>
-auto tet_entry_cell(const tet_owner_complex<Parallel, Owner, Work> &dt) ->
-    typename Owner::index_type {
-  return dt.entry();
-}
 
 } // namespace tf::topology::cdt::dt3

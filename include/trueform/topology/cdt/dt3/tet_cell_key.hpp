@@ -16,12 +16,17 @@
 
 namespace tf::topology::cdt::dt3 {
 
-/// A finite cell's corners in ascending order, paired with its row and the
-/// slot order it is published in (@ref canonical_tet_slots).
+/// A cell's corners in the order it is ranked by, paired with its row, the
+/// slot order it is published in and whether that order exchanges two of
+/// the ranked corners: a finite cell's ascending, the last two exchanged
+/// (@ref canonical_tet_key); a hull cell's finite corners ascending and the
+/// infinite one last, the second and third exchanged
+/// (@ref canonical_tet_hull_key).
 template <typename Index> struct tet_cell_key {
   std::array<Index, 4> corners;
   Index row;
   std::uint8_t slots;
+  bool exchanged;
 };
 
 } // namespace tf::topology::cdt::dt3

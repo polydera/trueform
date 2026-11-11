@@ -30,6 +30,17 @@ namespace tf::topology::cdt::dt3 {
 /// slot is a relaxed atomic; a bulk record lowers each slot to the lowest
 /// cell holding the site (@ref lower), the same at any worker count, so a
 /// recovery that reads its rings from the slot runs one stream.
+///
+/// THE SLOT BELONGS, FOR THE ROUND, TO THE REGION OF ITS OPENING CELL
+/// (@ref run_tet_region_round). A writer stores into a slot only where the
+/// cell the slot names carries the writer's own mark, so one region writes
+/// one slot and no other overwrites it; a reader uses the answer only where
+/// that cell is its own — then the value came from the opening or from its
+/// own region — and a slot of another region stops the task, the same
+/// verdict at any worker count because the slot's owner is fixed by the
+/// opening. The barrier's lowering restates every written site's slot
+/// afterwards, so the round's product is the same at any width.
+///
 /// `tf::allocate` returns raw storage, so slots are placement-constructed
 /// as they are sized, and a copy constructs its slots from the source's
 /// values.

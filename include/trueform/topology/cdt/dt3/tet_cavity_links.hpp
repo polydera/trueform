@@ -20,17 +20,24 @@ namespace tf::topology::cdt::dt3 {
 
 /// The pairing of a cavity boundary's facets across their shared edges: the
 /// three side neighbours of every cell the star writes. A boundary vertex
-/// takes a local id at its first touch, stamped into `local_of_site` with the
-/// insertion's generation; an edge indexes `table` by its two local ids, the
+/// takes a local id at its first touch: its byte in `local_of_site` names the
+/// id, and the id is its own while `site_of_local` names the vertex back below
+/// `n_local`, so a byte some earlier boundary left is never read as this one's
+/// and no lane is cleared; the three ids past the last local are a facet's
+/// overflow. An edge indexes `table` by its two local ids, the
 /// slot holding the first facet-edge's ticket until the second arrives, pairs
 /// them in `across` and empties the slot. Every edge of a closed boundary is
 /// visited exactly twice, so the table is empty between insertions and nothing
 /// is cleared on the way; a boundary a flood abandons is scrubbed at the next
 /// open. A boundary of more than `max_local` vertices leaves the table
-/// (`overflow_tet_cavity_links`) and is paired from its sorted records at the
-/// close. A corner addresses its stamp at `corner - lowest_corner`, so the
-/// owner's sentinel corners stamp like sites. `n_facets` is the fill of
-/// `facets` and `across` (three per facet); their size is grown capacity.
+/// (`overflow_tet_cavity_links`) and is paired at the close from its edge
+/// records, ordered by their lower corner (`order_tet_cavity_records`) with
+/// every record's mate beside it (`close_tet_cavity_links`); the run of one
+/// lower corner holds no order of its own, so an edge is answered by scanning
+/// its run (`tet_cavity_links_hold`). A
+/// corner addresses its stamp at `corner - lowest_corner`, so the owner's
+/// sentinel corners stamp like sites. `n_facets` is the fill of `facets` and
+/// `across` (three per facet); their size is grown capacity.
 template <typename Index> struct tet_cavity_links {
   static constexpr std::size_t max_local = 256;
   static constexpr Index lowest_corner = -2;
@@ -38,10 +45,12 @@ template <typename Index> struct tet_cavity_links {
   tf::buffer<std::array<Index, 3>> facets;
   tf::buffer<Index> across;
   std::size_t n_facets = 0;
-  tf::buffer<std::uint32_t> local_of_site;
+  tf::buffer<std::uint8_t> local_of_site;
+  std::array<Index, max_local + 3> site_of_local{};
   tf::buffer<Index> table;
   tf::buffer<std::array<Index, 3>> records;
-  std::uint32_t generation = 0;
+  tf::buffer<std::array<Index, 3>> record_scratch;
+  tf::buffer<std::uint32_t> record_counts;
   std::size_t n_local = 0;
   bool overflowed = false;
   bool pending = false;
