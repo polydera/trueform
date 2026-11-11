@@ -12,8 +12,8 @@
 */
 #pragma once
 #include "./buffer.hpp"
+#include "./memory.hpp"
 #include "./views/offset_block_range.hpp"
-#include <vector>
 
 namespace tf {
 
@@ -29,10 +29,10 @@ template <typename Index, typename T> class offset_block_vector {
 public:
   using iterator = decltype(views::make_offset_block_begin(
       std::declval<tf::buffer<Index> &>(),
-      std::declval<std::vector<T> &>()));
+      std::declval<tf::core::std_vector<T> &>()));
   using const_iterator = decltype(views::make_offset_block_begin(
       std::declval<const tf::buffer<Index> &>(),
-      std::declval<const std::vector<T> &>()));
+      std::declval<const tf::core::std_vector<T> &>()));
   using value_type = typename std::iterator_traits<iterator>::value_type;
   using reference = typename std::iterator_traits<iterator>::reference;
   using const_reference =
@@ -96,8 +96,8 @@ public:
 
   auto offsets_buffer() const -> const tf::buffer<Index> & { return _offsets; }
   auto offsets_buffer() -> tf::buffer<Index> & { return _offsets; }
-  auto data_vector() const -> const std::vector<T> & { return _data; }
-  auto data_vector() -> std::vector<T> & { return _data; }
+  auto data_vector() const -> const tf::core::std_vector<T> & { return _data; }
+  auto data_vector() -> tf::core::std_vector<T> & { return _data; }
 
   auto clear() {
     _offsets.clear();
@@ -106,7 +106,7 @@ public:
 
 private:
   tf::buffer<Index> _offsets;
-  std::vector<T> _data;
+  tf::core::std_vector<T> _data;
 };
 
 } // namespace tf

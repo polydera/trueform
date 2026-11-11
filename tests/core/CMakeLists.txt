@@ -11,6 +11,7 @@ add_executable(trueform_core_tests
   test_blocked_buffer.cpp
   test_buffer.cpp
   test_nth_element.cpp
+  test_parallel_workers.cpp
   test_ranges.cpp
   test_tetrahedra.cpp
   test_transformed.cpp
@@ -24,4 +25,4 @@ target_compile_options(trueform_core_tests PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4244 /wd4267 /wd4458 /wd4701>
 )
 
-catch_discover_tests(trueform_core_tests TEST_PREFIX "core::")
+tf_discover_tests(trueform_core_tests "core::")

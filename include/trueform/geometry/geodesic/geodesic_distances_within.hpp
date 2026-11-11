@@ -16,6 +16,7 @@
 #include "../../core/algorithm/parallel_transform.hpp"
 #include "../../core/buffer.hpp"
 #include "../../core/checked.hpp"
+#include "../../core/config/parallel_workers.hpp"
 #include "../../core/config/verify.hpp"
 #include "../../core/polygons.hpp"
 #include "../../core/static_size.hpp"
@@ -31,7 +32,6 @@
 #include "./propagate_geodesic_distances.hpp"
 #include "./propagate_geodesic_fronts.hpp"
 #include "./unfolding_faces.hpp"
-#include "tbb/task_arena.h"
 #include <algorithm>
 #include <atomic>
 #include <cstddef>
@@ -93,8 +93,7 @@ auto geodesic_distances_from_seeds(const tf::polygons<Policy> &polygons,
       queue.push_back({Index(ring), stated, std::min(held, length)});
     }
   }
-  const std::size_t threads =
-      std::size_t(tbb::this_task_arena::max_concurrency());
+  const std::size_t threads = tf::core::parallel_workers();
   const std::size_t front_cap =
       threads < 2 ? std::numeric_limits<std::size_t>::max() : 200;
   tf::geometry::unfolding_faces unfolding;

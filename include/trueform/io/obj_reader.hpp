@@ -21,13 +21,12 @@
 
 #include "../core/blocked_buffer.hpp"
 #include "../core/buffer.hpp"
+#include "../core/config/parallel_workers.hpp"
 #include "../core/offset_block_buffer.hpp"
 #include "../core/points_buffer.hpp"
 #include "../core/range.hpp"
 #include "../core/static_size.hpp"
 #include "obj_file.hpp"
-
-#include <tbb/task_arena.h>
 
 #include <cstddef>
 #include <string_view>
@@ -70,7 +69,7 @@ public:
             tf::points_buffer<RealT, Dims> &points,
             tf::blocked_buffer<Index, Ngon> &faces) -> bool {
     if (data.size() < obj::obj_execution_tuning::parallel_file_bytes ||
-        tbb::this_task_arena::max_concurrency() < 2)
+        tf::core::parallel_workers() < 2)
       return obj::read_fixed_obj(data, points, faces);
     return obj::read_fixed_obj_parallel(data, points, faces);
   }

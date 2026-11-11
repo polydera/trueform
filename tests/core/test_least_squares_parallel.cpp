@@ -5,14 +5,15 @@
  * Copyright (c) 2025 Žiga Sajovic, XLAB
  */
 
-#include <catch2/catch_test_macros.hpp>
+#include "uniform_draw.hpp"
 #include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <trueform/core/linalg/least_squares.hpp>
-#include <trueform/core/linalg/least_squares_parallel.hpp>
-#include <trueform/core/buffer.hpp>
 #include <cmath>
 #include <random>
+#include <trueform/core/buffer.hpp>
+#include <trueform/core/linalg/least_squares.hpp>
+#include <trueform/core/linalg/least_squares_parallel.hpp>
 
 // =============================================================================
 // Helper functions
@@ -42,15 +43,15 @@ template <typename T>
 void generate_random_system(T *A, T *b, std::size_t rows, std::size_t cols,
                             unsigned seed = 42) {
   std::mt19937 gen(seed);
-  std::uniform_real_distribution<T> dist(T(-1), T(1));
+  const auto dist = [&gen] { return tf::test::uniform_real(gen, T(-1), T(1)); };
 
   for (std::size_t j = 0; j < cols; ++j) {
     for (std::size_t i = 0; i < rows; ++i) {
-      A[i + j * rows] = dist(gen);
+      A[i + j * rows] = dist();
     }
   }
   for (std::size_t i = 0; i < rows; ++i) {
-    b[i] = dist(gen);
+    b[i] = dist();
   }
 }
 
@@ -60,12 +61,12 @@ void generate_system_with_solution(T *A, T *b, const T *x_true,
                                    std::size_t rows, std::size_t cols,
                                    unsigned seed = 42) {
   std::mt19937 gen(seed);
-  std::uniform_real_distribution<T> dist(T(-1), T(1));
+  const auto dist = [&gen] { return tf::test::uniform_real(gen, T(-1), T(1)); };
 
   // Generate random A
   for (std::size_t j = 0; j < cols; ++j) {
     for (std::size_t i = 0; i < rows; ++i) {
-      A[i + j * rows] = dist(gen);
+      A[i + j * rows] = dist();
     }
   }
 
@@ -220,9 +221,8 @@ TEMPLATE_TEST_CASE("parallel_known_solution", "[core][linalg][parallel]",
 
     // Add noise to b
     std::mt19937 gen(123);
-    std::normal_distribution<T> noise(T(0), T(0.01));
     for (std::size_t i = 0; i < rows; ++i) {
-      b[i] += noise(gen);
+      b[i] += tf::test::normal_real(gen, T(0), T(0.01));
     }
 
     // Parallel solve

@@ -160,6 +160,7 @@
 #include "./core/reallocate.hpp"                  // IWYU pragma: export
 #include "./core/resolved_output_real.hpp"        // IWYU pragma: export
 #include "./core/return_refused.hpp"              // IWYU pragma: export
+#include "./core/return_report.hpp"               // IWYU pragma: export
 #include "./core/rss.hpp"                         // IWYU pragma: export
 #include "./core/rss_from.hpp"                    // IWYU pragma: export
 #include "./core/segment.hpp"                     // IWYU pragma: export

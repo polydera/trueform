@@ -13,6 +13,7 @@
 #pragma once
 #include "../cache_aligned_slot.hpp"
 #include "../checked.hpp"
+#include "../config/parallel_workers.hpp"
 #include "../memory.hpp"
 #include "../range.hpp"
 #include "./block_reduce_graph.hpp"
@@ -38,9 +39,7 @@ inline auto blocked_sequenced_chunk_stride(
     std::size_t n,
     std::size_t n_blocks = std::thread::hardware_concurrency() * 5)
     -> std::size_t {
-  if (std::thread::hardware_concurrency() == 1)
-    n_blocks = 1;
-  if (n_blocks == 1)
+  if (n_blocks == 1 || tf::core::parallel_workers() == 1)
     return n;
   return std::max(std::size_t(1), n / n_blocks);
 }
@@ -73,9 +72,7 @@ auto blocked_reduce_sequenced_aggregate(
     std::size_t n_blocks = std::thread::hardware_concurrency() * 5) {
   if (data.size() == 0)
     return;
-  if (std::thread::hardware_concurrency() == 1)
-    n_blocks = 1;
-  if (n_blocks == 1) {
+  if (n_blocks == 1 || tf::core::parallel_workers() == 1) {
     task(tf::make_range(data), local_result);
     aggregate(local_result, result);
     return;

@@ -37,8 +37,9 @@ auto reallocate(blocked_buffer<T, N> &b, std::size_t n) {
   b.reallocate(n);
 }
 
-/// @brief Resizes vector to `n` elements (std::vector).
-template <typename T> auto reallocate(std::vector<T> &v, std::size_t n) {
+/// @brief Resizes vector to `n` elements (any `std::vector`).
+template <typename T, typename A>
+auto reallocate(std::vector<T, A> &v, std::size_t n) {
   v.resize(n);
 }
 
@@ -61,8 +62,8 @@ auto append(const blocked_buffer<T, N> &input, blocked_buffer<T, N> &output) {
   std::copy(input.begin(), input.end(), output.begin() + old_data_size);
 }
 
-template <typename T>
-auto append(const std::vector<T> &input, std::vector<T> &output) {
+template <typename T, typename A>
+auto append(const std::vector<T, A> &input, std::vector<T, A> &output) {
   auto old_data_size = output.size();
   reallocate(output, old_data_size + input.size());
   std::copy(input.begin(), input.end(), output.begin() + old_data_size);
@@ -125,7 +126,8 @@ auto reserve(blocked_buffer<T, N> &buff, std::size_t n) {
   buff.reserve(n);
 }
 
-template <typename T> auto reserve(std::vector<T> &buff, std::size_t n) {
+template <typename T, typename A>
+auto reserve(std::vector<T, A> &buff, std::size_t n) {
   buff.reserve(n);
 }
 
@@ -146,7 +148,7 @@ auto size(const blocked_buffer<T, N> &buff) {
   return buff.size();
 }
 
-template <typename T> auto size(const std::vector<T> &buff) {
+template <typename T, typename A> auto size(const std::vector<T, A> &buff) {
   return buff.size();
 }
 

@@ -38,7 +38,7 @@ template <typename T> struct buffer_deleter {
 /// initializing them**.
 ///
 /// Use `tf::buffer<T>` only for simple POD-like types. For anything with
-/// constructors or destructors, use `std::vector<T>` instead.
+/// constructors or destructors, use `tf::core::std_vector<T>` instead.
 ///
 /// @tparam T A trivially constructible and trivially destructible type.
 ///
@@ -46,7 +46,9 @@ template <typename T> struct buffer_deleter {
 /// @see `allocate()` and `reallocate()` for uninitialized memory allocation.
 template <typename T> class buffer {
   static_assert(std::is_trivially_destructible<T>::value,
-                "Just use std::vector");
+                "Just use tf::core::std_vector");
+  static_assert(std::is_trivially_copyable<T>::value,
+                "a buffer moves its elements as bytes");
 
 public:
   using value_type = T;

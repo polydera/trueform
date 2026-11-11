@@ -11,4 +11,4 @@ target_compile_options(trueform_linalg_tests PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4244 /wd4267 /wd4458 /wd4701>
 )
 
-catch_discover_tests(trueform_linalg_tests TEST_PREFIX "linalg::")
+tf_discover_tests(trueform_linalg_tests "linalg::")

@@ -14,7 +14,7 @@
 
 #include "obj_execution_tuning.hpp"
 
-#include <tbb/task_arena.h>
+#include "../../core/config/parallel_workers.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -22,10 +22,9 @@
 namespace tf::io::obj {
 
 inline auto obj_partition_count(std::size_t size) -> std::size_t {
-  const auto available = std::max(
-      std::size_t(1),
-      static_cast<std::size_t>(tbb::this_task_arena::max_concurrency()) *
-          obj_execution_tuning::partitions_per_worker);
+  const auto available =
+      std::max(std::size_t(1), tf::core::parallel_workers() *
+                                   obj_execution_tuning::partitions_per_worker);
   const auto useful =
       size == 0 ? std::size_t(1)
                 : (size - 1) / obj_execution_tuning::target_partition_bytes + 1;

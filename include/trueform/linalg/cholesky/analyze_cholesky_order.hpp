@@ -12,6 +12,7 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
+#include "../../core/config/parallel_workers.hpp"
 #include "../../core/config/verify.hpp"
 #include "../cholesky_pattern.hpp"
 #include "../cholesky_scratch.hpp"
@@ -23,7 +24,6 @@
 #include "./make_supernodes.hpp"
 #include "./partition_elimination_tree.hpp"
 #include "./postorder_tree.hpp"
-#include "tbb/task_arena.h"
 #include <cstddef>
 #include <limits>
 
@@ -38,7 +38,7 @@ namespace tf::linalg {
 /// supernodes (@ref tf::linalg::make_supernodes) with their rows and blocks,
 /// and the supernodal tree is cut into
 /// @ref tf::linalg::cholesky_blocks_per_worker blocks per worker the arena
-/// has (@ref tf::linalg::partition_elimination_tree), each supernode
+/// will run (@ref tf::linalg::partition_elimination_tree), each supernode
 /// weighing the sum of its columns' squared row counts. Returns false where
 /// the index type cannot name the factor's values.
 template <typename Index>
@@ -111,8 +111,7 @@ auto analyze_cholesky_order(const tf::symmetric_lower<Index> &matrix,
   pattern.value_offsets[supernodes] = Index(total);
   tf::linalg::partition_elimination_tree(
       pattern.supernode_parent,
-      tf::linalg::cholesky_blocks_per_worker *
-          std::size_t(tbb::this_task_arena::max_concurrency()),
+      tf::linalg::cholesky_blocks_per_worker * tf::core::parallel_workers(),
       work, scratch.owner, scratch.stack, pattern.schedule,
       pattern.block_offsets);
 

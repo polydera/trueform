@@ -40,7 +40,7 @@ public:
   }
 
 private:
-  Iterator iter;
+  Iterator iter{};
 };
 
 template <typename Iterator>
@@ -54,6 +54,7 @@ public:
   using difference_type =
       typename std::iterator_traits<Iterator>::difference_type;
 
+  blocked_api_handle() = default;
   blocked_api_handle(Iterator iter, std::size_t stride)
       : iter{std::move(iter)}, stride{std::move(stride)} {}
   auto base_iter() const -> const Iterator & { return iter; }
@@ -62,8 +63,8 @@ public:
   auto dereference() const -> reference { return tf::make_range(iter, stride); }
 
 private:
-  Iterator iter;
-  std::size_t stride;
+  Iterator iter{};
+  std::size_t stride = 0;
 };
 
 template <typename Iterator, std::size_t BlockSize>
@@ -75,6 +76,8 @@ private:
   using handle_t = blocked_api_handle<Iterator, BlockSize>;
 
 public:
+  /// A default iterator is what a sort's range holds before it is set.
+  blocked_iterator() = default;
   explicit blocked_iterator(Iterator iter)
       : base_t{handle_t{std::move(iter)}} {}
 };
@@ -89,6 +92,7 @@ private:
   using handle_t = blocked_api_handle<Iterator, tf::dynamic_size>;
 
 public:
+  blocked_iterator() = default;
   blocked_iterator(Iterator iter, std::size_t block_size)
       : base_t{handle_t{std::move(iter), std::move(block_size)}} {}
 };

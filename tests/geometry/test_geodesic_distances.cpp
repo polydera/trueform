@@ -8,11 +8,13 @@
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
+#include "worker_ladder.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <queue>
@@ -379,8 +381,8 @@ TEST_CASE("geodesic_distances: tagged structures answer what built ones do",
 }
 
 TEST_CASE("geodesic_distances: a split front answers within epsilon per edge "
-          "crossed of one heap, and differs from it where it split",
-          "[geometry][geodesic]") {
+          "crossed of one heap",
+          "[geometry][geodesic][parallel]") {
   const auto plane = geodesic_jittered_plane(160);
   const auto sphere = tf::make_sphere_mesh<int>(1.0, 120, 160);
   int centre = 0;
@@ -403,17 +405,25 @@ TEST_CASE("geodesic_distances: a split front answers within epsilon per edge "
       }
     edge /= double(3 * mesh.faces().size());
     tbb::task_arena one(1);
+    tf::geometry::geodesic_front_stats heap_stats;
     const auto heap = one.execute([&] {
-      return tf::make_geodesic_distances(mesh.polygons(), seeds, max_distance);
+      return tf::geometry::geodesic_distances_within<double>(
+          mesh.polygons(), seeds, max_distance, heap_stats);
     });
-    const tbb::global_control workers(
-        tbb::global_control::max_allowed_parallelism, 8);
-    tbb::task_arena eight(8);
-    const auto split = eight.execute([&] {
-      return tf::make_geodesic_distances(mesh.polygons(), seeds, max_distance);
+    const std::size_t workers = tf::test::capped_workers(8);
+    const tbb::global_control control(
+        tbb::global_control::max_allowed_parallelism, workers);
+    tbb::task_arena several(static_cast<int>(workers));
+    tf::geometry::geodesic_front_stats split_stats;
+    const auto split = several.execute([&] {
+      return tf::geometry::geodesic_distances_within<double>(
+          mesh.polygons(), seeds, max_distance, split_stats);
     });
     REQUIRE(split.size() == heap.size());
-    bool differs = false;
+    // One heap is the reference, and the bound below says nothing unless
+    // the several-worker run is the split front it is stated against.
+    REQUIRE(heap_stats.fronts == 1);
+    REQUIRE((split_stats.fronts > 1) == (workers > 1));
     std::size_t compared = 0;
     for (std::size_t k = 0; k < heap.size(); ++k) {
       // Near the reach a point reads corners past it, and the clamp to
@@ -439,19 +449,52 @@ TEST_CASE("geodesic_distances: a split front answers within epsilon per edge "
       CAPTURE(k, heap[k], split[k], edge);
       REQUIRE(std::abs(split[k] - heap[k]) <=
               epsilon * heap[k] * (1.0 + heap[k] / edge));
-      differs = differs || split[k] != heap[k];
       ++compared;
     }
     REQUIRE(compared > heap.size() / 4);
-    // Not a contract: a split front is schedule-dependent by design. A front
-    // that never split, or split into one, answers the heap's bits, and this
-    // is what catches either.
-    REQUIRE(differs);
   };
   agree(plane, {centre}, std::numeric_limits<double>::infinity());
   agree(plane, {centre, 0}, std::numeric_limits<double>::infinity());
   agree(plane, {centre}, 0.4);
   agree(sphere, {7}, std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("geodesic_distances: under a global limit of one the front runs "
+          "on one heap and answers its bits",
+          "[geometry][geodesic]") {
+  const auto plane = geodesic_jittered_plane(40);
+  int centre = 0;
+  for (std::size_t k = 0; k < plane.points().size(); ++k)
+    if (std::abs(plane.points()[k][0]) + std::abs(plane.points()[k][1]) <
+        std::abs(plane.points()[std::size_t(centre)][0]) +
+            std::abs(plane.points()[std::size_t(centre)][1]))
+      centre = int(k);
+  const std::vector<int> seeds{centre};
+  const double unbounded = std::numeric_limits<double>::infinity();
+  tbb::task_arena one(1);
+  tf::geometry::geodesic_front_stats heap_stats;
+  const auto heap = one.execute([&] {
+    return tf::geometry::geodesic_distances_within<double>(
+        plane.polygons(), seeds, unbounded, heap_stats);
+  });
+  REQUIRE(heap_stats.fronts == 1);
+  // The plane is past the split threshold: at the machine's width the front
+  // splits wherever there is more than one worker.
+  tf::geometry::geodesic_front_stats wide_stats;
+  tf::geometry::geodesic_distances_within<double>(plane.polygons(), seeds,
+                                                  unbounded, wide_stats);
+  REQUIRE((wide_stats.fronts > 1) ==
+          (tbb::this_task_arena::max_concurrency() > 1));
+
+  const tbb::global_control limit(tbb::global_control::max_allowed_parallelism,
+                                  1);
+  tf::geometry::geodesic_front_stats limited_stats;
+  const auto limited = tf::geometry::geodesic_distances_within<double>(
+      plane.polygons(), seeds, unbounded, limited_stats);
+  REQUIRE(limited_stats.fronts == 1);
+  REQUIRE(limited.size() == heap.size());
+  REQUIRE(std::memcmp(limited.begin(), heap.begin(),
+                      heap.size() * sizeof(double)) == 0);
 }
 
 TEST_CASE("geodesic_distances: the distances are stated in the resolved "

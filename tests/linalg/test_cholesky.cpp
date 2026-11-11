@@ -14,6 +14,8 @@
  * Copyright (c) 2026 Ziga Sajovic, XLAB
  */
 
+#include "uniform_draw.hpp"
+#include "worker_ladder.hpp"
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -23,7 +25,6 @@
 #include <limits>
 #include <random>
 #include <tbb/global_control.h>
-#include <tbb/task_arena.h>
 #include <trueform/core/buffer.hpp>
 #include <trueform/core/point.hpp>
 #include <trueform/geometry/laplacian/assemble_laplacian_system.hpp>
@@ -68,10 +69,12 @@ auto chol_form_of(const chol_fixture_spec &spec)
           ? tf::make_sphere_mesh<chol_index>(1.0f, spec.ticks, spec.ticks + 2)
           : tf::make_plane_mesh<chol_index>(2.0f, 2.0f, spec.ticks, spec.ticks);
   std::mt19937 random(spec.seed);
-  std::uniform_real_distribution<double> unit(0.0, 1.0);
+  const auto unit = [&random] {
+    return tf::test::uniform_real(random, 0.0, 1.0);
+  };
   std::vector<double> weights(3 * mesh.faces().size());
   for (auto &w : weights)
-    w = std::pow(10.0, -spec.decades / 2.0 + spec.decades * unit(random));
+    w = std::pow(10.0, -spec.decades / 2.0 + spec.decades * unit());
   tf::face_membership<chol_index> membership;
   membership.build(mesh.polygons());
   tf::geometry::laplacian_assembly_scratch assembly;
@@ -87,7 +90,7 @@ auto chol_form_of(const chol_fixture_spec &spec)
   free_of.allocate_and_initialize(n, chol_index(0));
   free_of[0] = -1;
   for (std::size_t k = 1; k < n; ++k)
-    if (unit(random) < 0.1)
+    if (unit() < 0.1)
       free_of[k] = -1;
   tf::buffer<chol_index> free_ids;
   for (std::size_t k = 0; k < n; ++k)
@@ -200,7 +203,7 @@ auto chol_natural(std::size_t n) -> std::vector<chol_index> {
 auto chol_shuffled(std::size_t n, unsigned seed) -> std::vector<chol_index> {
   auto order = chol_natural(n);
   std::mt19937 random(seed);
-  std::shuffle(order.begin(), order.end(), random);
+  tf::test::shuffle(order.begin(), order.end(), random);
   return order;
 }
 
@@ -237,10 +240,12 @@ auto chol_solve(const tf::symmetric_lower<chol_index> &matrix,
 auto chol_rhs(std::size_t n, std::size_t r, unsigned seed)
     -> tf::buffer<double> {
   std::mt19937 random(seed);
-  std::uniform_real_distribution<double> unit(-1.0, 1.0);
+  const auto unit = [&random] {
+    return tf::test::uniform_real(random, -1.0, 1.0);
+  };
   tf::buffer<double> b;
   for (std::size_t k = 0; k < n * r; ++k)
-    b.push_back(unit(random));
+    b.push_back(unit());
   return b;
 }
 
@@ -582,7 +587,7 @@ TEST_CASE("cholesky: a matrix that is not definite refuses",
 
 TEST_CASE("cholesky: every partition at every thread count factors and "
           "solves to the same bits",
-          "[linalg][cholesky]") {
+          "[linalg][cholesky][parallel]") {
   // The grid's top fronts span several tiles and pass the parallel
   // assembly's cutoff, so every parallel path of a front runs.
   const std::vector<chol_fixture_spec> specs{{false, 80, 2, 0.0, 9.0, 21},
@@ -623,9 +628,8 @@ TEST_CASE("cholesky: every partition at every thread count factors and "
     for (std::size_t target : {1, 3, 8, 32, 200}) {
       chol_partition(pattern, target);
       frontiers += pattern.frontier_first() < pattern.number_of_supernodes();
-      for (std::size_t threads :
-           {std::size_t(1), std::size_t(2),
-            std::size_t(tbb::this_task_arena::max_concurrency())}) {
+      for (const std::size_t threads :
+           tf::test::worker_ladder({1, 2, tf::test::machine_workers()})) {
         tbb::global_control control(
             tbb::global_control::max_allowed_parallelism, threads);
         for (int run = 0; run < 2; ++run) {
@@ -658,6 +662,40 @@ TEST_CASE("cholesky: every partition at every thread count factors and "
   }
 }
 
+TEST_CASE("cholesky: under a global limit of one the analysis cuts one "
+          "block, and its factor and solve are the machine's bits",
+          "[linalg][cholesky]") {
+  const auto form = chol_form_of({false, 12, 2, 0.0, 9.0, 6});
+  const auto &matrix = form.free;
+  const std::size_t n = matrix.size();
+  const std::size_t r = 2;
+  tf::cholesky_scratch<chol_index> scratch;
+  tf::cholesky_pattern<chol_index> wide;
+  REQUIRE(tf::analyze_cholesky(matrix, scratch, wide));
+  std::size_t roots = 0;
+  for (std::size_t s = 0; s < wide.number_of_supernodes(); ++s)
+    roots += wide.supernode_parent[s] == chol_index(-1);
+  REQUIRE(roots == 1);
+  REQUIRE((wide.block_offsets.size() > 2) ==
+          (tbb::this_task_arena::max_concurrency() > 1));
+  tf::cholesky_factor wide_factor;
+  REQUIRE(tf::factor_cholesky(wide, matrix.values, scratch, wide_factor));
+  auto wide_x = chol_rhs(n, r, 6);
+  tf::solve_cholesky(wide, wide_factor, wide_x, r, scratch);
+
+  const tbb::global_control limit(tbb::global_control::max_allowed_parallelism,
+                                  1);
+  tf::cholesky_pattern<chol_index> limited;
+  REQUIRE(tf::analyze_cholesky(matrix, scratch, limited));
+  REQUIRE(limited.block_offsets.size() == 2);
+  tf::cholesky_factor limited_factor;
+  REQUIRE(tf::factor_cholesky(limited, matrix.values, scratch, limited_factor));
+  REQUIRE(chol_bitwise(limited_factor.values, wide_factor.values));
+  auto limited_x = chol_rhs(n, r, 6);
+  tf::solve_cholesky(limited, limited_factor, limited_x, r, scratch);
+  REQUIRE(chol_bitwise(limited_x, wide_x));
+}
+
 TEST_CASE("cholesky: a dense front factors its columns and updates the rest",
           "[linalg][cholesky]") {
   constexpr std::size_t P = tf::linalg::cholesky_panel_width;
@@ -672,13 +710,15 @@ TEST_CASE("cholesky: a dense front factors its columns and updates the rest",
                                                        {2 * T + 1, 2 * P},
                                                        {150, 150}};
   std::mt19937 random(5);
-  std::uniform_real_distribution<double> unit(-1.0, 1.0);
+  const auto unit = [&random] {
+    return tf::test::uniform_real(random, -1.0, 1.0);
+  };
   for (const auto &shape : shapes) {
     const std::size_t m = shape[0], k = shape[1];
     std::vector<double> a(m * m);
     for (std::size_t j = 0; j < m; ++j)
       for (std::size_t i = j; i < m; ++i)
-        a[j * m + i] = a[i * m + j] = unit(random);
+        a[j * m + i] = a[i * m + j] = unit();
     for (std::size_t i = 0; i < m; ++i)
       a[i * m + i] += double(m);
     std::vector<double> head(m * k), tail((m - k) * (m - k));

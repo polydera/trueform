@@ -13,6 +13,7 @@
 #pragma once
 #include "../cache_aligned_slot.hpp"
 #include "../checked.hpp"
+#include "../config/parallel_workers.hpp"
 #include "../memory.hpp"
 #include "../range.hpp"
 #include "./block_reduce_graph.hpp"
@@ -53,9 +54,7 @@ auto blocked_reduce(const Range &data, Result &&result,
                                            5) {
   if (data.size() == 0)
     return;
-  if (std::thread::hardware_concurrency() == 1)
-    n_blocks = 1;
-  if (n_blocks == 1) {
+  if (n_blocks == 1 || tf::core::parallel_workers() == 1) {
     task(tf::make_range(data), local_result);
     aggregate(local_result, result);
     return;

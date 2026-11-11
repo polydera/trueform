@@ -29,8 +29,9 @@ auto allocate(blocked_buffer<T, N> &b, std::size_t n) {
   b.allocate(n);
 }
 
-/// @brief Resizes vector to `n` elements (std::vector).
-template <typename T> auto allocate(std::vector<T> &v, std::size_t n) {
+/// @brief Resizes vector to `n` elements (any `std::vector`).
+template <typename T, typename A>
+auto allocate(std::vector<T, A> &v, std::size_t n) {
   v.resize(n);
 }
 

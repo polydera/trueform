@@ -15,7 +15,6 @@
 #include "./memory.hpp"
 #include "./views/mapped_range.hpp"
 #include "tbb/task_arena.h" // For tbb::this_task_arena
-#include <vector>           // For std::vector
 
 namespace tf {
 

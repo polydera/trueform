@@ -16,4 +16,4 @@ target_compile_options(trueform_geometry_tests PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W3 /wd4244 /wd4267 /wd4458 /wd4701>
 )
 
-catch_discover_tests(trueform_geometry_tests TEST_PREFIX "geometry::")
+tf_discover_tests(trueform_geometry_tests "geometry::")

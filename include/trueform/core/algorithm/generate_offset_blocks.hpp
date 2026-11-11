@@ -146,10 +146,10 @@ auto generate_offset_blocks(
                          fill_block_f, n_tasks);
 }
 
-template <typename Range, typename Index, typename T, typename F>
+template <typename Range, typename Index, typename T, typename A, typename F>
 auto generate_offset_blocks(
-    const Range &input_data, tf::buffer<Index> &offsets, std::vector<T> &data,
-    const F &fill_block_f,
+    const Range &input_data, tf::buffer<Index> &offsets,
+    std::vector<T, A> &data, const F &fill_block_f,
     std::size_t n_tasks = std::thread::hardware_concurrency() * 5) {
   return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
                                       n_tasks);
@@ -213,10 +213,10 @@ auto generate_offset_blocks(const Range &input_data,
 /// @ingroup core_algorithms
 /// @brief Checked offset-block generation into a vector.
 /// @overload
-template <typename Range, typename Index, typename T, typename F>
-auto generate_offset_blocks(const Range &input_data,
-                            tf::buffer<Index> &offsets, std::vector<T> &data,
-                            const F &fill_block_f, tf::checked_t c) {
+template <typename Range, typename Index, typename T, typename A, typename F>
+auto generate_offset_blocks(const Range &input_data, tf::buffer<Index> &offsets,
+                            std::vector<T, A> &data, const F &fill_block_f,
+                            tf::checked_t c) {
   return core::generate_offset_blocks(input_data, offsets, data, fill_block_f,
                                       c);
 }
