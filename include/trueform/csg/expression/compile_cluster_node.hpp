@@ -11,6 +11,7 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/memory.hpp"
 #include "./coalesce_words.hpp"
 #include "./compiled_expr.hpp"
 #include "./expr.hpp"
@@ -39,8 +40,8 @@ auto compile_cluster_node(const std::vector<expr> &children,
   const expr::kind absorb_kind = (kind_when_mixed == compiled_expr::kind::merge)
                                      ? expr::kind::merge
                                      : expr::kind::intersection;
-  std::vector<compiled_expr::word_mask> leaves;
-  std::vector<compiled_expr> non_leaves;
+  tf::core::std_vector<compiled_expr::word_mask> leaves;
+  tf::core::std_vector<compiled_expr> non_leaves;
   leaves.reserve(children.size());
   non_leaves.reserve(children.size());
 

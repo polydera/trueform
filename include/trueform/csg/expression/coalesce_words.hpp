@@ -11,20 +11,20 @@
  * Author: Žiga Sajovic
  */
 #pragma once
+#include "../../core/memory.hpp"
 #include "./compiled_expr.hpp"
 #include <algorithm>
-#include <vector>
 
 namespace tf::csg {
 
 /// @ingroup csg_expression
 /// @brief Group `word_mask` entries by word index, OR'ing same-word
 ///        masks. Output is sorted ascending by word index.
-inline auto coalesce_words(std::vector<compiled_expr::word_mask> v)
-    -> std::vector<compiled_expr::word_mask> {
+inline auto coalesce_words(tf::core::std_vector<compiled_expr::word_mask> v)
+    -> tf::core::std_vector<compiled_expr::word_mask> {
   std::sort(v.begin(), v.end(),
              [](const auto &a, const auto &b) { return a.idx < b.idx; });
-  std::vector<compiled_expr::word_mask> out;
+  tf::core::std_vector<compiled_expr::word_mask> out;
   out.reserve(v.size());
   for (const auto &wm : v) {
     if (!out.empty() && out.back().idx == wm.idx)

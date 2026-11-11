@@ -12,9 +12,9 @@
  */
 #pragma once
 #include "../../core/buffer.hpp"
+#include "../../core/memory.hpp"
 #include <cstdint>
 #include <utility>
-#include <vector>
 
 namespace tf::csg {
 
@@ -57,31 +57,32 @@ public:
     index_type hi;
   };
 
-  static auto make_leaf_cluster_any(std::vector<word_mask> words)
+  static auto make_leaf_cluster_any(tf::core::std_vector<word_mask> words)
       -> compiled_expr {
     return _make_leaf(kind::leaf_cluster_any, std::move(words));
   }
-  static auto make_leaf_cluster_all(std::vector<word_mask> words)
+  static auto make_leaf_cluster_all(tf::core::std_vector<word_mask> words)
       -> compiled_expr {
     return _make_leaf(kind::leaf_cluster_all, std::move(words));
   }
-  static auto make_merge(std::vector<compiled_expr> children) -> compiled_expr {
+  static auto make_merge(tf::core::std_vector<compiled_expr> children)
+      -> compiled_expr {
     return _make_nary(kind::merge, std::move(children));
   }
-  static auto make_intersection(std::vector<compiled_expr> children)
+  static auto make_intersection(tf::core::std_vector<compiled_expr> children)
       -> compiled_expr {
     return _make_nary(kind::intersection, std::move(children));
   }
   static auto make_difference(compiled_expr lhs, compiled_expr rhs)
       -> compiled_expr {
-    std::vector<compiled_expr> kids;
+    tf::core::std_vector<compiled_expr> kids;
     kids.reserve(2);
     kids.push_back(std::move(lhs));
     kids.push_back(std::move(rhs));
     return _make_nary(kind::difference, std::move(kids));
   }
   static auto make_complement(compiled_expr x) -> compiled_expr {
-    std::vector<compiled_expr> kids;
+    tf::core::std_vector<compiled_expr> kids;
     kids.reserve(1);
     kids.push_back(std::move(x));
     return _make_nary(kind::complement, std::move(kids));
@@ -99,7 +100,7 @@ public:
   }
 
 private:
-  static auto _make_leaf(kind k, std::vector<word_mask> words)
+  static auto _make_leaf(kind k, tf::core::std_vector<word_mask> words)
       -> compiled_expr {
     compiled_expr e;
     e._words.reserve(words.size());
@@ -109,7 +110,7 @@ private:
     return e;
   }
 
-  static auto _make_nary(kind k, std::vector<compiled_expr> children)
+  static auto _make_nary(kind k, tf::core::std_vector<compiled_expr> children)
       -> compiled_expr {
     compiled_expr e;
     const auto n = index_type(children.size());

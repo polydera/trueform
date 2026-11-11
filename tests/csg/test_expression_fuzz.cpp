@@ -76,7 +76,7 @@ auto random_tree(std::mt19937 &rng, int depth_left) -> csg::expr {
 } // namespace
 
 TEST_CASE("csg::expr -- random tree walker matches compiled",
-          "[csg][expression][fuzz]") {
+          "[csg][expression]") {
   std::mt19937 rng(0xC51AC);
   constexpr std::uint32_t N_BV = 1u << K_OPERANDS;
 

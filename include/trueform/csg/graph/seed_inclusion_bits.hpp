@@ -421,21 +421,27 @@ auto seed_inclusion_bits(
         [](const auto &a, const auto &b) { return a[1] == b[1]; });
     auto groups =
         tf::make_offset_block_range(sheet_offsets, tf::make_range(sheet_pairs));
-    tf::parallel_for_each(groups, [&](auto group) {
-      const Index t = group[0][1];
+    struct local_t {
       tf::buffer<std::array<IntPt, 3>> queries;
-      queries.allocate(group.size());
-      for (std::size_t j = 0; j < group.size(); ++j)
-        queries[j] = seed_corners[group[j][0]];
-      apply_to_form(t, [&, t](const auto &form) {
-        auto bits = tf::csg::graph::winding_side<Int>(form, t, get_mesh_point,
-                                                      queries);
-        for (std::size_t j = 0; j < bits.size(); ++j)
-          sheet_side[static_cast<std::size_t>(group[j][0]) *
-                         static_cast<std::size_t>(n_tags) +
-                     static_cast<std::size_t>(t)] = bits[j];
-      });
-    });
+    };
+    tf::parallel_for_each(
+        groups,
+        [&](auto group, local_t &local) {
+          const Index t = group[0][1];
+          auto &queries = local.queries;
+          queries.allocate(group.size());
+          for (std::size_t j = 0; j < group.size(); ++j)
+            queries[j] = seed_corners[group[j][0]];
+          apply_to_form(t, [&, t](const auto &form) {
+            auto bits = tf::csg::graph::winding_side<Int>(
+                form, t, get_mesh_point, queries);
+            for (std::size_t j = 0; j < bits.size(); ++j)
+              sheet_side[static_cast<std::size_t>(group[j][0]) *
+                             static_cast<std::size_t>(n_tags) +
+                         static_cast<std::size_t>(t)] = bits[j];
+          });
+        },
+        local_t{});
   }
 
   // A cut face carries no component of its own, but the segment crossed
